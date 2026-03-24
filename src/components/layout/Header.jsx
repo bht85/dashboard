@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Calendar } from 'lucide-react';
+import { Menu, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { auth } from '../../firebase';
 import { signOut } from 'firebase/auth';
@@ -17,6 +17,17 @@ const Header = ({
     } catch (error) {
       console.error("Logout error:", error);
     }
+  };
+
+  const handleDayChange = (offset) => {
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    date.setDate(date.getDate() + offset);
+    
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    setSelectedDate(`${y}-${m}-${d}`);
   };
 
   const getTitle = () => {
@@ -49,15 +60,34 @@ const Header = ({
       </div>
       
       <div className="flex items-center gap-3">
-        <div className="relative">
-          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input 
-            type="date" 
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-          />
+        <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl overflow-hidden shadow-sm group">
+          <button 
+            onClick={() => handleDayChange(-1)}
+            className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-all border-r border-slate-200 active:scale-90"
+            title="이전 날짜"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          
+          <div className="relative flex items-center">
+            <Calendar className="absolute left-3 w-4 h-4 text-indigo-500 pointer-events-none" />
+            <input 
+              type="date" 
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="pl-9 pr-3 py-2.5 bg-transparent text-sm font-black text-slate-700 focus:bg-white outline-none transition-all w-[155px] tracking-tight"
+            />
+          </div>
+          
+          <button 
+            onClick={() => handleDayChange(1)}
+            className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 transition-all border-l border-slate-200 active:scale-90"
+            title="다음 날짜"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
+
         <button className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
           Export Excel
         </button>
