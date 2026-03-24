@@ -17,6 +17,7 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedDate, setSelectedDate] = useState("2026-03-24");
+  const [exchangeRate, setExchangeRate] = useState(1520); // 초기값 (폴백)
 
   // --- Auth State Sync ---
   useEffect(() => {
@@ -26,6 +27,24 @@ const App = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  // --- Exchange Rate Fetching ---
+  useEffect(() => {
+    const fetchRate = async () => {
+      try {
+        const response = await fetch('https://api.frankfurter.app/latest?from=USD&to=KRW');
+        const data = await response.json();
+        if (data.rates && data.rates.KRW) {
+          setExchangeRate(data.rates.KRW);
+          console.log("Latest Exchange Rate (USD/KRW):", data.rates.KRW);
+        }
+      } catch (error) {
+        console.error("Exchange rate fetch error:", error);
+      }
+    };
+    fetchRate();
+  }, []);
+
 
   // --- 데이터 상태 관리 ---
   const [composeAccounts, setComposeAccounts] = useState([]);
@@ -103,6 +122,7 @@ const App = () => {
           fxSchedule={fxSchedule} 
           withdrawals={withdrawals}
           dailyStatuses={dailyStatuses}
+          exchangeRate={exchangeRate}
         />
       )}
       {currentView === 'monthly' && (

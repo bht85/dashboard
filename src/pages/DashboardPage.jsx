@@ -4,7 +4,7 @@ import FinancialTable from '../components/dashboard/FinancialTable';
 import { calculateTotal, formatKRW, formatUSD } from '../utils/formatters';
 import { Wallet, TrendingUp, Building2, Factory, FileText, Globe, ChevronDown, ChevronUp, ListFilter } from 'lucide-react';
 
-const DashboardPage = ({ selectedDate, composeAccounts, smartAccounts, fxSchedule, withdrawals = [] }) => {
+const DashboardPage = ({ selectedDate, composeAccounts, smartAccounts, fxSchedule, withdrawals = [], exchangeRate = 1520 }) => {
   const [isRawDataOpen, setIsRawDataOpen] = useState(false);
   const composeTotal = calculateTotal(composeAccounts);
   const smartTotal = calculateTotal(smartAccounts);
@@ -17,9 +17,10 @@ const DashboardPage = ({ selectedDate, composeAccounts, smartAccounts, fxSchedul
   const composeWithdrawTotal = composeWithdrawals.reduce((sum, w) => sum + w.amount, 0);
   const smartWithdrawTotal = smartWithdrawals.reduce((sum, w) => sum + w.amount, 0);
 
-  // 외화 송금 합계 계산
+  // 외화 송금 합계 계산 (실시간 환율 적용)
   const usdTotal = fxSchedule.reduce((sum, item) => sum + item.amount, 0);
-  const krwEquivalent = usdTotal * 1520; // 사용자 요청에 따른 현실적인 환율 적용 (1500원 이상)
+  const krwEquivalent = usdTotal * exchangeRate;
+
 
 
   return (
@@ -49,9 +50,12 @@ const DashboardPage = ({ selectedDate, composeAccounts, smartAccounts, fxSchedul
           <div className="text-right">
             <p className="text-[10px] text-slate-500 font-bold uppercase mb-1 tracking-widest">환전 필요 예상액</p>
             <h4 className="text-2xl font-bold text-amber-400 font-mono tracking-tighter">약 {(krwEquivalent / 100000000).toFixed(1)} 억원</h4>
+            <div className="absolute top-4 right-4 bg-white/10 px-2 py-0.5 rounded text-[8px] font-bold text-slate-300">Rate: {formatKRW(exchangeRate)}</div>
           </div>
         </div>
       </section>
+
+
 
       {/* 1. 컴포즈커피 섹션 */}
       <section>
