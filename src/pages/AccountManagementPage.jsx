@@ -8,11 +8,9 @@ const AccountManagementPage = ({ composeAccounts, setComposeAccounts, smartAccou
     bank: '',
     no: '',
     type: '일반',
-    bank: '',
-    no: '',
-    type: '일반',
     isUSD: false,
   });
+
 
   const handleChange = (e) => {
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
