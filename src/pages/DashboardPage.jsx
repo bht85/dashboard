@@ -11,7 +11,15 @@ const DashboardPage = ({ selectedDate, composeAccounts, smartAccounts, fxSchedul
   
   // 현재 선택된 날짜의 지출 내역 필터링
   const dailyWithdrawals = withdrawals.filter(w => w.paymentDate === selectedDate);
-  const dailyWithdrawTotal = dailyWithdrawals.reduce((sum, w) => sum + w.amount, 0);
+  const composeWithdrawals = dailyWithdrawals.filter(w => w.section === '컴포즈커피');
+  const smartWithdrawals = dailyWithdrawals.filter(w => w.section === '스마트팩토리');
+
+  const composeWithdrawTotal = composeWithdrawals.reduce((sum, w) => sum + w.amount, 0);
+  const smartWithdrawTotal = smartWithdrawals.reduce((sum, w) => sum + w.amount, 0);
+
+  // 외화 송금 합계 계산
+  const usdTotal = fxSchedule.reduce((sum, item) => sum + item.amount, 0);
+  const krwEquivalent = usdTotal * 1350; // 가상 환율 (추후 실시간 API 연동 가능)
 
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-700">
@@ -27,7 +35,7 @@ const DashboardPage = ({ selectedDate, composeAccounts, smartAccounts, fxSchedul
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between group hover:shadow-md transition-all">
           <div>
             <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 tracking-widest">금일 지출</p>
-            <h4 className="text-xl font-bold text-red-500 tracking-tighter tabular-nums whitespace-nowrap">{formatKRW(composeTotal.withdraw + smartTotal.withdraw)}</h4>
+            <h4 className="text-xl font-bold text-red-500 tracking-tighter tabular-nums whitespace-nowrap">{formatKRW(composeWithdrawTotal + smartWithdrawTotal)}</h4>
           </div>
           <div className="p-3 bg-red-50 rounded-xl text-red-600"><TrendingUp className="w-6 h-6" /></div>
         </div>
@@ -35,11 +43,11 @@ const DashboardPage = ({ selectedDate, composeAccounts, smartAccounts, fxSchedul
           <div className="absolute top-0 right-0 p-8 opacity-10"><Globe className="w-24 h-24 text-white" /></div>
           <div>
             <p className="text-[10px] text-slate-500 font-bold uppercase mb-1 tracking-widest">외화 송금 대기 (USD)</p>
-            <h4 className="text-2xl font-bold text-emerald-400 font-mono tracking-tight">$1,595,217.57</h4>
+            <h4 className="text-2xl font-bold text-emerald-400 font-mono tracking-tight">{formatUSD(usdTotal)}</h4>
           </div>
           <div className="text-right">
             <p className="text-[10px] text-slate-500 font-bold uppercase mb-1 tracking-widest">환전 필요 예상액</p>
-            <h4 className="text-2xl font-bold text-amber-400 font-mono tracking-tighter">약 23.8 억원</h4>
+            <h4 className="text-2xl font-bold text-amber-400 font-mono tracking-tighter">약 {(krwEquivalent / 100000000).toFixed(1)} 억원</h4>
           </div>
         </div>
       </section>
@@ -49,21 +57,21 @@ const DashboardPage = ({ selectedDate, composeAccounts, smartAccounts, fxSchedul
         <FinancialTable title="1. 컴포즈커피 계좌 현황" accounts={composeAccounts} totals={composeTotal} icon={Building2} />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <ExpenseSummaryBox title="> 금일 지출 (컴포즈)" data={{ count: dailyWithdrawals.length, total: dailyWithdrawTotal, internal: 0, net: dailyWithdrawTotal }} />
+            <ExpenseSummaryBox title="> 금일 지출 (컴포즈)" data={{ count: composeWithdrawals.length, total: composeWithdrawTotal, internal: 0, net: composeWithdrawTotal }} />
           </div>
           <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5 flex flex-col justify-center">
             <h4 className="text-xs font-bold text-indigo-600 mb-3 flex items-center gap-2">
               <FileText className="w-3.5 h-3.5 opacity-70" /> 컴포즈커피 세부사항 (가장 최근 업로드)
             </h4>
-            {dailyWithdrawals.length > 0 ? (
+            {composeWithdrawals.length > 0 ? (
               <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex justify-between items-center text-[13px] shadow-sm">
                 <div>
-                  <p className="font-bold text-slate-800">{dailyWithdrawals[0].payee}</p>
-                  <p className="text-slate-500 mt-1 italic text-xs">{dailyWithdrawals[0].withdrawLabel}</p>
+                  <p className="font-bold text-slate-800">{composeWithdrawals[0].payee}</p>
+                  <p className="text-slate-500 mt-1 italic text-xs">{composeWithdrawals[0].withdrawLabel}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-mono font-bold text-red-500 text-lg tabular-nums">{formatKRW(dailyWithdrawals[0].amount)}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5 font-medium italic">{dailyWithdrawals[0].bank} {dailyWithdrawals[0].account}</p>
+                  <p className="font-mono font-bold text-red-500 text-lg tabular-nums">{formatKRW(composeWithdrawals[0].amount)}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5 font-medium italic">{composeWithdrawals[0].bank} {composeWithdrawals[0].account}</p>
                 </div>
               </div>
             ) : (
@@ -79,26 +87,27 @@ const DashboardPage = ({ selectedDate, composeAccounts, smartAccounts, fxSchedul
       <section>
         <FinancialTable title="2. 스마트팩토리 계좌 현황" accounts={smartAccounts} totals={smartTotal} icon={Factory} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ExpenseSummaryBox title="> 금일 지출 (스마트팩토리)" data={{ count: 1, total: 2400000000, internal: 2400000000, net: 0 }} />
+          <ExpenseSummaryBox title="> 금일 지출 (스마트팩토리)" data={{ count: smartWithdrawals.length, total: smartWithdrawTotal, internal: 0, net: smartWithdrawTotal }} />
           <div className="bg-[#0f172a] text-white rounded-lg p-5">
             <h4 className="text-xs font-bold text-emerald-400 mb-4 flex items-center gap-2">기타 외화 요약</h4>
             <div className="space-y-3">
               <div className="flex justify-between text-xs border-b border-slate-800 pb-2">
-                <span className="text-slate-400">3월 지급 예정액</span>
-                <span className="font-mono font-bold text-emerald-400">$1,595,217.57</span>
+                <span className="text-slate-400">송금 예정 총액</span>
+                <span className="font-mono font-bold text-emerald-400">{formatUSD(usdTotal)}</span>
               </div>
               <div className="flex justify-between text-xs border-b border-slate-800 pb-2">
                 <span className="text-slate-400">필요 외화 (KRW 환산)</span>
-                <span className="font-mono font-bold text-amber-400">1,591,903,370원</span>
+                <span className="font-mono font-bold text-amber-400">{formatKRW(krwEquivalent)}</span>
               </div>
               <div className="flex justify-between text-sm pt-1">
-                <span className="font-bold">소계</span>
-                <span className="font-mono font-black text-amber-500">2,387,855,055원</span>
+                <span className="font-bold">합계 (예상)</span>
+                <span className="font-mono font-black text-amber-500">{formatKRW(krwEquivalent)}</span>
               </div>
             </div>
           </div>
         </div>
       </section>
+
 
       {/* 3. 외화 송금 일정 */}
       <section className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
