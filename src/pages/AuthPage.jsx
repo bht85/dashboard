@@ -76,6 +76,9 @@ const AuthPage = () => {
         case 'auth/operation-not-allowed':
           errorMsg = '이메일/비밀번호 인증이 활성화되어 있지 않습니다. 관리자에게 문의하세요.';
           break;
+        case 'auth/unauthorized-domain':
+          errorMsg = '이 도메인은 승인된 도메인이 아닙니다. Firebase 콘솔 설정을 확인하세요.';
+          break;
       }
       setError(errorMsg);
     } finally {
