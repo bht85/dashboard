@@ -1,6 +1,9 @@
 import React from 'react';
 import { Menu, Calendar } from 'lucide-react';
 
+import { auth } from '../../firebase';
+import { signOut } from 'firebase/auth';
+
 const Header = ({ 
   isSidebarOpen, 
   setIsSidebarOpen, 
@@ -8,6 +11,14 @@ const Header = ({
   selectedDate, 
   setSelectedDate 
 }) => {
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
+  };
+
   const getTitle = () => {
     switch(currentView) {
       case 'dashboard': return "자금 일보 리포트";
@@ -50,9 +61,16 @@ const Header = ({
         <button className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
           Export Excel
         </button>
+        <button 
+          onClick={handleLogout}
+          className="bg-white text-slate-500 border border-slate-200 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all active:scale-95"
+        >
+          Logout
+        </button>
       </div>
     </header>
   );
 };
 
 export default Header;
+
