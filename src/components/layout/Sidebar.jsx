@@ -25,8 +25,8 @@ const Sidebar = ({ isSidebarOpen, currentView, setCurrentView }) => {
           <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100 mb-4">
             <TrendingUp className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-xl font-black tracking-tighter text-slate-900 uppercase">Antigravity</h1>
-          <p className="text-[9px] text-slate-400 font-bold tracking-[0.2em] mt-1">FINANCIAL DASHBOARD</p>
+          <h1 className="text-xl font-black tracking-tighter text-slate-900 uppercase">Compose</h1>
+          <p className="text-[9px] text-slate-400 font-bold tracking-[0.2em] mt-1">TREASURY INTELLIGENCE</p>
         </div>
         
         <nav className="flex-1 px-4 space-y-1 mt-4">

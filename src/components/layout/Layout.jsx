@@ -43,7 +43,7 @@ const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, ch
         </main>
 
         <footer className="px-12 py-6 bg-white border-t border-slate-100 flex justify-between items-center text-[10px] font-black text-slate-400 tracking-widest uppercase">
-          <p>© 2026 Antigravity Financial Intelligence System</p>
+          <p>© 2026 COMPOSE TREASURY HUB</p>
           <div className="flex gap-8 items-center">
             <span className="text-indigo-600">Enterprise Edition v2.4</span>
             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>

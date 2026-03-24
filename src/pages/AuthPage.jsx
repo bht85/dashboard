@@ -101,8 +101,8 @@ const AuthPage = () => {
           <div className="inline-flex w-16 h-16 bg-indigo-600 rounded-2xl items-center justify-center shadow-2xl shadow-indigo-200 mb-6 group-hover:scale-110 transition-transform duration-500">
             <TrendingUp className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-black tracking-tighter text-slate-900 uppercase">Antigravity</h1>
-          <p className="text-[10px] text-slate-400 font-bold tracking-[0.3em] mt-2">FINANCIAL INTELLIGENCE SYSTEM</p>
+          <h1 className="text-3xl font-black tracking-tighter text-slate-900 uppercase">Compose</h1>
+          <p className="text-[10px] text-slate-400 font-bold tracking-[0.3em] mt-2">TREASURY MANAGEMENT SYSTEM</p>
         </div>
 
         {/* Card Section */}
