@@ -19,7 +19,8 @@ const DashboardPage = ({ selectedDate, composeAccounts, smartAccounts, fxSchedul
 
   // 외화 송금 합계 계산
   const usdTotal = fxSchedule.reduce((sum, item) => sum + item.amount, 0);
-  const krwEquivalent = usdTotal * 1350; // 가상 환율 (추후 실시간 API 연동 가능)
+  const krwEquivalent = usdTotal * 1520; // 사용자 요청에 따른 현실적인 환율 적용 (1500원 이상)
+
 
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-700">
