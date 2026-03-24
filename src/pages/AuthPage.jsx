@@ -49,8 +49,11 @@ const AuthPage = () => {
         await updateProfile(userCredential.user, { displayName });
       }
     } catch (err) {
-      console.error(err);
-      let errorMsg = '로그인 중 오류가 발생했습니다. 다시 시도해 주세요.';
+      console.error("Auth Error:", err.code, err.message);
+      let errorMsg = isLogin 
+        ? '로그인 중 오류가 발생했습니다. 다시 시도해 주세요.' 
+        : '회원 가입 중 오류가 발생했습니다. 다시 시도해 주세요.';
+        
       switch (err.code) {
         case 'auth/user-not-found':
           errorMsg = '등록되지 않은 사용자입니다.';
@@ -59,16 +62,19 @@ const AuthPage = () => {
           errorMsg = '비밀번호가 올바르지 않습니다.';
           break;
         case 'auth/email-already-in-use':
-          errorMsg = '이미 사용 중인 이메일입니다.';
+          errorMsg = '이미 가입된 이메일입니다. 로그인해 주세요.';
           break;
         case 'auth/invalid-email':
           errorMsg = '유효하지 않은 이메일 형식입니다.';
           break;
         case 'auth/weak-password':
-          errorMsg = '비밀번호는 6자 이상이어야 합니다.';
+          errorMsg = '비밀번호는 최소 6자 이상이어야 합니다.';
           break;
         case 'auth/invalid-credential':
           errorMsg = '이메일 또는 비밀번호가 올바르지 않습니다.';
+          break;
+        case 'auth/operation-not-allowed':
+          errorMsg = '이메일/비밀번호 인증이 활성화되어 있지 않습니다. 관리자에게 문의하세요.';
           break;
       }
       setError(errorMsg);
