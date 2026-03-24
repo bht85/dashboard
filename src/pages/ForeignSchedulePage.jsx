@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Globe, Plus, Trash2 } from 'lucide-react';
-import { formatUSD } from '../utils/formatters';
+import { formatUSD, formatKRW } from '../utils/formatters';
 
-const ForeignSchedulePage = ({ fxSchedule, setFxSchedule }) => {
+const ForeignSchedulePage = ({ fxSchedule, setFxSchedule, exchangeRate = 1520 }) => {
   const [formData, setFormData] = useState({
     date: '',
     client: '',
@@ -65,7 +65,7 @@ const ForeignSchedulePage = ({ fxSchedule, setFxSchedule }) => {
         <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
           <Plus className="w-4 h-4 text-indigo-500" /> 신규 일정 기입
         </h3>
-        <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">지급예정일</label>
             <input type="date" name="date" value={formData.date} onChange={handleChange} className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500" required />
@@ -74,9 +74,14 @@ const ForeignSchedulePage = ({ fxSchedule, setFxSchedule }) => {
             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">거래처</label>
             <input type="text" name="client" value={formData.client} onChange={handleChange} placeholder="ex) 블레스빈" className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500" required />
           </div>
-          <div>
+          <div className="relative group">
             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">금액 (USD)</label>
             <input type="number" step="0.01" name="amount" value={formData.amount} onChange={handleChange} placeholder="ex) 5000.00" className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500" required />
+            {formData.amount && (
+              <div className="absolute -bottom-5 right-0 text-[9px] font-bold text-indigo-500 animate-in fade-in slide-in-from-top-1">
+                ≈ {formatKRW(parseFloat(formData.amount) * exchangeRate)}
+              </div>
+            )}
           </div>
           <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">상태</label>
@@ -87,13 +92,17 @@ const ForeignSchedulePage = ({ fxSchedule, setFxSchedule }) => {
               <option value="송금 완료(집행)">송금 완료(집행)</option>
             </select>
           </div>
-          <div className="md:col-span-1">
+          <div>
             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">은행명</label>
             <input type="text" name="bank" value={formData.bank} onChange={handleChange} placeholder="ex) 기업" className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500" />
           </div>
-          <div className="md:col-span-2">
+          <div className="md:col-span-3">
             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">내용</label>
             <input type="text" name="desc" value={formData.desc} onChange={handleChange} placeholder="ex) 티오피아 대금지급..." className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500" />
+          </div>
+          <div className="md:col-span-1">
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">환율 정보 (실시간)</label>
+            <div className="text-xs font-bold text-slate-400 h-9 flex items-center bg-slate-50/50 rounded-lg px-3 border border-slate-100">1$ = {exchangeRate?.toFixed(2)}원</div>
           </div>
           <div className="md:col-span-1 flex items-end">
             <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-2 rounded-lg hover:bg-indigo-700 transition shadow-md shadow-indigo-100 flex items-center justify-center gap-1.5 focus:scale-[0.98]">
@@ -109,6 +118,9 @@ const ForeignSchedulePage = ({ fxSchedule, setFxSchedule }) => {
             <Globe className="w-4 h-4 text-blue-500" />
             등록된 일정 리스트
           </h3>
+          <div className="text-[10px] font-bold bg-slate-900 text-slate-300 px-3 py-1 rounded-full">
+            기준 환율: {formatKRW(exchangeRate)}
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-[11px] border-collapse">
@@ -117,6 +129,7 @@ const ForeignSchedulePage = ({ fxSchedule, setFxSchedule }) => {
                 <th className="px-4 py-3 border-r">지급예정일</th>
                 <th className="px-4 py-3 border-r">거래처</th>
                 <th className="px-4 py-3 border-r text-right">금액 (USD)</th>
+                <th className="px-6 py-3 border-r text-right bg-indigo-50/30 text-indigo-600">환산 금액 (KRW)</th>
                 <th className="px-4 py-3 border-r text-center">은행명</th>
                 <th className="px-4 py-3 border-r">내용</th>
                 <th className="px-4 py-3 border-r">비고</th>
@@ -125,10 +138,13 @@ const ForeignSchedulePage = ({ fxSchedule, setFxSchedule }) => {
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-600">
               {fxSchedule.map((s) => (
-                <tr key={s.id} className="hover:bg-slate-50">
+                <tr key={s.id} className="hover:bg-slate-50 group">
                   <td className="px-4 py-3 border-r">{s.date}</td>
                   <td className="px-4 py-3 border-r font-bold text-slate-800">{s.client}</td>
                   <td className="px-4 py-3 border-r text-right font-mono font-bold text-blue-600">{formatUSD(s.amount)}</td>
+                  <td className="px-6 py-3 border-r text-right font-mono font-black text-slate-900 bg-indigo-50/10">
+                    {formatKRW(s.amount * exchangeRate)}
+                  </td>
                   <td className="px-4 py-3 border-r text-center">{s.bank}</td>
                   <td className="px-4 py-3 border-r text-[10px] text-slate-400">{s.desc}</td>
                   <td className="px-4 py-3 border-r">
@@ -158,7 +174,7 @@ const ForeignSchedulePage = ({ fxSchedule, setFxSchedule }) => {
               ))}
               {fxSchedule.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="text-center py-8 text-slate-400 text-xs">등록된 외화 송금 일정이 없습니다.</td>
+                  <td colSpan={8} className="text-center py-8 text-slate-400 text-xs text-center border-b">등록된 외화 송금 일정이 없습니다.</td>
                 </tr>
               )}
             </tbody>

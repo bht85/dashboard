@@ -152,6 +152,7 @@ const App = () => {
         <ForeignSchedulePage 
           fxSchedule={fxSchedule} 
           setFxSchedule={setFxSchedule} 
+          exchangeRate={exchangeRate}
         />
       )}
       {currentView === 'cashStatus' && (
