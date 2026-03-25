@@ -172,6 +172,33 @@ const App = () => {
     await deleteDoc(doc(collection(db, "fxSchedule"), String(id)));
   };
 
+  const deleteWithdrawal = async (withdrawId, accountId, section, amount) => {
+    try {
+      if (!withdrawId) return;
+      console.log(`Deleting Withdrawal: ${withdrawId} from account: ${accountId}`);
+      
+      // 1. Delete from Firestore
+      await deleteDoc(doc(collection(db, "withdrawals"), String(withdrawId)));
+
+      // 2. Update Account Balance (Reversion)
+      const accounts = section === '컴포즈커피' ? composeAccounts : smartAccounts;
+      const account = accounts.find(a => String(a.id) === String(accountId));
+      
+      if (account) {
+        const newWithdraw = (account.withdraw || 0) - amount;
+        const updatedAccount = {
+          ...account,
+          withdraw: newWithdraw,
+          final: (account.balance || 0) - newWithdraw + (account.internal || 0)
+        };
+        await updateAccount(section === '컴포즈커피' ? 'compose' : 'smart', updatedAccount);
+      }
+    } catch (err) {
+      console.error("Delete withdrawal error:", err);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
+
   // --- Excel Export Helper ---
   const handleExport = () => {
     try {
@@ -303,8 +330,10 @@ const App = () => {
         <TransactionsPage 
           composeAccounts={composeAccounts} 
           smartAccounts={smartAccounts} 
+          withdrawals={withdrawals}
           onUpdateAccount={updateAccount}
           onSaveWithdrawals={saveWithdrawals}
+          onDeleteWithdrawal={deleteWithdrawal}
         />
       )}
       {currentView === 'foreign' && (
