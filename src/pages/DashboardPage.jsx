@@ -103,7 +103,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
           </div>
           <div className="text-right">
             <p className="text-[10px] text-slate-400 font-black uppercase mb-1 tracking-widest">Report Date</p>
-            <p className="text-xl font-black text-slate-900 tracking-tighter underline underline-offset-8 decoration-indigo-500">{recordDate}</p>
+            <p className="text-xl font-black text-slate-900 tracking-tighter underline underline-offset-8 decoration-indigo-500">{selectedDate}</p>
           </div>
         </div>
       </div>
