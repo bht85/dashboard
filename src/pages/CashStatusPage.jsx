@@ -4,12 +4,12 @@ import { formatKRW } from '../utils/formatters';
 import * as XLSX from 'xlsx';
 
 const CashStatusPage = ({ 
-  selectedDate: recordDate, 
+  selectedDate: initialDate, 
   dailyStatuses, 
   setDailyStatuses,
   exchangeRate = 1
 }) => {
-  const [recordDate, setRecordDate] = useState(recordDate);
+  const [recordDate, setRecordDate] = useState(initialDate);
   const [activeEntity, setActiveEntity] = useState('컴포즈커피');
   const [cashLogs, setCashLogs] = useState([]);
   const uploadedDates = Object.keys(dailyStatuses);
