@@ -9,23 +9,6 @@
 }
 
 @media print {
-  @page {
-    margin: 15mm !important;
-    size: A4 portrait !important;
-  }
-
-  /* Base scaling and typography */
-  body {
-    background: white !important;
-    font-size: 9pt !important;
-    line-height: 1.2 !important;
-    color: black !important;
-  }
-
-  h1 { font-size: 16pt !important; }
-  h2 { font-size: 14pt !important; }
-  h3 { font-size: 12pt !important; }
-
   /* Hide UI elements */
   aside, 
   header select, 
@@ -35,42 +18,16 @@
     display: none !important;
   }
 
-  /* Main content area adjustment */
-  main {
-    margin: 0 !important;
-    padding: 0 !important;
-    width: 100% !important;
-    background: white !important;
-  }
-
-  /* Container and layout */
-  .container {
-    max-width: 100% !important;
-    width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-
-  /* Table Adjustments for density */
-  table {
-    width: 100% !important;
-    font-size: 8pt !important;
-    border-spacing: 0 !important;
-  }
-
-  th, td {
-    padding: 2px 4px !important;
-  }
-
-  /* Force background colors/images if needed */
-  * {
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-
   /* Reset layout for print */
   body, html {
     height: auto !important;
     overflow: visible !important;
+    background: white !important;
+  }
+
+  /* Specific Report Utility */
+  .page-break-after {
+    page-break-after: always !important;
+    break-after: page !important;
   }
 }
