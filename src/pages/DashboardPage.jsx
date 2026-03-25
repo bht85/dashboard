@@ -25,13 +25,15 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   });
 
   // 법인별 데이터 필터링 및 매핑
-  const composeAccounts = statusDetails.length > 0 
+  const composeAccounts = (statusDetails.length > 0 
     ? statusDetails.filter(d => d.entity.includes('컴포즈')).map(mapStatusToAccount)
-    : masterCompose.map(a => ({ ...a, balance: 0, withdraw: 0, internal: 0, final: 0 }));
+    : masterCompose.map(a => ({ ...a, balance: 0, withdraw: 0, internal: 0, final: 0 }))
+  ).filter(acc => acc.balance !== 0 || acc.withdraw !== 0 || acc.internal !== 0 || acc.final !== 0);
 
-  const smartAccounts = statusDetails.length > 0 
+  const smartAccounts = (statusDetails.length > 0 
     ? statusDetails.filter(d => d.entity.includes('스마트')).map(mapStatusToAccount)
-    : masterSmart.map(a => ({ ...a, balance: 0, withdraw: 0, internal: 0, final: 0 }));
+    : masterSmart.map(a => ({ ...a, balance: 0, withdraw: 0, internal: 0, final: 0 }))
+  ).filter(acc => acc.balance !== 0 || acc.withdraw !== 0 || acc.internal !== 0 || acc.final !== 0);
 
   // 합계 계산
   const composeTotal = calculateTotal(composeAccounts);
