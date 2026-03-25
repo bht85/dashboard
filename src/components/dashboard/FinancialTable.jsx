@@ -17,7 +17,7 @@ const FinancialTable = ({ title, accounts, totals, icon: Icon }) => (
             <th className="px-4 py-3 font-bold border-r border-slate-100 text-right">출금액</th>
             <th className="px-4 py-3 font-bold border-r border-slate-100 text-right">내부 입금</th>
             <th className="px-4 py-3 font-bold border-r border-slate-100 text-right text-indigo-600">출금 후 잔액</th>
-            <th className="px-4 py-3 font-bold">비고</th>
+            <th className="px-4 py-3 font-bold">별칭</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">

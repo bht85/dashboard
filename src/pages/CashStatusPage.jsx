@@ -243,26 +243,37 @@ const CashStatusPage = ({ selectedDate: globalSelectedDate, dailyStatuses, setDa
         </div>
       </div>
 
-      {cashLogs.length > 0 && (
+      {/* 2. 시재 현황 데이터 표시 (프리뷰 또는 확정 데이터) */}
+      {(cashLogs.length > 0 || (dailyStatuses[recordDate] && dailyStatuses[recordDate].details && dailyStatuses[recordDate].details.length > 0)) && (
         <div className="animate-in slide-in-from-top-4 duration-500">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <div>
                 <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <Landmark className="w-4 h-4 text-indigo-500" /> 시재 현황 데이터 프리뷰
+                  <Landmark className="w-4 h-4 text-indigo-500" /> 
+                  {cashLogs.length > 0 ? '시재 현황 데이터 프리뷰 (저장 전)' : `${recordDate} 확정 시재 현황 리포트`}
                 </h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 ml-6">{recordDate} 기준 데이터</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase mt-1 ml-6">
+                  {cashLogs.length > 0 ? '업로드된 파일 분석 결과' : `${activeEntity} 승인된 기록`}
+                </p>
               </div>
-              <div className="text-right flex gap-6 items-center">
-                <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">총 입금 합계 (KRW)</p>
-                  <span className="text-base font-bold text-blue-600 tabular-nums">{formatKRW(cashLogs.reduce((s, i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0))}</span>
+              {cashLogs.length > 0 ? (
+                <div className="text-right flex gap-6 items-center">
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">총 입금 합계 (KRW)</p>
+                    <span className="text-base font-bold text-blue-600 tabular-nums">{formatKRW(cashLogs.reduce((s, i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0))}</span>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">총 출금 합계 (KRW)</p>
+                    <span className="text-base font-bold text-red-600 tabular-nums">{formatKRW(cashLogs.reduce((s, i) => s + (i.currency === 'KRW' ? i.withdrawals : 0), 0))}</span>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">총 출금 합계 (KRW)</p>
-                  <span className="text-base font-bold text-red-600 tabular-nums">{formatKRW(cashLogs.reduce((s, i) => s + (i.currency === 'KRW' ? i.withdrawals : 0), 0))}</span>
+              ) : (
+                <div className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-indigo-100 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
+                  Finalized Data
                 </div>
-              </div>
+              )}
             </div>
             
             <div className="overflow-x-auto max-h-[500px]">
@@ -272,7 +283,7 @@ const CashStatusPage = ({ selectedDate: globalSelectedDate, dailyStatuses, setDa
                     <th className="px-3 py-3 border-r border-slate-100">구분</th>
                     <th className="px-3 py-3 border-r border-slate-100">은행</th>
                     <th className="px-3 py-3 border-r border-slate-100 italic">계좌번호</th>
-                    <th className="px-3 py-3 border-r border-slate-100">별칭</th>
+                    <th className="px-3 py-3 border-r border-slate-100 text-indigo-600">별칭 (Nickname)</th>
                     <th className="px-3 py-3 border-r border-slate-100 text-center">통화</th>
                     <th className="px-3 py-3 border-r border-slate-100 text-right">전일잔액</th>
                     <th className="px-3 py-3 border-r border-slate-100 text-right text-blue-600">입금액</th>
@@ -281,12 +292,12 @@ const CashStatusPage = ({ selectedDate: globalSelectedDate, dailyStatuses, setDa
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {cashLogs.map((item) => (
+                  {(cashLogs.length > 0 ? cashLogs : (dailyStatuses[recordDate]?.details || []).filter(d => d.entity.includes(activeEntity) || activeEntity.includes(d.entity))).map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-3 py-2.5 border-r border-slate-100 font-bold text-slate-700">{item.entity}</td>
                       <td className="px-3 py-2.5 border-r border-slate-100">{item.bank}</td>
                       <td className="px-3 py-2.5 border-r border-slate-100 font-mono text-slate-400">{item.account}</td>
-                      <td className="px-3 py-2.5 border-r border-slate-100 truncate max-w-[80px] text-slate-500">{item.nickname}</td>
+                      <td className="px-3 py-2.5 border-r border-slate-100 font-black text-slate-900">{item.nickname || item.type || '-'}</td>
                       <td className="px-3 py-2.5 border-r border-slate-100 text-center">
                         <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${item.currency === 'KRW' ? 'bg-slate-100 text-slate-600' : 'bg-amber-100 text-amber-700'}`}>
                           {item.currency}
@@ -298,24 +309,36 @@ const CashStatusPage = ({ selectedDate: globalSelectedDate, dailyStatuses, setDa
                       <td className="px-3 py-2.5 text-right font-black bg-slate-50/50 tabular-nums text-slate-900">{item.currency === 'KRW' ? formatKRW(item.totalBalance) : item.totalBalance.toLocaleString()}</td>
                     </tr>
                   ))}
+                  {cashLogs.length === 0 && (dailyStatuses[recordDate]?.details || []).filter(d => d.entity.includes(activeEntity) || activeEntity.includes(d.entity)).length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="px-3 py-10 text-center text-slate-400 italic">
+                        {recordDate} [{activeEntity}]에 해당하는 저장 내역이 없습니다. 엑셀을 업로드해 주세요.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
             
-            <div className="p-5 bg-slate-900 border-t border-slate-700 flex justify-between items-center text-white">
-              <div className="flex items-center gap-3">
-                <AlertCircle className="w-4 h-4 text-amber-400" />
-                <p className="text-xs text-slate-400">
-                  확인 버튼 클릭 시 <span className="text-indigo-500 font-bold">{activeEntity}</span>의 데이터가 <span className="text-amber-400 font-bold">{recordDate}</span> 자금 일보 리포트에 병합 저장됩니다.
-                </p>
+            {cashLogs.length > 0 && (
+              <div className="p-5 bg-slate-900 border-t border-slate-700 flex justify-between items-center text-white">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-4 h-4 text-amber-400" />
+                  <p className="text-xs text-slate-400">
+                    확인 버튼 클릭 시 <span className="text-indigo-500 font-bold">{activeEntity}</span>의 데이터가 <span className="text-amber-400 font-bold">{recordDate}</span> 자금 일보 리포트에 병합 저장되며 **기존 기록을 대체**합니다.
+                  </p>
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setCashLogs([])} className="px-6 py-3.5 rounded-2xl font-bold bg-slate-800 hover:bg-slate-700 text-slate-400 transition-all">취소</button>
+                  <button 
+                    onClick={handleSave}
+                    className={`flex items-center gap-2 text-white px-8 py-3.5 rounded-2xl font-bold shadow-xl hover:-translate-y-0.5 transition-all active:scale-95 ${activeEntity === '컴포즈커피' ? 'bg-indigo-600 shadow-indigo-900 hover:bg-indigo-700' : 'bg-emerald-600 shadow-emerald-900 hover:bg-emerald-700'}`}
+                  >
+                    {activeEntity} 시재 확정 및 저장 <ArrowRight className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-              <button 
-                onClick={handleSave}
-                className={`flex items-center gap-2 text-white px-8 py-3.5 rounded-2xl font-bold shadow-xl hover:-translate-y-0.5 transition-all active:scale-95 ${activeEntity === '컴포즈커피' ? 'bg-indigo-600 shadow-indigo-900 hover:bg-indigo-700' : 'bg-emerald-600 shadow-emerald-900 hover:bg-emerald-700'}`}
-              >
-                {activeEntity} 시재 확정 및 저장 <ArrowRight className="w-5 h-5" />
-              </button>
-            </div>
+            )}
           </div>
         </div>
       )}
