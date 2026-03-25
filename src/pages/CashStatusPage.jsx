@@ -90,15 +90,19 @@ const CashStatusPage = ({ selectedDate: globalSelectedDate, dailyStatuses, setDa
   const handleSave = async () => {
     if (cashLogs.length === 0) return;
     
-    // 업로드 완료 날짜 및 실제 데이터 연동 (법인별 데이터 유지/병합)
     const currentStatus = dailyStatuses[recordDate] || { inflow: 0, outflow: 0, totalBalance: 0, netChange: 0, details: [] };
+
+    // --- '마지막 업로드 우선' 로직으로 개선 ---
+    // 1. 이번 업로드 파일에 포함된 모든 법인(entity) 식별
+    const uploadedEntities = [...new Set(cashLogs.map(log => log.entity.trim()))];
     
-    // 현재 업로드한 로우들만 추출
-    const entityRows = cashLogs.filter(row => row.entity.includes(activeEntity));
+    // 2. 기존 데이터에서 이번에 업로드된 법인의 데이터들만 제거 (덮어쓰기 위해)
+    const otherDetails = (currentStatus.details || []).filter(d => 
+      !uploadedEntities.some(ue => d.entity && (d.entity.includes(ue) || ue.includes(d.entity)))
+    );
     
-    // 기존 데이터에서 현재 법인 데이터 제외하고 새 데이터와 합침
-    const otherDetails = (currentStatus.details || []).filter(d => !d.entity.includes(activeEntity));
-    const mergedDetails = [...otherDetails, ...entityRows];
+    // 3. 기존의 다른 법인 데이터와 이번에 새로 분석된 모든 데이터를 합침
+    const mergedDetails = [...otherDetails, ...cashLogs];
 
     const statusData = {
       inflow: mergedDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0),
