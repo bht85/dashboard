@@ -7,3 +7,41 @@
     @apply antialiased text-slate-900 bg-slate-50;
   }
 }
+
+@media print {
+  /* Hide UI elements */
+  aside, 
+  header select, 
+  header button,
+  .print-hide {
+    display: none !important;
+  }
+
+  /* Main content area adjustment */
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    background: white !important;
+  }
+
+  /* Container and layout */
+  .container {
+    max-width: 100% !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Force background colors/images if needed */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide scrollbars and ensure height */
+  body, html {
+    background: white !important;
+    height: auto !important;
+  }
+}

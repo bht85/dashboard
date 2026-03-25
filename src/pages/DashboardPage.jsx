@@ -94,6 +94,20 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
 
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-700">
+      {/* 인쇄 전용 헤더 (화면에서는 숨김) */}
+      <div className="hidden print:block mb-10 border-b-2 border-slate-900 pb-6">
+        <div className="flex justify-between items-end">
+          <div>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">Daily Treasury Report</h1>
+            <p className="text-sm text-slate-500 font-bold mt-1 tracking-tight">재무 상태 보고서: (주)컴포즈커피 / 스마트팩토리</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] text-slate-400 font-black uppercase mb-1 tracking-widest">Report Date</p>
+            <p className="text-xl font-black text-slate-900 tracking-tighter underline underline-offset-8 decoration-indigo-500">{recordDate}</p>
+          </div>
+        </div>
+      </div>
+
       {/* 상단 요약 바 */}
       <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between group hover:shadow-md transition-all">

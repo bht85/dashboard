@@ -44,7 +44,7 @@ const Header = ({
   };
 
   return (
-    <header className="bg-white/90 border-b border-slate-200 px-8 py-5 flex items-center justify-between sticky top-0 z-40 backdrop-blur-sm">
+    <header className="bg-white/90 border-b border-slate-200 px-8 py-5 flex items-center justify-between sticky top-0 z-40 backdrop-blur-sm print:hidden">
       <div className="flex items-center gap-4">
         <button 
           onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
@@ -90,10 +90,10 @@ const Header = ({
         </div>
 
         <button 
-          onClick={onExport}
+          onClick={() => window.print()}
           className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
         >
-          Export Excel
+          PDF 보고서 출력
         </button>
         <button 
           onClick={handleLogout}
