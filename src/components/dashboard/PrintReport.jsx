@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatKRW, formatUSD } from '../utils/formatters';
+import { formatKRW, formatUSD } from '../../utils/formatters';
 
 const PrintReport = ({ selectedDate, composeAccounts, smartAccounts, fxSchedule, withdrawals, dailyStatuses, exchangeRate }) => {
   // 1. Calculate Totals for Summary
