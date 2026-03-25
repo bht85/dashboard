@@ -212,7 +212,11 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
                <input type="text" value={manualEntry.payee} onChange={e=>setManualEntry({...manualEntry, payee:e.target.value})} placeholder="받는 사람 이름" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all" />
              </div>
              <div className="col-span-2">
-               <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">계좌번호/메모</label>
+               <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">입금 계좌번호</label>
+               <input type="text" value={manualEntry.account} onChange={e=>setManualEntry({...manualEntry, account:e.target.value})} placeholder="계좌번호 입력" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all font-mono" />
+             </div>
+             <div className="col-span-2">
+               <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">메모</label>
                <input type="text" value={manualEntry.memo} onChange={e=>setManualEntry({...manualEntry, memo:e.target.value})} placeholder="상세 내용" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all" />
              </div>
              <button onClick={handleAddManual} className="col-span-2 mt-2 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-amber-100 transition-all active:scale-95 text-xs">
