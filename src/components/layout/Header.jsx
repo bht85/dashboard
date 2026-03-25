@@ -9,7 +9,8 @@ const Header = ({
   setIsSidebarOpen, 
   currentView, 
   selectedDate, 
-  setSelectedDate 
+  setSelectedDate,
+  onExport
 }) => {
   const handleLogout = async () => {
     try {
@@ -88,7 +89,10 @@ const Header = ({
           </button>
         </div>
 
-        <button className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
+        <button 
+          onClick={onExport}
+          className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+        >
           Export Excel
         </button>
         <button 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
-const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, children }) => {
+const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, onExport, children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   return (
@@ -34,6 +34,7 @@ const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, ch
           currentView={currentView}
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
+          onExport={onExport}
         />
 
         <main className="flex-1 p-8 lg:p-12 overflow-y-auto">

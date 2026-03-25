@@ -11,6 +11,7 @@ import ForeignSchedulePage from './pages/ForeignSchedulePage';
 import CashStatusPage from './pages/CashStatusPage';
 import MonthlyReportPage from './pages/MonthlyReportPage';
 import AuthPage from './pages/AuthPage';
+import * as XLSX from 'xlsx';
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -171,6 +172,54 @@ const App = () => {
     await deleteDoc(doc(collection(db, "fxSchedule"), String(id)));
   };
 
+  // --- Excel Export Helper ---
+  const handleExport = () => {
+    try {
+      let data = [];
+      let filename = `Report_${selectedDate}.xlsx`;
+
+      if (currentView === 'dashboard') {
+        // Dashboard Export Logic
+        const status = dailyStatuses[selectedDate];
+        if (!status) {
+          alert('해당 날짜의 확정 데이터가 없어 엑셀을 생성할 수 없습니다.');
+          return;
+        }
+        data = (status.details || []).map(d => ({
+          '법인': d.entity,
+          '은행': d.bank,
+          '계좌번호': d.account,
+          '별칭': d.nickname || '',
+          '통화': d.currency,
+          '전일잔액': d.prevBalance,
+          '입금액': d.deposits,
+          '출금액': d.withdrawals,
+          '총잔액': d.totalBalance
+        }));
+        filename = `자금일보_${selectedDate}.xlsx`;
+      } else if (currentView === 'cashStatus') {
+        const status = dailyStatuses[selectedDate];
+        if (!status) {
+          alert('내보낼 데이터가 없습니다.');
+          return;
+        }
+        data = status.details || [];
+        filename = `시재현황_${selectedDate}.xlsx`;
+      } else {
+        alert('이 화면에서는 엑셀 내보내기를 지원하지 않습니다.');
+        return;
+      }
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+      XLSX.writeFile(wb, filename);
+    } catch (err) {
+      console.error("Export error:", err);
+      alert('엑셀 파일 생성 중 오류가 발생했습니다.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -190,6 +239,7 @@ const App = () => {
       selectedDate={selectedDate} 
       setSelectedDate={setSelectedDate}
       user={user}
+      onExport={handleExport}
     >
       {currentView === 'dashboard' && (
         <DashboardPage 
