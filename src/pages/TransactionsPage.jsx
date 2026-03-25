@@ -264,6 +264,7 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
                  <tr>
                    <th className="px-4 py-2.5">은행/거래처</th>
                    <th className="px-4 py-2.5 text-right">금액</th>
+                   <th className="px-4 py-2.5 text-center">비고</th>
                    <th className="px-4 py-2.5 text-center">입금계좌</th>
                    <th className="px-4 py-2.5 text-center">출금계좌</th>
                    <th className="px-4 py-2.5 text-center">작업</th>
@@ -271,7 +272,7 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
                </thead>
                <tbody className="divide-y divide-slate-100">
                  {existingRecords.length === 0 ? (
-                    <tr><td colSpan={5} className="px-4 py-10 text-center text-slate-300 font-bold">저장된 내역이 없습니다.</td></tr>
+                    <tr><td colSpan={6} className="px-4 py-10 text-center text-slate-300 font-bold">저장된 내역이 없습니다.</td></tr>
                  ) : existingRecords.map(item => {
                    const isFirstInBatch = item.batchId && existingRecords.findIndex(r => r.batchId === item.batchId) === existingRecords.indexOf(item);
                    const batchTotal = item.batchId ? existingRecords.filter(r => r.batchId === item.batchId).reduce((s, i) => s + i.amount, 0) : 0;
@@ -290,6 +291,7 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
                         </div>
                       </td>
                       <td className="px-4 py-2.5 text-right font-black text-red-500">{formatKRW(item.amount)}</td>
+                      <td className="px-4 py-2.5 text-center text-[10px] text-slate-500 whitespace-pre-wrap">{item.memo || '-'}</td>
                       <td className="px-4 py-2.5 text-center font-mono text-slate-400">{item.account || '-'}</td>
                       <td className="px-4 py-2.5 text-center font-mono text-slate-400">{item.fromAccount || '-'}</td>
                       <td className="px-4 py-2.5 text-center">
