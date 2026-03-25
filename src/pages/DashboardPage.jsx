@@ -97,8 +97,13 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
       <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between group hover:shadow-md transition-all">
           <div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 tracking-widest">총 가용 자산 (KRW)</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 tracking-widest">총 가용 자산</p>
             <h4 className="text-xl font-bold text-slate-800 tracking-tighter tabular-nums whitespace-nowrap">{formatKRW(composeTotal.krw.final + smartTotal.krw.final)}</h4>
+            {(composeTotal.usd.final + smartTotal.usd.final) > 0 && (
+              <p className="text-[11px] font-black text-blue-600 font-mono mt-0.5 tabular-nums animate-in fade-in slide-in-from-top-1">
+                {formatUSD(composeTotal.usd.final + smartTotal.usd.final)} (USD)
+              </p>
+            )}
           </div>
           <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600"><Wallet className="w-6 h-6" /></div>
         </div>
