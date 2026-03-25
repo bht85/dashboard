@@ -101,6 +101,32 @@ const App = () => {
       if (!date || typeof date !== 'string') return;
       console.log(`Saving Daily Status: ${date}`);
       await setDoc(doc(collection(db, "dailyStatuses"), date), data);
+
+      // --- 자동 계좌 등록 로직 ---
+      if (data.details && data.details.length > 0) {
+        for (const entry of data.details) {
+          const section = entry.entity.includes('컴포즈') ? 'compose' : 'smart';
+          const masterList = section === 'compose' ? composeAccounts : smartAccounts;
+          
+          // 계좌 번호(account) 기준으로 중복 체크
+          const exists = masterList.some(a => String(a.no) === String(entry.account));
+          
+          if (!exists) {
+            console.log(`Auto-registering new account found in status: ${entry.account}`);
+            await updateAccount(section, {
+              id: Date.now() + Math.random(), // Unique ID
+              no: entry.account,
+              bank: entry.bank,
+              type: entry.type || entry.bank,
+              balance: 0,
+              withdraw: 0,
+              internal: 0,
+              final: 0,
+              isUSD: entry.currency === 'USD'
+            });
+          }
+        }
+      }
   };
 
   const updateAccount = async (section, data) => {

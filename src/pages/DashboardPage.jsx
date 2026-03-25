@@ -4,12 +4,40 @@ import FinancialTable from '../components/dashboard/FinancialTable';
 import { calculateTotal, formatKRW, formatUSD } from '../utils/formatters';
 import { Wallet, TrendingUp, Building2, Factory, FileText, Globe, ChevronDown, ChevronUp, ListFilter } from 'lucide-react';
 
-const DashboardPage = ({ selectedDate, composeAccounts, smartAccounts, fxSchedule, withdrawals = [], exchangeRate = 1520 }) => {
+const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAccounts: masterSmart, fxSchedule, withdrawals = [], dailyStatuses = {}, exchangeRate = 1520 }) => {
   const [isRawDataOpen, setIsRawDataOpen] = useState(false);
+  
+  // 1. 해당 날짜의 시재 현황 데이터 추출 (우선순위: 업로드된 시재 > 마스터 계좌)
+  const currentStatus = dailyStatuses[selectedDate] || null;
+  const statusDetails = currentStatus?.details || [];
+
+  // 엑셀 데이터를 테이블 형식으로 매핑하는 헬퍼
+  const mapStatusToAccount = (d) => ({
+    id: d.id,
+    no: d.account,
+    type: d.bank, // 또는 d.type
+    balance: d.prevBalance,
+    withdraw: d.withdrawals,
+    internal: d.deposits,
+    final: d.totalBalance,
+    isUSD: d.currency === 'USD',
+    note: d.nickname || d.bank
+  });
+
+  // 법인별 데이터 필터링 및 매핑
+  const composeAccounts = statusDetails.length > 0 
+    ? statusDetails.filter(d => d.entity.includes('컴포즈')).map(mapStatusToAccount)
+    : masterCompose.map(a => ({ ...a, balance: 0, withdraw: 0, internal: 0, final: 0 }));
+
+  const smartAccounts = statusDetails.length > 0 
+    ? statusDetails.filter(d => d.entity.includes('스마트')).map(mapStatusToAccount)
+    : masterSmart.map(a => ({ ...a, balance: 0, withdraw: 0, internal: 0, final: 0 }));
+
+  // 합계 계산
   const composeTotal = calculateTotal(composeAccounts);
   const smartTotal = calculateTotal(smartAccounts);
   
-  // 현재 선택된 날짜의 지출 내역 필터링
+  // 2. 현재 선택된 날짜의 지출 내역 필터링 (로우 데이터용)
   const dailyWithdrawals = withdrawals.filter(w => w.paymentDate === selectedDate);
   const composeWithdrawals = dailyWithdrawals.filter(w => w.section === '컴포즈커피');
   const smartWithdrawals = dailyWithdrawals.filter(w => w.section === '스마트팩토리');
@@ -17,11 +45,9 @@ const DashboardPage = ({ selectedDate, composeAccounts, smartAccounts, fxSchedul
   const composeWithdrawTotal = composeWithdrawals.reduce((sum, w) => sum + w.amount, 0);
   const smartWithdrawTotal = smartWithdrawals.reduce((sum, w) => sum + w.amount, 0);
 
-  // 외화 송금 합계 계산 (실시간 환율 적용)
+  // 3. 외화 송금 합계 계산 (실시간 환율 적용)
   const usdTotal = fxSchedule.reduce((sum, item) => sum + item.amount, 0);
   const krwEquivalent = usdTotal * exchangeRate;
-
-
 
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-700">
@@ -36,7 +62,7 @@ const DashboardPage = ({ selectedDate, composeAccounts, smartAccounts, fxSchedul
         </div>
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between group hover:shadow-md transition-all">
           <div>
-            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 tracking-widest">금일 지출</p>
+            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 tracking-widest">금일 지출 (자금일보 기준)</p>
             <h4 className="text-xl font-bold text-red-500 tracking-tighter tabular-nums whitespace-nowrap">{formatKRW(composeWithdrawTotal + smartWithdrawTotal)}</h4>
           </div>
           <div className="p-3 bg-red-50 rounded-xl text-red-600"><TrendingUp className="w-6 h-6" /></div>
@@ -55,11 +81,9 @@ const DashboardPage = ({ selectedDate, composeAccounts, smartAccounts, fxSchedul
         </div>
       </section>
 
-
-
       {/* 1. 컴포즈커피 섹션 */}
       <section>
-        <FinancialTable title="1. 컴포즈커피 계좌 현황" accounts={composeAccounts} totals={composeTotal} icon={Building2} />
+        <FinancialTable title={`1. 컴포즈커피 계좌 현황 (${currentStatus ? '업로드 데이터' : '마스터 계좌'})`} accounts={composeAccounts} totals={composeTotal} icon={Building2} />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
             <ExpenseSummaryBox title="> 금일 지출 (컴포즈)" data={{ count: composeWithdrawals.length, total: composeWithdrawTotal, internal: 0, net: composeWithdrawTotal }} />
@@ -90,7 +114,7 @@ const DashboardPage = ({ selectedDate, composeAccounts, smartAccounts, fxSchedul
 
       {/* 2. 스마트팩토리 섹션 */}
       <section>
-        <FinancialTable title="2. 스마트팩토리 계좌 현황" accounts={smartAccounts} totals={smartTotal} icon={Factory} />
+        <FinancialTable title={`2. 스마트팩토리 계좌 현황 (${currentStatus ? '업로드 데이터' : '마스터 계좌'})`} accounts={smartAccounts} totals={smartTotal} icon={Factory} />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ExpenseSummaryBox title="> 금일 지출 (스마트팩토리)" data={{ count: smartWithdrawals.length, total: smartWithdrawTotal, internal: 0, net: smartWithdrawTotal }} />
           <div className="bg-[#0f172a] text-white rounded-lg p-5">
