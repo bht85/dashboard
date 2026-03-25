@@ -3,7 +3,7 @@ import { Upload, FileText, CheckCircle2, AlertCircle, Trash2, Database, ArrowRig
 import { formatKRW } from '../utils/formatters';
 import * as XLSX from 'xlsx';
 
-const TransactionsPage = ({ composeAccounts, setComposeAccounts, smartAccounts, setSmartAccounts, setWithdrawals }) => {
+const TransactionsPage = ({ composeAccounts, smartAccounts, onUpdateAccount, onSaveWithdrawals }) => {
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [selectedSection, setSelectedSection] = useState('compose');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
@@ -58,29 +58,22 @@ const TransactionsPage = ({ composeAccounts, setComposeAccounts, smartAccounts, 
     reader.readAsBinaryString(file);
   };
 
-  const handleApply = () => {
+  const handleApply = async () => {
     if (previewData.length === 0) return;
 
     const totalWithdraw = previewData.reduce((sum, item) => sum + item.amount, 0);
+    const selectedAccount = allAccounts.find(a => String(a.id) === String(selectedAccountId));
     
-    if (selectedSection === 'compose') {
-      const updated = composeAccounts.map(acc => {
-        if (acc.id === parseInt(selectedAccountId)) {
-          const newWithdraw = acc.withdraw + totalWithdraw;
-          return { ...acc, withdraw: newWithdraw, final: acc.balance - newWithdraw + acc.internal };
-        }
-        return acc;
-      });
-      setComposeAccounts(updated);
-    } else {
-      const updated = smartAccounts.map(acc => {
-        if (acc.id === parseInt(selectedAccountId)) {
-          const newWithdraw = acc.withdraw + totalWithdraw;
-          return { ...acc, withdraw: newWithdraw, final: acc.balance - newWithdraw + acc.internal };
-        }
-        return acc;
-      });
-      setSmartAccounts(updated);
+    if (selectedAccount) {
+      const newWithdraw = (selectedAccount.withdraw || 0) + totalWithdraw;
+      const updatedAccount = { 
+        ...selectedAccount, 
+        withdraw: newWithdraw, 
+        final: (selectedAccount.balance || 0) - newWithdraw + (selectedAccount.internal || 0) 
+      };
+      // section field is added in allAccounts, remove it before saving
+      const { section, ...finalAccount } = updatedAccount;
+      await onUpdateAccount(selectedSection, finalAccount);
     }
 
     // 전역 지출 내역 상태 업데이트
@@ -90,7 +83,7 @@ const TransactionsPage = ({ composeAccounts, setComposeAccounts, smartAccounts, 
       section: selectedSection === 'compose' ? '컴포즈커피' : '스마트팩토리',
       fromAccount: selectedAccount.no
     }));
-    setWithdrawals(prev => [...prev, ...newItems]);
+    await onSaveWithdrawals(newItems);
 
     setIsSuccess(true);
     setPreviewData([]);

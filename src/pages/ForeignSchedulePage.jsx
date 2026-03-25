@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Globe, Plus, Trash2 } from 'lucide-react';
 import { formatUSD, formatKRW } from '../utils/formatters';
 
-const ForeignSchedulePage = ({ fxSchedule, setFxSchedule, exchangeRate = 1520 }) => {
+const ForeignSchedulePage = ({ fxSchedule, onUpdateSchedule, onDeleteSchedule, exchangeRate = 1520 }) => {
   const [formData, setFormData] = useState({
     date: '',
     client: '',
@@ -17,7 +17,7 @@ const ForeignSchedulePage = ({ fxSchedule, setFxSchedule, exchangeRate = 1520 })
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     if (!formData.date || !formData.client || !formData.amount) return;
 
@@ -32,7 +32,8 @@ const ForeignSchedulePage = ({ fxSchedule, setFxSchedule, exchangeRate = 1520 })
       status: formData.status,
     };
 
-    setFxSchedule([...fxSchedule, newSchedule]);
+    await onUpdateSchedule(newSchedule);
+
     setFormData({
       date: '',
       client: '',
@@ -44,14 +45,15 @@ const ForeignSchedulePage = ({ fxSchedule, setFxSchedule, exchangeRate = 1520 })
     });
   };
 
-  const handleDelete = (id) => {
-    setFxSchedule(fxSchedule.filter((item) => item.id !== id));
+  const handleDelete = async (id) => {
+    await onDeleteSchedule(id);
   };
 
-  const handleStatusChange = (id, newStatus) => {
-    setFxSchedule(fxSchedule.map(item => 
-      item.id === id ? { ...item, status: newStatus } : item
-    ));
+  const handleStatusChange = async (id, newStatus) => {
+    const item = fxSchedule.find(i => String(i.id) === String(id));
+    if (item) {
+      await onUpdateSchedule({ ...item, status: newStatus });
+    }
   };
 
   return (

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Layout from './components/layout/Layout';
 import { db, auth } from './firebase';
-import { collection, onSnapshot, doc, setDoc, query, orderBy } from 'firebase/firestore'; 
+import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore'; 
 import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect } from 'react';
 import DashboardPage from './pages/DashboardPage';
@@ -32,11 +32,12 @@ const App = () => {
   useEffect(() => {
     const fetchRate = async () => {
       try {
-        const response = await fetch('https://api.frankfurter.app/latest?from=USD&to=KRW');
+        // Switching to a more CORS-friendly API
+        const response = await fetch('https://open.er-api.com/v6/latest/USD');
         const data = await response.json();
-        if (data.rates && data.rates.KRW) {
+        if (data && data.rates && data.rates.KRW) {
           setExchangeRate(data.rates.KRW);
-          console.log("Latest Exchange Rate (USD/KRW):", data.rates.KRW);
+          console.log("Exchange Rate Updated (USD/KRW):", data.rates.KRW);
         }
       } catch (error) {
         console.error("Exchange rate fetch error:", error);
@@ -57,41 +58,83 @@ const App = () => {
   useEffect(() => {
     if (!user) return;
 
+    // Helper for error handling and logging
+    const logAndHandle = (name) => (err) => {
+        console.error(`Firestore Sync Error [${name}]:`, err);
+    };
+
+    console.log("Initializing Firestore Listeners...");
+
     // 1. Accounts Sync
     const unsubCompose = onSnapshot(collection(db, "composeAccounts"), (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      if (data.length > 0) setComposeAccounts(data);
-    });
+      setComposeAccounts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, logAndHandle("composeAccounts"));
 
     const unsubSmart = onSnapshot(collection(db, "smartAccounts"), (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      if (data.length > 0) setSmartAccounts(data);
-    });
+      setSmartAccounts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, logAndHandle("smartAccounts"));
 
-    // 2. FX Schedule Sync
-    const unsubFX = onSnapshot(query(collection(db, "fxSchedule"), orderBy("date")), (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setFxSchedule(data);
-    });
+    // 2. FX Schedule Sync (Simplified query to debug TypeError)
+    const unsubFX = onSnapshot(collection(db, "fxSchedule"), (snapshot) => {
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Sort locally if needed
+      setFxSchedule(data.sort((a,b) => (a.date > b.date ? 1 : -1)));
+    }, logAndHandle("fxSchedule"));
 
     // 3. Withdrawals Sync
     const unsubWith = onSnapshot(collection(db, "withdrawals"), (snapshot) => {
-        setWithdrawals(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+        setWithdrawals(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, logAndHandle("withdrawals"));
 
     // 4. Daily Status Sync
     const unsubStatus = onSnapshot(collection(db, "dailyStatuses"), (snapshot) => {
         const statuses = {};
-        snapshot.docs.forEach(doc => { statuses[doc.id] = doc.data(); });
+        snapshot.docs.forEach(d => { statuses[d.id] = d.data(); });
         setDailyStatuses(statuses);
-    });
+    }, logAndHandle("dailyStatuses"));
 
     return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); };
   }, [user]);
 
   // --- Firestore Update Wrappers ---
   const saveDailyStatus = async (date, data) => {
-      await setDoc(doc(db, "dailyStatuses", date), data);
+      if (!date || typeof date !== 'string') return;
+      console.log(`Saving Daily Status: ${date}`);
+      await setDoc(doc(collection(db, "dailyStatuses"), date), data);
+  };
+
+  const updateAccount = async (section, data) => {
+    const colName = section === 'compose' ? "composeAccounts" : "smartAccounts";
+    const docId = data.id ? String(data.id) : Date.now().toString();
+    console.log(`Updating Account in ${colName}: ${docId}`);
+    await setDoc(doc(collection(db, colName), docId), data);
+  };
+
+  const deleteAccount = async (section, id) => {
+    if (!id) return;
+    const colName = section === 'compose' ? "composeAccounts" : "smartAccounts";
+    console.log(`Deleting Account from ${colName}: ${id}`);
+    await deleteDoc(doc(collection(db, colName), String(id)));
+  };
+
+  const saveWithdrawals = async (newWithdrawals) => {
+    console.log(`Saving ${newWithdrawals.length} withdrawals...`);
+    for (const item of newWithdrawals) {
+      const docId = item.id ? String(item.id) : Date.now().toString();
+      await setDoc(doc(collection(db, "withdrawals"), docId), item);
+    }
+  };
+
+  const updateFXSchedule = async (data) => {
+    const docId = data.id ? String(data.id) : Date.now().toString();
+    console.log(`Updating FX Schedule: ${docId}`);
+    await setDoc(doc(collection(db, "fxSchedule"), docId), data);
+  };
+
+  const deleteFXSchedule = async (id) => {
+    if (!id) return;
+    console.log(`Deleting FX Schedule: ${id}`);
+    await deleteDoc(doc(collection(db, "fxSchedule"), String(id)));
   };
 
   if (loading) {
@@ -134,24 +177,24 @@ const App = () => {
       {currentView === 'accounts' && (
         <AccountManagementPage 
           composeAccounts={composeAccounts} 
-          setComposeAccounts={setComposeAccounts}
           smartAccounts={smartAccounts} 
-          setSmartAccounts={setSmartAccounts}
+          onAddAccount={updateAccount}
+          onDeleteAccount={deleteAccount}
         />
       )}
       {currentView === 'transactions' && (
         <TransactionsPage 
           composeAccounts={composeAccounts} 
-          setComposeAccounts={setComposeAccounts}
           smartAccounts={smartAccounts} 
-          setSmartAccounts={setSmartAccounts}
-          setWithdrawals={setWithdrawals}
+          onUpdateAccount={updateAccount}
+          onSaveWithdrawals={saveWithdrawals}
         />
       )}
       {currentView === 'foreign' && (
         <ForeignSchedulePage 
           fxSchedule={fxSchedule} 
-          setFxSchedule={setFxSchedule} 
+          onUpdateSchedule={updateFXSchedule}
+          onDeleteSchedule={deleteFXSchedule}
           exchangeRate={exchangeRate}
         />
       )}

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Building2, Factory, Plus, Trash2, CreditCard } from 'lucide-react';
 import { formatKRW, formatUSD } from '../utils/formatters';
 
-const AccountManagementPage = ({ composeAccounts, setComposeAccounts, smartAccounts, setSmartAccounts }) => {
+const AccountManagementPage = ({ composeAccounts, smartAccounts, onAddAccount, onDeleteAccount }) => {
   const [formData, setFormData] = useState({
     section: 'compose',
     bank: '',
@@ -17,7 +17,7 @@ const AccountManagementPage = ({ composeAccounts, setComposeAccounts, smartAccou
     setFormData({ ...formData, [e.target.name]: value });
   };
 
-  const handleAdd = (e) => {
+  const handleAdd = async (e) => {
     e.preventDefault();
     if (!formData.bank || !formData.no) return;
 
@@ -33,11 +33,7 @@ const AccountManagementPage = ({ composeAccounts, setComposeAccounts, smartAccou
       isUSD: formData.isUSD,
     };
 
-    if (formData.section === 'compose') {
-      setComposeAccounts([...composeAccounts, newAccount]);
-    } else {
-      setSmartAccounts([...smartAccounts, newAccount]);
-    }
+    await onAddAccount(formData.section, newAccount);
 
     setFormData({
       section: 'compose',
@@ -48,12 +44,8 @@ const AccountManagementPage = ({ composeAccounts, setComposeAccounts, smartAccou
     });
   };
 
-  const handleDelete = (id, section) => {
-    if (section === 'compose') {
-      setComposeAccounts(composeAccounts.filter((acc) => acc.id !== id));
-    } else {
-      setSmartAccounts(smartAccounts.filter((acc) => acc.id !== id));
-    }
+  const handleDelete = async (id, section) => {
+    await onDeleteAccount(section, id);
   };
 
   const renderManager = (title, accounts, section) => (

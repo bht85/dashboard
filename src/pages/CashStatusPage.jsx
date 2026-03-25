@@ -7,10 +7,11 @@ const CashStatusPage = ({ selectedDate: globalSelectedDate, dailyStatuses, setDa
   const [recordDate, setRecordDate] = useState(globalSelectedDate);
   const [activeEntity, setActiveEntity] = useState('컴포즈커피');
   const [cashLogs, setCashLogs] = useState([]);
-  const [uploadedDates, setUploadedDates] = useState(Object.keys(dailyStatuses));
+  const uploadedDates = Object.keys(dailyStatuses);
   const [isParsing, setIsParsing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const [viewMode, setViewMode] = useState('grid');
   const fileInputRef = useRef(null);
 
   const handleFileSelect = (e) => {
@@ -86,18 +87,18 @@ const CashStatusPage = ({ selectedDate: globalSelectedDate, dailyStatuses, setDa
     reader.readAsBinaryString(file);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (cashLogs.length === 0) return;
     
     // 업로드 완료 날짜 및 실제 데이터 연동 (법인별 데이터 유지/병합)
     const currentStatus = dailyStatuses[recordDate] || { inflow: 0, outflow: 0, totalBalance: 0, netChange: 0, details: [] };
     
-    // 현재 업로드한 로우들만 추출 (필터링이 이미 되어있겠지만 확실히 함)
+    // 현재 업로드한 로우들만 추출
     const entityRows = cashLogs.filter(row => row.entity.includes(activeEntity));
     
     // 기존 데이터에서 현재 법인 데이터 제외하고 새 데이터와 합침
-    const otherDetails = currentStatus.details.filter(d => !d.entity.includes(activeEntity));
-    const mergedDetails = [...otherDetails, ...cashLogs];
+    const otherDetails = (currentStatus.details || []).filter(d => !d.entity.includes(activeEntity));
+    const mergedDetails = [...otherDetails, ...entityRows];
 
     const statusData = {
       inflow: mergedDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0),
@@ -107,14 +108,8 @@ const CashStatusPage = ({ selectedDate: globalSelectedDate, dailyStatuses, setDa
       details: mergedDetails
     };
 
-    setDailyStatuses({
-        ...dailyStatuses,
-        [recordDate]: statusData
-    });
-
-    if (!uploadedDates.includes(recordDate)) {
-      setUploadedDates([...uploadedDates, recordDate]);
-    }
+    // DB worker call (App.jsx -> saveDailyStatus)
+    await setDailyStatuses(recordDate, statusData);
 
     setIsSuccess(true);
     setTimeout(() => {
@@ -132,12 +127,18 @@ const CashStatusPage = ({ selectedDate: globalSelectedDate, dailyStatuses, setDa
     const lastDay = new Date(year, month + 1, 0).getDate();
     
     for (let i = 1; i <= lastDay; i++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-      days.push({
-        day: i,
-        date: dateStr,
-        isUploaded: uploadedDates.includes(dateStr)
-      });
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+        const status = dailyStatuses[dateStr];
+        const hasCompose = status?.details?.some(d => d.entity.includes('컴포즈')) || false;
+        const hasSmart = status?.details?.some(d => d.entity.includes('스마트')) || false;
+        
+        days.push({
+          day: i,
+          date: dateStr,
+          isUploaded: hasCompose && hasSmart,
+          hasCompose,
+          hasSmart
+        });
     }
     return days;
   };
@@ -321,49 +322,119 @@ const CashStatusPage = ({ selectedDate: globalSelectedDate, dailyStatuses, setDa
         </button>
 
         {isStatusOpen && (
-          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-xl shadow-slate-200/50 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
               <div>
-                <h4 className="font-bold text-slate-800 text-sm">3월 시재 업로드 현황</h4>
-                <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Monthly Completion Status</p>
+                <h4 className="font-black text-slate-900 text-xl tracking-tight">자금 시재 업로드 현황</h4>
+                <p className="text-[10px] text-slate-400 font-bold uppercase mt-1.5 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                  Monthly Completion Status & Entity Breakdown
+                </p>
               </div>
-              <div className="flex gap-4">
-                <div className="bg-red-50 text-red-600 px-3 py-1.5 rounded-lg border border-red-100 flex items-center gap-2">
-                  <span className="text-[10px] font-black">누락</span>
-                  <span className="text-sm font-black">{missingCount}일</span>
+              
+              <div className="flex items-center gap-4">
+                <div className="flex bg-slate-100 p-1 rounded-xl mr-2">
+                    <button 
+                        onClick={() => setViewMode('grid')}
+                        className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all ${viewMode === 'grid' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+                    >GRID</button>
+                    <button 
+                        onClick={() => setViewMode('list')}
+                        className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all ${viewMode === 'list' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+                    >LIST</button>
                 </div>
-                <div className="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-lg border border-emerald-100 flex items-center gap-2">
-                  <span className="text-[10px] font-black">완료</span>
-                  <span className="text-sm font-black">{monthlyDays.filter(d => d.isUploaded).length}일</span>
+                <div className="h-8 w-px bg-slate-200"></div>
+                <div className="flex gap-3">
+                    <div className="bg-rose-50 text-rose-600 px-4 py-2 rounded-xl border border-rose-100 flex items-center gap-2 shadow-sm">
+                    <span className="text-[10px] font-black uppercase">누락</span>
+                    <span className="text-sm font-black tracking-tight">{missingCount}일</span>
+                    </div>
+                    <div className="bg-emerald-50 text-emerald-600 px-4 py-2 rounded-xl border border-emerald-100 flex items-center gap-2 shadow-sm">
+                    <span className="text-[10px] font-black uppercase">완료</span>
+                    <span className="text-sm font-black tracking-tight">{monthlyDays.filter(d => d.isUploaded).length}일</span>
+                    </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-7 sm:grid-cols-10 md:grid-cols-15 lg:grid-cols-31 gap-2">
-              {monthlyDays.map((d) => (
-                <div 
-                  key={d.day}
-                  title={d.date}
-                  className={`aspect-square flex flex-col items-center justify-center rounded-lg border text-[10px] font-bold transition-all ${
-                    d.isUploaded 
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-600' 
-                    : 'bg-slate-50 border-slate-100 text-slate-300'
-                  } ${d.date === recordDate ? 'ring-2 ring-indigo-500 ring-offset-2' : ''}`}
-                >
-                  <span className="opacity-50">{d.day}</span>
-                  {d.isUploaded && <CheckCircle2 className="w-2.5 h-2.5 mt-0.5" />}
+            {viewMode === 'grid' ? (
+                <div className="grid grid-cols-7 sm:grid-cols-10 md:grid-cols-12 lg:grid-cols-16 xl:grid-cols-31 gap-3">
+                {monthlyDays.map((d) => (
+                    <div 
+                    key={d.day}
+                    title={`${d.date} - ${d.hasCompose ? '컴포즈 완료' : '컴포즈 누락'} / ${d.hasSmart ? '스마트 완료' : '스마트 누락'}`}
+                    className={`aspect-square flex flex-col items-center justify-between p-2 rounded-2xl border text-[11px] font-black transition-all group hover:scale-105 hover:shadow-lg ${
+                        d.isUploaded 
+                        ? 'bg-emerald-50 border-emerald-100 text-emerald-600' 
+                        : (d.hasCompose || d.hasSmart) ? 'bg-indigo-50/30 border-indigo-100 text-indigo-400' : 'bg-slate-50 border-slate-100 text-slate-300'
+                    } ${d.date === recordDate ? 'ring-2 ring-indigo-500 ring-offset-4' : ''}`}
+                    >
+                    <span className="opacity-40">{d.day}</span>
+                    <div className="flex gap-0.5 mt-auto">
+                        <div className={`w-1.5 h-1.5 rounded-full ${d.hasCompose ? 'bg-indigo-500' : 'bg-slate-200'}`}></div>
+                        <div className={`w-1.5 h-1.5 rounded-full ${d.hasSmart ? 'bg-emerald-500' : 'bg-slate-200'}`}></div>
+                    </div>
+                    </div>
+                ))}
                 </div>
-              ))}
-            </div>
+            ) : (
+                <div className="overflow-hidden border border-slate-100 rounded-2xl bg-slate-50/30">
+                    <table className="w-full text-left text-[11px] border-collapse">
+                        <thead className="bg-slate-100/50 text-slate-500 font-bold uppercase tracking-widest text-[9px]">
+                            <tr>
+                                <th className="px-6 py-3 border-r border-white">날짜</th>
+                                <th className="px-6 py-3 border-r border-white">컴포즈커피</th>
+                                <th className="px-6 py-3 border-r border-white">스마트팩토리</th>
+                                <th className="px-6 py-3 text-center">전체 상태</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white">
+                            {monthlyDays.map(d => (
+                                <tr key={d.day} className={`hover:bg-white transition-colors ${d.date === recordDate ? 'bg-indigo-50/50' : ''}`}>
+                                    <td className="px-6 py-3 font-mono font-bold text-slate-400">{d.date}</td>
+                                    <td className="px-6 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-2 h-2 rounded-full ${d.hasCompose ? 'bg-indigo-500' : 'bg-slate-200'}`}></div>
+                                            <span className={`font-bold ${d.hasCompose ? 'text-slate-700' : 'text-slate-300'}`}>{d.hasCompose ? '업로드 완료' : '미완료'}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className={`w-2 h-2 rounded-full ${d.hasSmart ? 'bg-emerald-500' : 'bg-slate-200'}`}></div>
+                                            <span className={`font-bold ${d.hasSmart ? 'text-slate-700' : 'text-slate-300'}`}>{d.hasSmart ? '업로드 완료' : '미완료'}</span>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-3 text-center">
+                                        {d.isUploaded ? (
+                                            <span className="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase">COMPLETE</span>
+                                        ) : (d.hasCompose || d.hasSmart) ? (
+                                            <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full text-[9px] font-black uppercase">PARTIAL</span>
+                                        ) : (
+                                            <span className="bg-slate-100 text-slate-400 px-2 py-0.5 rounded-full text-[9px] font-black uppercase">MISSING</span>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
             
-            <div className="mt-6 pt-6 border-t border-slate-50 flex items-center gap-4">
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 bg-emerald-100 border border-emerald-200 rounded"></div>
-                <span className="text-[10px] font-bold text-slate-500 uppercase">업로드 완료</span>
+            <div className="mt-8 pt-6 border-t border-slate-100 flex flex-wrap items-center gap-x-8 gap-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 bg-indigo-500 rounded-full shadow-sm"></div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">컴포즈커피 완료</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 bg-slate-50 border border-slate-100 rounded"></div>
-                <span className="text-[10px] font-bold text-slate-500 uppercase">누락/대기</span>
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full shadow-sm"></div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">스마트팩토리 완료</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-2 bg-slate-100 rounded-full"></div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter italic">미완료/대기</span>
+              </div>
+              <div className="ml-auto text-[9px] font-black text-slate-300 uppercase tracking-widest bg-slate-50 px-3 py-1 rounded-lg">
+                Last Sync: {new Date().toLocaleTimeString()}
               </div>
             </div>
           </div>
