@@ -9,9 +9,23 @@
 }
 
 @media print {
+  @page {
+    margin: 15mm !important;
+    size: A4 portrait !important;
+  }
+
+  /* Base scaling and typography */
+  body {
+    background: white !important;
+    font-size: 10.5pt !important;
+    line-height: 1.3 !important;
+    color: black !important;
+  }
+
   /* Hide UI elements */
   aside, 
   header select, 
+  header [role="button"],
   header button,
   .print-hide {
     display: none !important;
@@ -33,15 +47,25 @@
     padding: 0 !important;
   }
 
+  /* Table Adjustments for density */
+  table {
+    width: 100% !important;
+    font-size: 9.5pt !important;
+  }
+
+  th, td {
+    padding: 4px 8px !important;
+  }
+
   /* Force background colors/images if needed */
   * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Hide scrollbars and ensure height */
+  /* Reset layout for print */
   body, html {
-    background: white !important;
     height: auto !important;
+    overflow: visible !important;
   }
 }
