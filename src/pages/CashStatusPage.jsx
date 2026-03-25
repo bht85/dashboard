@@ -92,17 +92,24 @@ const CashStatusPage = ({ selectedDate: globalSelectedDate, dailyStatuses, setDa
     
     const currentStatus = dailyStatuses[recordDate] || { inflow: 0, outflow: 0, totalBalance: 0, netChange: 0, details: [] };
 
-    // --- '마지막 업로드 우선' 로직으로 개선 ---
-    // 1. 이번 업로드 파일에 포함된 모든 법인(entity) 식별
-    const uploadedEntities = [...new Set(cashLogs.map(log => log.entity.trim()))];
-    
-    // 2. 기존 데이터에서 이번에 업로드된 법인의 데이터들만 제거 (덮어쓰기 위해)
-    const otherDetails = (currentStatus.details || []).filter(d => 
-      !uploadedEntities.some(ue => d.entity && (d.entity.includes(ue) || ue.includes(d.entity)))
+    // --- 탭(activeEntity) 기반 엄격한 덮어쓰기 로직 ---
+    // 1. 현재 선택된 탭(법인)에 해당하는 데이터만 엑셀에서 추출
+    const entitySpecificLogs = cashLogs.filter(log => 
+      log.entity && (log.entity.includes(activeEntity) || activeEntity.includes(log.entity))
     );
     
-    // 3. 기존의 다른 법인 데이터와 이번에 새로 분석된 모든 데이터를 합침
-    const mergedDetails = [...otherDetails, ...cashLogs];
+    if (entitySpecificLogs.length === 0) {
+      alert(`[오류] 업로드된 파일에서 '${activeEntity}'와 일치하는 법인 데이터를 찾을 수 없습니다. 법인명을 확인해 주세요.`);
+      return;
+    }
+
+    // 2. 기존 데이터에서 현재 선택된 법인의 데이터만 제거 (마지막 업로드 우선)
+    const otherDetails = (currentStatus.details || []).filter(d => 
+      !d.entity || !(d.entity.includes(activeEntity) || activeEntity.includes(d.entity))
+    );
+    
+    // 3. 기존의 다른 법인 데이터와 이번에 새로 분석된 해당 법인의 데이터만 합침
+    const mergedDetails = [...otherDetails, ...entitySpecificLogs];
 
     const statusData = {
       inflow: mergedDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0),
