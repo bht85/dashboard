@@ -115,10 +115,12 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
             <p className="text-[10px] text-slate-500 font-bold uppercase mb-1 tracking-widest">외화 송금 대기 (USD)</p>
             <h4 className="text-2xl font-bold text-emerald-400 font-mono tracking-tight">{formatUSD(usdTotal)}</h4>
           </div>
-          <div className="text-right">
-            <p className="text-[10px] text-slate-500 font-bold uppercase mb-1 tracking-widest">환전 필요 예상액</p>
+          <div className="text-right flex flex-col items-end">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="bg-white/10 px-1.5 py-0.5 rounded text-[8px] font-bold text-slate-400">Rate: {formatKRW(exchangeRate)}</span>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">환전 필요 예상액</p>
+            </div>
             <h4 className="text-2xl font-bold text-amber-400 font-mono tracking-tighter">약 {(krwEquivalent / 100000000).toFixed(1)} 억원</h4>
-            <div className="absolute top-4 right-4 bg-white/10 px-2 py-0.5 rounded text-[8px] font-bold text-slate-300">Rate: {formatKRW(exchangeRate)}</div>
           </div>
         </div>
       </section>
