@@ -114,10 +114,11 @@ const CashStatusPage = ({
     const mergedDetails = [...otherDetails, ...correctedLogs];
 
     const statusData = {
-      inflow: mergedDetails.reduce((s, i) => s + (i.deposits * (i.currency === 'USD' ? exchangeRate : 1)), 0),
-      outflow: mergedDetails.reduce((s, i) => s + (i.withdrawals * (i.currency === 'USD' ? exchangeRate : 1)), 0),
-      totalBalance: mergedDetails.reduce((s, i) => s + (i.totalBalance * (i.currency === 'USD' ? exchangeRate : 1)), 0),
-      netChange: mergedDetails.reduce((s, i) => s + ((i.deposits - i.withdrawals) * (i.currency === 'USD' ? exchangeRate : 1)), 0),
+      // 요약 필드는 KRW 중심으로 유지하되, USD 정보는 details에 보존
+      inflow: mergedDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0),
+      outflow: mergedDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.withdrawals : 0), 0),
+      totalBalance: mergedDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0),
+      netChange: mergedDetails.reduce((s, i) => s + (i.currency === 'KRW' ? (i.deposits - i.withdrawals) : 0), 0),
       details: mergedDetails
     };
 
@@ -265,12 +266,14 @@ const CashStatusPage = ({
               {cashLogs.length > 0 ? (
                 <div className="text-right flex gap-6 items-center">
                   <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">총 입금 합계 (KRW)</p>
-                    <span className="text-base font-bold text-blue-600 tabular-nums">{formatKRW(cashLogs.reduce((s, i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0))}</span>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">총 입금 합계</p>
+                    <div className="text-base font-bold text-blue-600 tabular-nums">{formatKRW(cashLogs.reduce((s, i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0))}</div>
+                    {cashLogs.some(i => i.currency === 'USD') && <div className="text-[10px] text-blue-400 font-black tabular-nums">{formatUSD(cashLogs.reduce((s, i) => s + (i.currency === 'USD' ? i.deposits : 0), 0))}</div>}
                   </div>
                   <div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">총 출금 합계 (KRW)</p>
-                    <span className="text-base font-bold text-red-600 tabular-nums">{formatKRW(cashLogs.reduce((s, i) => s + (i.currency === 'KRW' ? i.withdrawals : 0), 0))}</span>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">총 출금 합계</p>
+                    <div className="text-base font-bold text-red-600 tabular-nums">{formatKRW(cashLogs.reduce((s, i) => s + (i.currency === 'KRW' ? i.withdrawals : 0), 0))}</div>
+                    {cashLogs.some(i => i.currency === 'USD') && <div className="text-[10px] text-red-400 font-black tabular-nums">{formatUSD(cashLogs.reduce((s, i) => s + (i.currency === 'USD' ? i.withdrawals : 0), 0))}</div>}
                   </div>
                 </div>
               ) : (
