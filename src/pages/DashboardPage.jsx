@@ -96,6 +96,14 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   const composeWithdrawTotal = composeWithdrawals.reduce((sum, w) => sum + w.amount, 0);
   const smartWithdrawTotal = smartWithdrawals.reduce((sum, w) => sum + w.amount, 0);
 
+  // 3. 내부 이체(내부 출금) 합계 계산 (회사 내부에서 도는 돈)
+  const calculateInternalSum = (list) => list
+    .filter(w => w.payee.includes('컴포즈') || w.payee.includes('스마트팩토리') || w.isInternal)
+    .reduce((sum, w) => sum + w.amount, 0);
+  
+  const composeInternalSum = calculateInternalSum(composeWithdrawals);
+  const smartInternalSum = calculateInternalSum(smartWithdrawals);
+
   // 3. 외화 송금 합계 계산 (실시간 환율 적용)
   const usdTotal = fxSchedule.reduce((sum, item) => sum + item.amount, 0);
   const krwEquivalent = usdTotal * exchangeRate;
@@ -162,7 +170,15 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
           )}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1">
-              <ExpenseSummaryBox title="> 금일 출금 요청 (컴포즈)" data={{ count: composeWithdrawals.length, total: composeWithdrawTotal, internal: 0, net: composeWithdrawTotal }} />
+              <ExpenseSummaryBox 
+                title="> 금일 출금 요청 (컴포즈)" 
+                data={{ 
+                  count: composeWithdrawals.length, 
+                  total: composeWithdrawTotal, 
+                  internal: composeInternalSum, 
+                  net: composeWithdrawTotal - composeInternalSum 
+                }} 
+              />
             </div>
             <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5 flex flex-col justify-center">
               <h4 className="text-xs font-bold text-indigo-600 mb-3 flex items-center gap-2">
@@ -208,7 +224,15 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
           )}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1">
-              <ExpenseSummaryBox title="> 금일 지출 (스마트팩토리)" data={{ count: smartWithdrawals.length, total: smartWithdrawTotal, internal: 0, net: smartWithdrawTotal }} />
+              <ExpenseSummaryBox 
+                title="> 금일 지출 (스마트팩토리)" 
+                data={{ 
+                  count: smartWithdrawals.length, 
+                  total: smartWithdrawTotal, 
+                  internal: smartInternalSum, 
+                  net: smartWithdrawTotal - smartInternalSum 
+                }} 
+              />
             </div>
             
             <div className="lg:col-span-1 bg-white border border-slate-200 rounded-lg p-5 flex flex-col">
