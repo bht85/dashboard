@@ -1,0 +1,31 @@
+
+> financial-dashboard@0.0.0 build
+> vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 21 modules transformed.
+x Build failed in 1.16s
+error during build:
+[vite:esbuild] Transform failed with 1 error:
+/Users/athur/Downloads/최훈영/개발/자금일보/src/pages/CashStatusPage.jsx:12:8: ERROR: The symbol "recordDate" has already been declared
+file: /Users/athur/Downloads/최훈영/개발/자금일보/src/pages/CashStatusPage.jsx:12:8
+
+The symbol "recordDate" has already been declared
+10 |    exchangeRate = 1
+11 |  }) => {
+12 |    const [recordDate, setRecordDate] = useState(recordDate);
+   |          ^
+13 |    const [activeEntity, setActiveEntity] = useState('컴포즈커피');
+14 |    const [cashLogs, setCashLogs] = useState([]);
+
+    at failureErrorWithLog (/Users/athur/Downloads/최훈영/개발/자금일보/node_modules/esbuild/lib/main.js:1472:15)
+    at /Users/athur/Downloads/최훈영/개발/자금일보/node_modules/esbuild/lib/main.js:755:50
+    at responseCallbacks.<computed> (/Users/athur/Downloads/최훈영/개발/자금일보/node_modules/esbuild/lib/main.js:622:9)
+    at handleIncomingPacket (/Users/athur/Downloads/최훈영/개발/자금일보/node_modules/esbuild/lib/main.js:677:12)
+    at Socket.readFromStdout (/Users/athur/Downloads/최훈영/개발/자금일보/node_modules/esbuild/lib/main.js:600:7)
+    at Socket.emit (node:events:508:20)
+    at addChunk (node:internal/streams/readable:564:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:515:3)
+    at Readable.push (node:internal/streams/readable:395:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)

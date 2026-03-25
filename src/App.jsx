@@ -179,10 +179,50 @@ const App = () => {
       let filename = `Report_${selectedDate}.xlsx`;
 
       if (currentView === 'dashboard') {
-        // Dashboard Export Logic
+        let status = dailyStatuses[selectedDate];
+        let isPredicted = false;
+
+        if (!status) {
+          // 1. 선택한 날짜 이전의 가장 최신 시재를 찾아 시작점으로 삼음 (Projection 모드)
+          const pastDates = Object.keys(dailyStatuses)
+            .filter(d => d < selectedDate)
+            .sort((a, b) => b.localeCompare(a));
+            
+          if (pastDates.length > 0) {
+            status = dailyStatuses[pastDates[0]];
+            isPredicted = true;
+          }
+        }
+
+        if (!status) {
+          alert('해당 날짜의 확정 데이터 또는 기초 시재가 없어 엑셀을 생성할 수 없습니다.');
+          return;
+        }
+
+        // 예측 모드일 경우 해당 날짜의 지출 내역을 반영하여 계산
+        const dayWithdrawals = withdrawals.filter(w => w.date === selectedDate);
+
+        data = (status.details || []).map(d => {
+          const accWiths = dayWithdrawals.filter(w => w.accountId === d.id);
+          const currentWith = accWiths.reduce((sum, w) => sum + w.amount, 0);
+          
+          return {
+            '법인': d.entity,
+            '은행': d.bank,
+            '계좌번호': d.account,
+            '별칭': d.nickname || '',
+            '통화': d.currency,
+            '전일잔액': isPredicted ? d.totalBalance : d.prevBalance,
+            '입금액': isPredicted ? 0 : d.deposits,
+            '출금액': isPredicted ? currentWith : d.withdrawals,
+            '당일총잔액': isPredicted ? (d.totalBalance - currentWith) : d.totalBalance
+          };
+        });
+        filename = `자금일보_${selectedDate}${isPredicted ? '_예상' : ''}.xlsx`;
+      } else if (currentView === 'cashStatus') {
         const status = dailyStatuses[selectedDate];
         if (!status) {
-          alert('해당 날짜의 확정 데이터가 없어 엑셀을 생성할 수 없습니다.');
+          alert('내보낼 확정 데이터가 없습니다.');
           return;
         }
         data = (status.details || []).map(d => ({
@@ -194,16 +234,8 @@ const App = () => {
           '전일잔액': d.prevBalance,
           '입금액': d.deposits,
           '출금액': d.withdrawals,
-          '총잔액': d.totalBalance
+          '당일총잔액': d.totalBalance
         }));
-        filename = `자금일보_${selectedDate}.xlsx`;
-      } else if (currentView === 'cashStatus') {
-        const status = dailyStatuses[selectedDate];
-        if (!status) {
-          alert('내보낼 데이터가 없습니다.');
-          return;
-        }
-        data = status.details || [];
         filename = `시재현황_${selectedDate}.xlsx`;
       } else {
         alert('이 화면에서는 엑셀 내보내기를 지원하지 않습니다.');

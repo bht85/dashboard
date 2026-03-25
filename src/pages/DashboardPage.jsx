@@ -6,6 +6,7 @@ import { Wallet, TrendingUp, Building2, Factory, FileText, Globe, ChevronDown, C
 
 const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAccounts: masterSmart, fxSchedule, withdrawals = [], dailyStatuses = {}, exchangeRate = 1520 }) => {
   const [isRawDataOpen, setIsRawDataOpen] = useState(false);
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   
   // 1. 해당 날짜 또는 가장 최근 과거의 시재 현황 데이터 추출 (Running Balance 기반)
   const getBaseStatus = () => {
@@ -215,6 +216,9 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
            <h3 className="font-bold text-[13px] text-slate-700 flex items-center gap-2">
              <Globe className="w-4 h-4 text-blue-500" /> 외화 송금 예정 일정 (스마트팩토리_생두)
            </h3>
+           <div className="flex items-center gap-2">
+             <span className="text-[10px] bg-white text-slate-500 px-2 py-0.5 rounded border border-slate-200 font-bold">TOTAL: {fxSchedule.length}건</span>
+           </div>
          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-[13px] border-collapse bg-white">
@@ -229,9 +233,10 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-600">
-                {fxSchedule.map((s) => (
-                  <tr key={s.id} className="hover:bg-slate-50 transition-colors duration-150">
-                    <td className="px-4 py-2.5 border-r border-slate-100/50 font-medium text-slate-400">{s.date}</td>
+                {/* 1. 당일 일정 (항상 표시) */}
+                {fxSchedule.filter(s => s.date === selectedDate).map((s) => (
+                  <tr key={s.id} className="hover:bg-blue-50/30 transition-colors duration-150 bg-blue-50/10">
+                    <td className="px-4 py-2.5 border-r border-slate-100/50 font-black text-blue-600">{s.date} (오늘)</td>
                     <td className="px-4 py-2.5 border-r border-slate-100/50 font-bold text-slate-700">{s.client}</td>
                     <td className="px-4 py-2.5 border-r border-slate-100/50 text-right font-mono font-bold text-blue-600 tabular-nums">{formatUSD(s.amount)}</td>
                     <td className="px-4 py-2.5 border-r border-slate-100/50 text-center text-xs font-semibold">{s.bank}</td>
@@ -239,6 +244,37 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                     <td className="px-4 py-2.5"><span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100">{s.status}</span></td>
                   </tr>
                 ))}
+                
+                {/* 2. 미래 일정 (Accordion) */}
+                {fxSchedule.filter(s => s.date !== selectedDate).length > 0 && (
+                  <>
+                    <tr className="bg-slate-50">
+                      <td colSpan={6} className="px-0 py-0">
+                        <button 
+                          onClick={() => setIsScheduleOpen(!isScheduleOpen)}
+                          className="w-full px-4 py-2.5 flex items-center justify-between group hover:bg-slate-100 transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                              {isScheduleOpen ? '미래 송금 일정 숨기기' : `미래 송금 일정 보기 (${fxSchedule.filter(s => s.date !== selectedDate).length}건)`}
+                            </span>
+                          </div>
+                          {isScheduleOpen ? <ChevronUp className="w-4 h-4 text-slate-300" /> : <ChevronDown className="w-4 h-4 text-slate-300 group-hover:text-indigo-500" />}
+                        </button>
+                      </td>
+                    </tr>
+                    {isScheduleOpen && fxSchedule.filter(s => s.date !== selectedDate).map((s) => (
+                      <tr key={s.id} className="hover:bg-slate-50 transition-colors duration-150">
+                        <td className="px-4 py-2.5 border-r border-slate-100/50 font-medium text-slate-400">{s.date}</td>
+                        <td className="px-4 py-2.5 border-r border-slate-100/50 font-bold text-slate-700">{s.client}</td>
+                        <td className="px-4 py-2.5 border-r border-slate-100/50 text-right font-mono font-bold text-slate-400 tabular-nums">{formatUSD(s.amount)}</td>
+                        <td className="px-4 py-2.5 border-r border-slate-100/50 text-center text-xs font-semibold text-slate-400">{s.bank}</td>
+                        <td className="px-4 py-2.5 border-r border-slate-100/50 text-[11px] text-slate-400 leading-tight">{s.desc}</td>
+                        <td className="px-4 py-2.5"><span className="text-[10px] font-bold bg-slate-50 text-slate-400 px-2 py-0.5 rounded border border-slate-100">{s.status}</span></td>
+                      </tr>
+                    ))}
+                  </>
+                )}
               </tbody>
             </table>
           </div>
