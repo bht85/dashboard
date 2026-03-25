@@ -311,18 +311,20 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
                  <tr>
                    <th className="px-4 py-2.5">은행/거래처</th>
                    <th className="px-4 py-2.5 text-right">금액</th>
-                   <th className="px-4 py-2.5">출금계좌</th>
+                   <th className="px-4 py-2.5 text-center">입금계좌</th>
+                   <th className="px-4 py-2.5 text-center">출금계좌</th>
                    <th className="px-4 py-2.5 text-center">삭제</th>
                  </tr>
                </thead>
                <tbody className="divide-y divide-slate-100">
                  {existingRecords.length === 0 ? (
-                    <tr><td colSpan={4} className="px-4 py-10 text-center text-slate-300 font-bold">저장된 내역이 없습니다.</td></tr>
+                    <tr><td colSpan={5} className="px-4 py-10 text-center text-slate-300 font-bold">저장된 내역이 없습니다.</td></tr>
                  ) : existingRecords.map(item => (
                     <tr key={item.id} className="hover:bg-slate-50">
                       <td className="px-4 py-2.5"><p className="font-bold">{item.bank}</p><p className="text-[10px] opacity-60">{item.payee}</p></td>
                       <td className="px-4 py-2.5 text-right font-black text-red-500">{formatKRW(item.amount)}</td>
-                      <td className="px-4 py-2.5 font-mono text-slate-400">{item.fromAccount || '-'}</td>
+                      <td className="px-4 py-2.5 text-center font-mono text-slate-400">{item.account || '-'}</td>
+                      <td className="px-4 py-2.5 text-center font-mono text-slate-400">{item.fromAccount || '-'}</td>
                       <td className="px-4 py-2.5 text-center">
                         <button 
                           onClick={() => {
