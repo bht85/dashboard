@@ -199,6 +199,40 @@ const App = () => {
     }
   };
 
+  const deleteWithdrawalBatch = async (batchId, accountId, section, totalAmount) => {
+    try {
+      if (!batchId || !accountId) return;
+      if (!window.confirm(`선택한 업로드 내역 전체(${totalAmount.toLocaleString()}원)를 삭제하시겠습니까?`)) return;
+
+      console.log(`Deleting Batch: ${batchId} from account: ${accountId}`);
+      
+      // 1. Find all items in the batch
+      const batchItems = withdrawals.filter(w => w.batchId === batchId && String(w.accountId) === String(accountId));
+      
+      // 2. Delete from Firestore
+      for (const item of batchItems) {
+        await deleteDoc(doc(collection(db, "withdrawals"), String(item.id)));
+      }
+
+      // 3. Update Account Balance (Reversion)
+      const accounts = section === '컴포즈커피' ? composeAccounts : smartAccounts;
+      const account = accounts.find(a => String(a.id) === String(accountId));
+      
+      if (account) {
+        const newWithdraw = (account.withdraw || 0) - totalAmount;
+        const updatedAccount = {
+          ...account,
+          withdraw: newWithdraw,
+          final: (account.balance || 0) - newWithdraw + (account.internal || 0)
+        };
+        await updateAccount(section === '컴포즈커피' ? 'compose' : 'smart', updatedAccount);
+      }
+    } catch (err) {
+      console.error("Batch delete error:", err);
+      alert('일괄 삭제 중 오류가 발생했습니다.');
+    }
+  };
+
   // --- Excel Export Helper ---
   const handleExport = () => {
     try {
@@ -334,6 +368,7 @@ const App = () => {
           onUpdateAccount={updateAccount}
           onSaveWithdrawals={saveWithdrawals}
           onDeleteWithdrawal={deleteWithdrawal}
+          onDeleteBatch={deleteWithdrawalBatch}
         />
       )}
       {currentView === 'foreign' && (
