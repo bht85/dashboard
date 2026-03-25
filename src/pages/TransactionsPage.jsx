@@ -121,7 +121,7 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
       <div className="mb-8 flex justify-between items-end">
         <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tighter uppercase mb-1">데이터 업로드 및 자산 집행</h2>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tighter uppercase mb-1">출금 대상</h2>
           <p className="text-sm text-slate-500">엑셀 파일을 업로드하거나 개별 건을 등록하여 자산에 반영합니다.</p>
         </div>
         {isSuccess && (

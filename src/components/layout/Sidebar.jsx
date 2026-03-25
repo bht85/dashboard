@@ -10,12 +10,12 @@ import {
 
 const Sidebar = ({ isSidebarOpen, currentView, setCurrentView }) => {
   const navItems = [
-    { id: 'dashboard', label: '자금 일보 리포트', icon: LayoutDashboard },
-    { id: 'monthly', label: '자금 리포트(월간)', icon: TrendingUp },
-    { id: 'transactions', label: '데이터 업로드/기입', icon: ArrowLeftRight },
-    { id: 'foreign', label: '외화송금 일정', icon: Globe },
-    { id: 'accounts', label: '계좌 등록 및 관리', icon: Settings },
-    { id: 'cashStatus', label: '자금 시재 현황', icon: Receipt },
+    { id: 'dashboard', label: '일일 자금 일보', icon: LayoutDashboard },
+    { id: 'monthly', label: '월간 자금 일보', icon: TrendingUp },
+    { id: 'transactions', label: '출금 대상', icon: ArrowLeftRight },
+    { id: 'foreign', label: '외화 송금', icon: Globe },
+    { id: 'accounts', label: '계좌 관리', icon: Settings },
+    { id: 'cashStatus', label: '일일 자금 업로드', icon: Receipt },
   ];
 
   return (

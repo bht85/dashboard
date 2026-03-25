@@ -165,7 +165,7 @@ const CashStatusPage = ({
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div className="mb-8 flex justify-between items-end">
         <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tighter uppercase mb-1">자금 시재 현황 관리</h2>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tighter uppercase mb-1">일일 자금 업로드</h2>
           <p className="text-sm text-slate-500">각 법인별 계좌의 통화별 입출금 내역 및 잔액을 매일 기록합니다.</p>
         </div>
         {isSuccess && (

@@ -55,7 +55,7 @@ const MonthlyReportPage = ({ recordDate = "2026-03-24", dailyStatuses = {}, exch
       {/* 리포트 헤더 */}
       <div className="flex justify-between items-start mb-10 border-b-2 border-slate-900 pb-6">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tighter">자금 수지 마감 보고 요약 ({monthName})</h1>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tighter">월간 자금 일보 ({monthName})</h1>
           <p className="text-xs text-slate-500 mt-1 font-bold">작성일: {recordDate} | 보고자: 재무본부</p>
         </div>
         <div className="flex gap-2 print:hidden">

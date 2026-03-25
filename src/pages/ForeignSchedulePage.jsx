@@ -59,7 +59,7 @@ const ForeignSchedulePage = ({ fxSchedule, onUpdateSchedule, onDeleteSchedule, e
   return (
     <div className="animate-in slide-in-from-bottom-4 duration-500">
       <div className="mb-8">
-        <h2 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">외화송금 일정 관리</h2>
+        <h2 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">외화 송금</h2>
         <p className="text-sm text-slate-500 mt-1">대시보드에 반영될 스마트팩토리(생두) 외화 송금 일정을 기입하고 관리합니다.</p>
       </div>
 

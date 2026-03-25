@@ -33,12 +33,12 @@ const Header = ({
 
   const getTitle = () => {
     switch(currentView) {
-      case 'dashboard': return "자금 일보 리포트";
-      case 'monthly': return "자금 리포트 (월간 요약)";
-      case 'accounts': return "계좌 설정 및 관리";
-      case 'transactions': return "자금 관리 시스템 - 데이터 처리";
-      case 'foreign': return "외화송금 일정";
-      case 'cashStatus': return "자금 시재 현황";
+      case 'dashboard': return "일일 자금 일보";
+      case 'monthly': return "월간 자금 일보";
+      case 'accounts': return "계좌 관리";
+      case 'transactions': return "출금 대상";
+      case 'foreign': return "외화 송금";
+      case 'cashStatus': return "일일 자금 업로드";
       default: return "자금 관리 시스템";
     }
   };
