@@ -164,14 +164,14 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
               {composeWithdrawals.length > 0 ? (
                 <div className="space-y-3 overflow-y-auto pr-2" style={{ maxHeight: '310px' }}>
                   {composeWithdrawals.map((w, idx) => (
-                    <div key={idx} className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex justify-between items-center text-[13px] shadow-sm hover:border-indigo-200 transition-colors">
+                    <div key={idx} className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 flex justify-between items-center text-[12px] shadow-sm hover:border-indigo-200 transition-colors">
                       <div>
-                        <p className="font-bold text-slate-800">{w.payee}</p>
-                        <p className="text-slate-500 mt-1 italic text-xs">{w.withdrawLabel}</p>
+                        <p className="font-bold text-slate-800 leading-tight">{w.payee}</p>
+                        <p className="text-slate-500 mt-0.5 text-[10px] italic">{w.withdrawLabel}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-mono font-bold text-red-500 text-lg tabular-nums">{formatKRW(w.amount)}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5 font-medium italic">{w.bank} {w.account}</p>
+                        <p className="font-mono font-bold text-red-500 text-[15px] tabular-nums leading-none">{formatKRW(w.amount)}</p>
+                        <p className="text-[9px] text-slate-400 mt-1 font-medium italic opacity-80">{w.bank} {w.account}</p>
                       </div>
                     </div>
                   ))}
@@ -211,14 +211,14 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
               {smartWithdrawals.length > 0 ? (
                 <div className="space-y-3 overflow-y-auto pr-2" style={{ maxHeight: '310px' }}>
                   {smartWithdrawals.map((w, idx) => (
-                    <div key={idx} className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex justify-between items-center text-[13px] shadow-sm hover:border-emerald-200 transition-colors">
+                    <div key={idx} className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 flex justify-between items-center text-[12px] shadow-sm hover:border-emerald-200 transition-colors">
                       <div>
-                        <p className="font-bold text-slate-800">{w.payee}</p>
-                        <p className="text-slate-500 mt-1 italic text-xs text-[11px]">{w.withdrawLabel}</p>
+                        <p className="font-bold text-slate-800 leading-tight">{w.payee}</p>
+                        <p className="text-slate-500 mt-0.5 text-[10px] italic">{w.withdrawLabel}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-mono font-bold text-red-500 text-md tabular-nums">{formatKRW(w.amount)}</p>
-                        <p className="text-[9px] text-slate-400 mt-0.5 font-medium italic truncate max-w-[120px]">{w.bank} {w.account}</p>
+                        <p className="font-mono font-bold text-red-500 text-[14px] tabular-nums leading-none">{formatKRW(w.amount)}</p>
+                        <p className="text-[8px] text-slate-400 mt-1 font-medium italic truncate max-w-[110px] opacity-80">{w.bank} {w.account}</p>
                       </div>
                     </div>
                   ))}
