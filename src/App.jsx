@@ -16,7 +16,7 @@ const App = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState('dashboard');
-  const [selectedDate, setSelectedDate] = useState("2026-03-24");
+  const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString('en-CA'));
   const [exchangeRate, setExchangeRate] = useState(1520); // 초기값 (폴백)
 
   // --- Auth State Sync ---
