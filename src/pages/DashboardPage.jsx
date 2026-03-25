@@ -175,6 +175,12 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
           totals={smartTotal} 
           icon={Factory} 
         />
+        {smartAccounts.length === 0 && !isFinal && (
+          <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center mb-6">
+            <p className="text-slate-400 font-bold mb-2">시재 확정 내역이 없어 현재 실시간 대시보드가 활성화되지 않았습니다.</p>
+            <p className="text-xs text-slate-300">[자금 시재 현황] 메뉴에서 전일 최종 시재를 업로드하시면 실시간 잔액 예측이 시작됩니다.</p>
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ExpenseSummaryBox title="> 금일 지출 (스마트팩토리)" data={{ count: smartWithdrawals.length, total: smartWithdrawTotal, internal: 0, net: smartWithdrawTotal }} />
           <div className="bg-[#0f172a] text-white rounded-lg p-5">
