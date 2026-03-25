@@ -7,22 +7,64 @@ import { Wallet, TrendingUp, Building2, Factory, FileText, Globe, ChevronDown, C
 const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAccounts: masterSmart, fxSchedule, withdrawals = [], dailyStatuses = {}, exchangeRate = 1520 }) => {
   const [isRawDataOpen, setIsRawDataOpen] = useState(false);
   
-  // 1. 해당 날짜의 시재 현황 데이터 추출 (우선순위: 업로드된 시재 > 마스터 계좌)
-  const currentStatus = dailyStatuses[selectedDate] || null;
-  const statusDetails = currentStatus?.details || [];
+  // 1. 해당 날짜 또는 가장 최근 과거의 시재 현황 데이터 추출 (Running Balance 기반)
+  const getBaseStatus = () => {
+    // 1순위: 선택한 날짜의 확정 데이터가 있으면 그대로 사용
+    if (dailyStatuses[selectedDate]) {
+      return { status: dailyStatuses[selectedDate], isFinal: true, sourceDate: selectedDate };
+    }
+    
+    // 2순위: 선택한 날짜 이전의 가장 최신 시재를 찾아 시작점으로 삼음 (Projection 모드)
+    const pastDates = Object.keys(dailyStatuses)
+      .filter(d => d < selectedDate)
+      .sort((a, b) => b.localeCompare(a));
+      
+    if (pastDates.length > 0) {
+      return { status: dailyStatuses[pastDates[0]], isFinal: false, sourceDate: pastDates[0] };
+    }
+    
+    return { status: null, isFinal: false, sourceDate: null };
+  };
+
+  const { status: baseStatus, isFinal, sourceDate } = getBaseStatus();
+  const statusDetails = baseStatus?.details || [];
+
+  // 2. 현재 선택된 날짜의 지출 내역 필터링 (Projection 및 로우 데이터용)
+  const dailyWithdrawals = withdrawals.filter(w => w.paymentDate === selectedDate);
 
   // 엑셀 데이터를 테이블 형식으로 매핑하는 헬퍼
-  const mapStatusToAccount = (d) => ({
-    id: d.id,
-    no: d.account,
-    type: d.bank, // 또는 d.type
-    balance: d.prevBalance,
-    withdraw: d.withdrawals,
-    internal: d.deposits,
-    final: d.totalBalance,
-    isUSD: d.currency === 'USD',
-    note: d.nickname || d.bank
-  });
+  const mapStatusToAccount = (d) => {
+    if (isFinal) {
+      // 확정 리포트 모드: 업로드된 수치 그대로 표시
+      return {
+        id: d.id,
+        no: d.account,
+        type: d.bank,
+        balance: d.prevBalance,
+        withdraw: d.withdrawals,
+        internal: d.deposits,
+        final: d.totalBalance,
+        isUSD: d.currency === 'USD',
+        note: d.nickname || d.bank
+      };
+    } else {
+      // 예측(Projection) 모드: 전일 종가 기반으로 오늘 지출 내역 반영
+      const accountWithdrawals = dailyWithdrawals.filter(w => String(w.fromAccount) === String(d.account));
+      const todayWithdrawSum = accountWithdrawals.reduce((sum, w) => sum + w.amount, 0);
+      
+      return {
+        id: d.id,
+        no: d.account,
+        type: d.bank,
+        balance: d.totalBalance, // 전일 최종 잔액이 오늘의 시작 잔액
+        withdraw: todayWithdrawSum,
+        internal: 0,
+        final: d.totalBalance - todayWithdrawSum,
+        isUSD: d.currency === 'USD',
+        note: d.nickname || d.bank
+      };
+    }
+  };
 
   // 법인별 데이터 필터링 및 매핑
   const composeAccounts = (statusDetails.length > 0 
@@ -39,11 +81,9 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   const composeTotal = calculateTotal(composeAccounts);
   const smartTotal = calculateTotal(smartAccounts);
   
-  // 2. 현재 선택된 날짜의 지출 내역 필터링 (로우 데이터용)
-  const dailyWithdrawals = withdrawals.filter(w => w.paymentDate === selectedDate);
+  // 로우 데이터 필터링 (UI 하단 표시용)
   const composeWithdrawals = dailyWithdrawals.filter(w => w.section === '컴포즈커피');
   const smartWithdrawals = dailyWithdrawals.filter(w => w.section === '스마트팩토리');
-
   const composeWithdrawTotal = composeWithdrawals.reduce((sum, w) => sum + w.amount, 0);
   const smartWithdrawTotal = smartWithdrawals.reduce((sum, w) => sum + w.amount, 0);
 
@@ -85,14 +125,19 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
 
       {/* 1. 컴포즈커피 섹션 */}
       <section>
-        <FinancialTable title={`1. 컴포즈커피 계좌 현황 (${currentStatus ? '업로드 데이터' : '마스터 계좌'})`} accounts={composeAccounts} totals={composeTotal} icon={Building2} />
+        <FinancialTable 
+          title={`1. 컴포즈커피 계좌 현황 (${isFinal ? '확정 리포트' : `기초 잔액: ${sourceDate || '없음'} 기반 예측치`})`} 
+          accounts={composeAccounts} 
+          totals={composeTotal} 
+          icon={Building2} 
+        />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-1">
-            <ExpenseSummaryBox title="> 금일 지출 (컴포즈)" data={{ count: composeWithdrawals.length, total: composeWithdrawTotal, internal: 0, net: composeWithdrawTotal }} />
+            <ExpenseSummaryBox title="> 금일 출금 요청 (컴포즈)" data={{ count: composeWithdrawals.length, total: composeWithdrawTotal, internal: 0, net: composeWithdrawTotal }} />
           </div>
           <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5 flex flex-col justify-center">
             <h4 className="text-xs font-bold text-indigo-600 mb-3 flex items-center gap-2">
-              <FileText className="w-3.5 h-3.5 opacity-70" /> 컴포즈커피 세부사항 (가장 최근 업로드)
+              <FileText className="w-3.5 h-3.5 opacity-70" /> {isFinal ? '업로드된 세부 내역' : '금일 예정 지출 상세'}
             </h4>
             {composeWithdrawals.length > 0 ? (
               <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex justify-between items-center text-[13px] shadow-sm">
@@ -116,7 +161,12 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
 
       {/* 2. 스마트팩토리 섹션 */}
       <section>
-        <FinancialTable title={`2. 스마트팩토리 계좌 현황 (${currentStatus ? '업로드 데이터' : '마스터 계좌'})`} accounts={smartAccounts} totals={smartTotal} icon={Factory} />
+        <FinancialTable 
+          title={`2. 스마트팩토리 계좌 현황 (${isFinal ? '확정 리포트' : `기초 잔액: ${sourceDate || '없음'} 기반 예측치`})`} 
+          accounts={smartAccounts} 
+          totals={smartTotal} 
+          icon={Factory} 
+        />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <ExpenseSummaryBox title="> 금일 지출 (스마트팩토리)" data={{ count: smartWithdrawals.length, total: smartWithdrawTotal, internal: 0, net: smartWithdrawTotal }} />
           <div className="bg-[#0f172a] text-white rounded-lg p-5">
