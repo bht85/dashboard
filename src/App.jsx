@@ -102,27 +102,35 @@ const App = () => {
       console.log(`Saving Daily Status: ${date}`);
       await setDoc(doc(collection(db, "dailyStatuses"), date), data);
 
-      // --- 자동 계좌 등록 로직 ---
+      // --- 자동 계좌 등록 및 별칭(Nickname) 동기화 로직 ---
       if (data.details && data.details.length > 0) {
         for (const entry of data.details) {
           const section = entry.entity.includes('컴포즈') ? 'compose' : 'smart';
           const masterList = section === 'compose' ? composeAccounts : smartAccounts;
           
-          // 계좌 번호(account) 기준으로 중복 체크
-          const exists = masterList.some(a => String(a.no) === String(entry.account));
+          // 계좌 번호(account) 기준으로 기존 계좌 검색
+          const existingAccount = masterList.find(a => String(a.no) === String(entry.account));
           
-          if (!exists) {
-            console.log(`Auto-registering new account found in status: ${entry.account}`);
+          if (!existingAccount) {
+            // 1. 신규 계좌 자동 등록
+            console.log(`Auto-registering new account: ${entry.account}`);
             await updateAccount(section, {
-              id: Date.now() + Math.random(), // Unique ID
+              id: Date.now() + Math.random(),
               no: entry.account,
               bank: entry.bank,
-              type: entry.type || entry.bank,
+              type: entry.nickname || entry.type || entry.bank, // 별칭을 '구분'으로 저장
               balance: 0,
               withdraw: 0,
               internal: 0,
               final: 0,
               isUSD: entry.currency === 'USD'
+            });
+          } else if (entry.nickname && existingAccount.type !== entry.nickname) {
+            // 2. 기존 계좌 별칭(Type) 동기화 (엑셀 내용이 더 최신이라고 가정)
+            console.log(`Updating nickname for account ${entry.account}: ${entry.nickname}`);
+            await updateAccount(section, {
+              ...existingAccount,
+              type: entry.nickname
             });
           }
         }
