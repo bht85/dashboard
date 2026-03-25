@@ -256,6 +256,7 @@ const App = () => {
         <MonthlyReportPage 
           recordDate={selectedDate}
           dailyStatuses={dailyStatuses}
+          exchangeRate={exchangeRate}
         />
       )}
       {currentView === 'accounts' && (
@@ -287,6 +288,7 @@ const App = () => {
           selectedDate={selectedDate}
           dailyStatuses={dailyStatuses}
           setDailyStatuses={saveDailyStatus} // Use DB worker
+          exchangeRate={exchangeRate}
         />
       )}
     </Layout>

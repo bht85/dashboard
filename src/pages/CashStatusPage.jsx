@@ -3,8 +3,13 @@ import { Upload, FileText, CheckCircle2, AlertCircle, Database, ArrowRight, Load
 import { formatKRW } from '../utils/formatters';
 import * as XLSX from 'xlsx';
 
-const CashStatusPage = ({ selectedDate: globalSelectedDate, dailyStatuses, setDailyStatuses }) => {
-  const [recordDate, setRecordDate] = useState(globalSelectedDate);
+const CashStatusPage = ({ 
+  selectedDate: recordDate, 
+  dailyStatuses, 
+  setDailyStatuses,
+  exchangeRate = 1
+}) => {
+  const [recordDate, setRecordDate] = useState(recordDate);
   const [activeEntity, setActiveEntity] = useState('컴포즈커피');
   const [cashLogs, setCashLogs] = useState([]);
   const uploadedDates = Object.keys(dailyStatuses);
@@ -109,10 +114,10 @@ const CashStatusPage = ({ selectedDate: globalSelectedDate, dailyStatuses, setDa
     const mergedDetails = [...otherDetails, ...correctedLogs];
 
     const statusData = {
-      inflow: mergedDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0),
-      outflow: mergedDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.withdrawals : 0), 0),
-      totalBalance: mergedDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0),
-      netChange: mergedDetails.reduce((s, i) => s + (i.currency === 'KRW' ? (i.deposits - i.withdrawals) : 0), 0),
+      inflow: mergedDetails.reduce((s, i) => s + (i.deposits * (i.currency === 'USD' ? exchangeRate : 1)), 0),
+      outflow: mergedDetails.reduce((s, i) => s + (i.withdrawals * (i.currency === 'USD' ? exchangeRate : 1)), 0),
+      totalBalance: mergedDetails.reduce((s, i) => s + (i.totalBalance * (i.currency === 'USD' ? exchangeRate : 1)), 0),
+      netChange: mergedDetails.reduce((s, i) => s + ((i.deposits - i.withdrawals) * (i.currency === 'USD' ? exchangeRate : 1)), 0),
       details: mergedDetails
     };
 

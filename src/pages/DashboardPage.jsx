@@ -78,8 +78,8 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   ).filter(acc => acc.balance !== 0 || acc.withdraw !== 0 || acc.internal !== 0 || acc.final !== 0);
 
   // 합계 계산
-  const composeTotal = calculateTotal(composeAccounts);
-  const smartTotal = calculateTotal(smartAccounts);
+  const composeTotal = calculateTotal(composeAccounts, exchangeRate);
+  const smartTotal = calculateTotal(smartAccounts, exchangeRate);
   
   // 로우 데이터 필터링 (UI 하단 표시용)
   const composeWithdrawals = dailyWithdrawals.filter(w => w.section === '컴포즈커피');
