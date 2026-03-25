@@ -50,9 +50,16 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
         note: d.nickname || d.bank
       };
     } else {
-      // 예측(Projection) 모드: 전일 종가 기반으로 오늘 지출 내역 반영
+      // 예측(Projection) 모드: 전일 종가 기반으로 오늘 지출 및 내부 유입 반영
       const accountWithdrawals = dailyWithdrawals.filter(w => String(w.fromAccount) === String(d.account));
       const todayWithdrawSum = accountWithdrawals.reduce((sum, w) => sum + w.amount, 0);
+      
+      // 내부 입금(송입) 계산: 보낸 사람 계좌(account)가 현재 내 계좌(d.account)와 일치하는 내부 거래
+      const accountInflows = dailyWithdrawals.filter(w => 
+        String(w.account) === String(d.account) && 
+        (w.payee.includes('컴포즈') || w.payee.includes('스마트팩토리') || w.isInternal)
+      );
+      const todayInflowSum = accountInflows.reduce((sum, w) => sum + w.amount, 0);
       
       return {
         id: d.id,
@@ -60,8 +67,8 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
         type: d.bank,
         balance: d.totalBalance, // 전일 최종 잔액이 오늘의 시작 잔액
         withdraw: todayWithdrawSum,
-        internal: 0,
-        final: d.totalBalance - todayWithdrawSum,
+        internal: todayInflowSum,
+        final: d.totalBalance - todayWithdrawSum + todayInflowSum,
         isUSD: d.currency === 'USD',
         note: d.nickname || d.bank
       };
@@ -347,10 +354,13 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
-                  {dailyWithdrawals.length > 0 ? dailyWithdrawals.map(w => {
+                  {dailyWithdrawals.length > 0 ? dailyWithdrawals.flatMap(w => {
                     const isInternal = w.payee.includes('컴포즈') || w.payee.includes('스마트팩토리') || w.isInternal;
-                    return (
-                      <tr key={w.id} className={`transition-colors border-l-4 ${isInternal ? 'bg-indigo-50/30 border-l-indigo-400 hover:bg-indigo-50/50' : 'hover:bg-slate-50 border-l-transparent'}`}>
+                    const rows = [];
+                    
+                    // 1. 출금 기록 (항상 표시)
+                    rows.push(
+                      <tr key={w.id} className={`transition-colors border-l-4 ${isInternal ? 'bg-indigo-50/30 border-l-indigo-400' : 'hover:bg-slate-50 border-l-transparent'}`}>
                           <td className="px-3 py-2 border-r border-slate-100 font-medium text-slate-400 whitespace-nowrap">{w.paymentDate}</td>
                           <td className="px-3 py-2 border-r border-slate-100">
                           <span className={`px-1.5 py-0.5 rounded text-[9px] font-black tracking-tighter break-keep whitespace-nowrap ${w.section === '컴포즈커피' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>
@@ -360,18 +370,45 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                           <td className="px-3 py-2 border-r border-slate-100 font-bold text-slate-600 whitespace-nowrap">{w.fromAccount}</td>
                           <td className="px-3 py-2 border-r border-slate-100 font-black text-slate-700 text-center">{w.bank}</td>
                           <td className="px-3 py-2 border-r border-slate-100 font-mono text-slate-400 whitespace-nowrap tracking-tighter">{w.account}</td>
-                          <td className={`px-3 py-2 border-r border-slate-100 text-right font-black tabular-nums whitespace-nowrap ${isInternal ? 'text-indigo-600' : 'text-red-500'}`}>
-                              {formatKRW(w.amount)}
+                          <td className={`px-3 py-2 border-r border-slate-100 text-right font-black tabular-nums whitespace-nowrap text-red-500`}>
+                              -{formatKRW(w.amount)}
                           </td>
                           <td className="px-3 py-2 border-r border-slate-100 min-w-[140px]">
                               <div className="flex flex-col">
                                   <span className="font-black text-slate-800 tracking-tight leading-none break-keep">{w.payee}</span>
-                                  {isInternal && <span className="text-[8px] font-black text-indigo-500 uppercase tracking-tighter mt-1 whitespace-nowrap">★ 내부 자금 이체</span>}
+                                  {isInternal && <span className="text-[8px] font-black text-indigo-500 uppercase tracking-tighter mt-1 whitespace-nowrap">★ 내부 자금 이체 (출금)</span>}
                               </div>
                           </td>
                           <td className="px-3 py-2 text-slate-400 text-[10px] italic truncate max-w-[120px]">{w.memo}</td>
                       </tr>
                     );
+
+                    // 2. 내부 입금 기록 (입금 받는 계좌 입장에서 가상 행 생성)
+                    if (isInternal) {
+                      rows.push(
+                        <tr key={`${w.id}_dep`} className="bg-blue-50/30 border-l-4 border-l-blue-400 transition-colors">
+                            <td className="px-3 py-2 border-r border-slate-100 font-medium text-slate-400 whitespace-nowrap">{w.paymentDate}</td>
+                            <td className="px-3 py-2 border-r border-slate-100">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black tracking-tighter bg-blue-100 text-blue-700 uppercase">INTERNAL</span>
+                            </td>
+                            <td className="px-3 py-2 border-r border-slate-100 font-bold text-blue-600 whitespace-nowrap bg-blue-50/50">{w.account}</td>
+                            <td className="px-3 py-2 border-r border-slate-100 font-black text-slate-700 text-center">-</td>
+                            <td className="px-3 py-2 border-r border-slate-100 font-mono text-slate-400 whitespace-nowrap tracking-tighter">{w.fromAccount}</td>
+                            <td className="px-3 py-2 border-r border-slate-100 text-right font-black tabular-nums whitespace-nowrap text-blue-600">
+                                +{formatKRW(w.amount)}
+                            </td>
+                            <td className="px-3 py-2 border-r border-slate-100 min-w-[140px]">
+                                <div className="flex flex-col">
+                                    <span className="font-black text-slate-800 tracking-tight leading-none break-keep">{w.payee}</span>
+                                    <span className="text-[8px] font-black text-blue-500 uppercase tracking-tighter mt-1 whitespace-nowrap">★ 내부 자금 이체 (입금)</span>
+                                </div>
+                            </td>
+                            <td className="px-3 py-2 text-slate-400 text-[10px] italic truncate max-w-[120px]">{w.memo}</td>
+                        </tr>
+                      );
+                    }
+                    
+                    return rows;
                   }) : (
                     <tr><td colSpan={8} className="px-4 py-8 text-center italic text-slate-300">데이터가 없습니다.</td></tr>
                   )}
