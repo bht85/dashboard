@@ -162,15 +162,19 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                 <FileText className="w-3.5 h-3.5 opacity-70" /> {isFinal ? '업로드된 세부 내역' : '금일 예정 지출 상세'}
               </h4>
               {composeWithdrawals.length > 0 ? (
-                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex justify-between items-center text-[13px] shadow-sm">
-                  <div>
-                    <p className="font-bold text-slate-800">{composeWithdrawals[0].payee}</p>
-                    <p className="text-slate-500 mt-1 italic text-xs">{composeWithdrawals[0].withdrawLabel}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-mono font-bold text-red-500 text-lg tabular-nums">{formatKRW(composeWithdrawals[0].amount)}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5 font-medium italic">{composeWithdrawals[0].bank} {composeWithdrawals[0].account}</p>
-                  </div>
+                <div className="space-y-3 overflow-y-auto pr-2" style={{ maxHeight: '310px' }}>
+                  {composeWithdrawals.map((w, idx) => (
+                    <div key={idx} className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex justify-between items-center text-[13px] shadow-sm hover:border-indigo-200 transition-colors">
+                      <div>
+                        <p className="font-bold text-slate-800">{w.payee}</p>
+                        <p className="text-slate-500 mt-1 italic text-xs">{w.withdrawLabel}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono font-bold text-red-500 text-lg tabular-nums">{formatKRW(w.amount)}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5 font-medium italic">{w.bank} {w.account}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <div className="bg-slate-50 rounded-xl p-6 border border-slate-100 flex items-center justify-center text-slate-400 text-xs italic">
@@ -195,9 +199,38 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
               <p className="text-xs text-slate-300">[자금 시재 현황] 메뉴에서 전일 최종 시재를 업로드하시면 실시간 잔액 예측이 시작됩니다.</p>
             </div>
           )}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ExpenseSummaryBox title="> 금일 지출 (스마트팩토리)" data={{ count: smartWithdrawals.length, total: smartWithdrawTotal, internal: 0, net: smartWithdrawTotal }} />
-            <div className="bg-[#0f172a] text-white rounded-lg p-5">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
+              <ExpenseSummaryBox title="> 금일 지출 (스마트팩토리)" data={{ count: smartWithdrawals.length, total: smartWithdrawTotal, internal: 0, net: smartWithdrawTotal }} />
+            </div>
+            
+            <div className="lg:col-span-1 bg-white border border-slate-200 rounded-lg p-5 flex flex-col">
+              <h4 className="text-xs font-bold text-emerald-600 mb-3 flex items-center gap-2">
+                <FileText className="w-3.5 h-3.5 opacity-70" /> {isFinal ? '업로드된 세부 내역' : '금일 예정 지출 상세'}
+              </h4>
+              {smartWithdrawals.length > 0 ? (
+                <div className="space-y-3 overflow-y-auto pr-2" style={{ maxHeight: '310px' }}>
+                  {smartWithdrawals.map((w, idx) => (
+                    <div key={idx} className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex justify-between items-center text-[13px] shadow-sm hover:border-emerald-200 transition-colors">
+                      <div>
+                        <p className="font-bold text-slate-800">{w.payee}</p>
+                        <p className="text-slate-500 mt-1 italic text-xs text-[11px]">{w.withdrawLabel}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-mono font-bold text-red-500 text-md tabular-nums">{formatKRW(w.amount)}</p>
+                        <p className="text-[9px] text-slate-400 mt-0.5 font-medium italic truncate max-w-[120px]">{w.bank} {w.account}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-slate-50 rounded-xl p-6 border border-slate-100 flex items-center justify-center text-slate-400 text-xs italic flex-1">
+                  등록된 지출 내역이 없습니다.
+                </div>
+              )}
+            </div>
+
+            <div className="lg:col-span-1 bg-[#0f172a] text-white rounded-lg p-5 flex flex-col justify-center">
               <h4 className="text-xs font-bold text-emerald-400 mb-4 flex items-center gap-2">기타 외화 요약</h4>
               <div className="space-y-3">
                 <div className="flex justify-between text-xs border-b border-slate-800 pb-2">
