@@ -23,10 +23,22 @@ const FinancialTable = ({ title, accounts, totals, icon: Icon }) => (
         <tbody className="divide-y divide-slate-100">
           <tr className="bg-indigo-50/30 font-bold text-slate-900 border-b border-indigo-100 text-sm">
             <td colSpan={2} className="px-4 py-3.5 text-center border-r border-indigo-100/50">합 계</td>
-            <td className="px-4 py-3.5 text-right border-r border-indigo-100/50 tabular-nums">{formatKRW(totals.balance)}</td>
-            <td className="px-4 py-3.5 text-right border-r border-indigo-100/50 text-red-600 tabular-nums">{formatKRW(totals.withdraw)}</td>
-            <td className="px-4 py-3.5 text-right border-r border-indigo-100/50 text-emerald-600 tabular-nums">{totals.internal > 0 ? formatKRW(totals.internal) : '-'}</td>
-            <td className="px-4 py-3.5 text-right border-r border-indigo-100/50 text-indigo-700 font-extrabold tabular-nums">{formatKRW(totals.final)}</td>
+            <td className="px-4 py-3.5 text-right border-r border-indigo-100/50 tabular-nums">
+              <div>{formatKRW(totals.krw.balance)}</div>
+              {totals.usd.balance > 0 && <div className="text-[10px] text-blue-600 font-mono mt-1 font-black">{formatUSD(totals.usd.balance)}</div>}
+            </td>
+            <td className="px-4 py-3.5 text-right border-r border-indigo-100/50 text-red-600 tabular-nums">
+              <div>{formatKRW(totals.krw.withdraw)}</div>
+              {totals.usd.withdraw > 0 && <div className="text-[10px] text-red-400 font-mono mt-1 font-black">{formatUSD(totals.usd.withdraw)}</div>}
+            </td>
+            <td className="px-4 py-3.5 text-right border-r border-indigo-100/50 text-emerald-600 tabular-nums">
+              <div>{totals.krw.internal > 0 ? formatKRW(totals.krw.internal) : '-'}</div>
+              {totals.usd.internal > 0 && <div className="text-[10px] text-emerald-400 font-mono mt-1 font-black">{formatUSD(totals.usd.internal)}</div>}
+            </td>
+            <td className="px-4 py-3.5 text-right border-r border-indigo-100/50 text-indigo-700 font-extrabold tabular-nums">
+              <div>{formatKRW(totals.krw.final)}</div>
+              {totals.usd.final > 0 && <div className="text-[10px] text-blue-800 font-mono mt-1 font-black">{formatUSD(totals.usd.final)}</div>}
+            </td>
             <td className="px-4 py-3.5"></td>
           </tr>
           {accounts.map((acc) => (

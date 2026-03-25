@@ -104,18 +104,42 @@ const MonthlyReportPage = ({ recordDate = "2026-03-24", dailyStatuses = {}, exch
         >
           <tr className="divide-x divide-slate-200 hover:bg-slate-50">
             <td className="px-2 py-1.5 font-bold">컴포즈커피</td>
-            <td className="px-2 py-1.5 text-right font-mono">{(composeData.reduce((s,i) => s + i.totalBalance * (i.currency === 'USD' ? exchangeRate : 1), 0) - composeData.reduce((s,i) => s + (i.deposits - i.withdrawals) * (i.currency === 'USD' ? exchangeRate : 1), 0)).toLocaleString()}</td>
-            <td className="px-2 py-1.5 text-right font-mono">{composeData.reduce((s,i) => s + i.deposits * (i.currency === 'USD' ? exchangeRate : 1), 0).toLocaleString()}</td>
-            <td className="px-2 py-1.5 text-right font-mono text-red-500">{composeData.reduce((s,i) => s + i.withdrawals * (i.currency === 'USD' ? exchangeRate : 1), 0).toLocaleString()}</td>
-            <td className="px-2 py-1.5 text-right font-mono font-bold">{composeData.reduce((s,i) => s + i.totalBalance * (i.currency === 'USD' ? exchangeRate : 1), 0).toLocaleString()}</td>
+            <td className="px-2 py-1.5 text-right font-mono text-[10px]">
+              <div>{(composeData.reduce((s,i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0) - composeData.reduce((s,i) => s + (i.currency === 'KRW' ? (i.deposits - i.withdrawals) : 0), 0)).toLocaleString()}</div>
+              {composeData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-bold">{(composeData.reduce((s,i) => s + (i.currency === 'USD' ? i.totalBalance : 0), 0) - composeData.reduce((s,i) => s + (i.currency === 'USD' ? (i.deposits - i.withdrawals) : 0), 0)).toLocaleString()} USD</div>}
+            </td>
+            <td className="px-2 py-1.5 text-right font-mono text-[10px]">
+              <div>{composeData.reduce((s,i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0).toLocaleString()}</div>
+              {composeData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-bold">{composeData.reduce((s,i) => s + (i.currency === 'USD' ? i.deposits : 0), 0).toLocaleString()} USD</div>}
+            </td>
+            <td className="px-2 py-1.5 text-right font-mono text-red-500 text-[10px]">
+              <div>{composeData.reduce((s,i) => s + (i.currency === 'KRW' ? i.withdrawals : 0), 0).toLocaleString()}</div>
+              {composeData.some(d => d.currency === 'USD') && <div className="text-red-400 font-bold">{composeData.reduce((s,i) => s + (i.currency === 'USD' ? i.withdrawals : 0), 0).toLocaleString()} USD</div>}
+            </td>
+            <td className="px-2 py-1.5 text-right font-mono font-bold text-[10px]">
+              <div>{composeData.reduce((s,i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0).toLocaleString()}</div>
+              {composeData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-black">{composeData.reduce((s,i) => s + (i.currency === 'USD' ? i.totalBalance : 0), 0).toLocaleString()} USD</div>}
+            </td>
             <td className="px-2 py-1.5"></td>
           </tr>
           <tr className="divide-x divide-slate-200 hover:bg-slate-50">
             <td className="px-2 py-1.5 font-bold">컴포즈커피스마트팩토리</td>
-            <td className="px-2 py-1.5 text-right font-mono">{(smartData.reduce((s,i) => s + i.totalBalance * (i.currency === 'USD' ? exchangeRate : 1), 0) - smartData.reduce((s,i) => s + (i.deposits - i.withdrawals) * (i.currency === 'USD' ? exchangeRate : 1), 0)).toLocaleString()}</td>
-            <td className="px-2 py-1.5 text-right font-mono">{smartData.reduce((s,i) => s + i.deposits * (i.currency === 'USD' ? exchangeRate : 1), 0).toLocaleString()}</td>
-            <td className="px-2 py-1.5 text-right font-mono text-red-500">{smartData.reduce((s,i) => s + i.withdrawals * (i.currency === 'USD' ? exchangeRate : 1), 0).toLocaleString()}</td>
-            <td className="px-2 py-1.5 text-right font-mono font-bold">{smartData.reduce((s,i) => s + i.totalBalance * (i.currency === 'USD' ? exchangeRate : 1), 0).toLocaleString()}</td>
+            <td className="px-2 py-1.5 text-right font-mono text-[10px]">
+              <div>{(smartData.reduce((s,i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0) - smartData.reduce((s,i) => s + (i.currency === 'KRW' ? (i.deposits - i.withdrawals) : 0), 0)).toLocaleString()}</div>
+              {smartData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-bold">{(smartData.reduce((s,i) => s + (i.currency === 'USD' ? i.totalBalance : 0), 0) - smartData.reduce((s,i) => s + (i.currency === 'USD' ? (i.deposits - i.withdrawals) : 0), 0)).toLocaleString()} USD</div>}
+            </td>
+            <td className="px-2 py-1.5 text-right font-mono text-[10px]">
+              <div>{smartData.reduce((s,i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0).toLocaleString()}</div>
+              {smartData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-bold">{smartData.reduce((s,i) => s + (i.currency === 'USD' ? i.deposits : 0), 0).toLocaleString()} USD</div>}
+            </td>
+            <td className="px-2 py-1.5 text-right font-mono text-red-500 text-[10px]">
+              <div>{smartData.reduce((s,i) => s + (i.currency === 'KRW' ? i.withdrawals : 0), 0).toLocaleString()}</div>
+              {smartData.some(d => d.currency === 'USD') && <div className="text-red-400 font-bold">{smartData.reduce((s,i) => s + (i.currency === 'USD' ? i.withdrawals : 0), 0).toLocaleString()} USD</div>}
+            </td>
+            <td className="px-2 py-1.5 text-right font-mono font-bold text-[10px]">
+              <div>{smartData.reduce((s,i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0).toLocaleString()}</div>
+              {smartData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-black">{smartData.reduce((s,i) => s + (i.currency === 'USD' ? i.totalBalance : 0), 0).toLocaleString()} USD</div>}
+            </td>
             <td className="px-2 py-1.5"></td>
           </tr>
         </ReportTable>
@@ -142,7 +166,10 @@ const MonthlyReportPage = ({ recordDate = "2026-03-24", dailyStatuses = {}, exch
                 footer={
                     <tr className="divide-x divide-slate-300">
                     <td colSpan={4} className="px-2 py-1.5 text-center font-bold">소 계</td>
-                    <td className="px-2 py-1.5 text-right font-mono text-red-600 border border-red-500 bg-white">{composeData.reduce((s,i) => s + i.totalBalance * (i.currency === 'USD' ? exchangeRate : 1), 0).toLocaleString()}</td>
+                    <td className="px-2 py-1.5 text-right font-mono text-red-600 border border-red-500 bg-white">
+                      <div>{composeData.reduce((s,i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0).toLocaleString()} 원</div>
+                      {composeData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-black">{composeData.reduce((s,i) => s + (i.currency === 'USD' ? i.totalBalance : 0), 0).toLocaleString()} USD</div>}
+                    </td>
                     <td className="px-2 py-1.5"></td>
                     </tr>
                 }
@@ -172,7 +199,10 @@ const MonthlyReportPage = ({ recordDate = "2026-03-24", dailyStatuses = {}, exch
                 footer={
                     <tr className="divide-x divide-slate-300">
                     <td colSpan={4} className="px-2 py-1.5 text-center font-bold">소 계</td>
-                    <td className="px-2 py-1.5 text-right font-mono text-red-600 border border-red-500 bg-white">{smartData.reduce((s,i) => s + i.totalBalance * (i.currency === 'USD' ? exchangeRate : 1), 0).toLocaleString()}</td>
+                    <td className="px-2 py-1.5 text-right font-mono text-red-600 border border-red-500 bg-white">
+                      <div>{smartData.reduce((s,i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0).toLocaleString()} 원</div>
+                      {smartData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-black">{smartData.reduce((s,i) => s + (i.currency === 'USD' ? i.totalBalance : 0), 0).toLocaleString()} USD</div>}
+                    </td>
                     <td className="px-2 py-1.5"></td>
                     </tr>
                 }
