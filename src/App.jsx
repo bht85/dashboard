@@ -54,7 +54,7 @@ const App = () => {
   const [composeAccounts, setComposeAccounts] = useState([]);
   const [smartAccounts, setSmartAccounts] = useState([]);
   const [fxSchedule, setFxSchedule] = useState([]);
-  const [dailyWithdrawals, setDailyWithdrawals] = useState([]);
+  const [withdrawals, setWithdrawals] = useState([]);
   const [dailyStatuses, setDailyStatuses] = useState({});
   const [dailyIssues, setDailyIssues] = useState({}); // { "2024-03-26": "이슈내용..." }
 
