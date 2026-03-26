@@ -54,8 +54,9 @@ const App = () => {
   const [composeAccounts, setComposeAccounts] = useState([]);
   const [smartAccounts, setSmartAccounts] = useState([]);
   const [fxSchedule, setFxSchedule] = useState([]);
-  const [withdrawals, setWithdrawals] = useState([]);
+  const [dailyWithdrawals, setDailyWithdrawals] = useState([]);
   const [dailyStatuses, setDailyStatuses] = useState({});
+  const [dailyIssues, setDailyIssues] = useState({}); // { "2024-03-26": "이슈내용..." }
 
   // --- Real-time Firestore Sync ---
   useEffect(() => {
@@ -101,6 +102,13 @@ const App = () => {
         setWithdrawals(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     }, logAndHandle("withdrawals"));
 
+    // 5. Daily Issues/Memos Sync
+    const unsubIssues = onSnapshot(collection(db, "dailyIssues"), (snapshot) => {
+        const data = {};
+        snapshot.docs.forEach(d => { data[d.id] = d.data().content; });
+        setDailyIssues(data);
+    }, logAndHandle("dailyIssues"));
+
     // 4. Daily Status Sync
     const unsubStatus = onSnapshot(collection(db, "dailyStatuses"), (snapshot) => {
         const statuses = {};
@@ -132,7 +140,7 @@ const App = () => {
         setDailyStatuses(statuses);
     }, logAndHandle("dailyStatuses"));
 
-    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); };
+    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); };
   }, [user]);
 
   // --- Firestore Update Wrappers ---
@@ -208,6 +216,11 @@ const App = () => {
     if (!id) return;
     console.log(`Deleting FX Schedule: ${id}`);
     await deleteDoc(doc(collection(db, "fxSchedule"), String(id)));
+  };
+
+  const updateDailyIssue = async (date, content) => {
+    if (!date) return;
+    await setDoc(doc(collection(db, "dailyIssues"), date), { content, updatedAt: new Date().toISOString() });
   };
 
   const deleteWithdrawal = async (withdrawId, accountId, section, amount) => {
@@ -384,6 +397,8 @@ const App = () => {
           fxSchedule={fxSchedule} 
           withdrawals={withdrawals}
           dailyStatuses={dailyStatuses}
+          dailyIssues={dailyIssues}
+          onUpdateIssue={updateDailyIssue}
           exchangeRate={exchangeRate}
         />
       )}

@@ -4,7 +4,7 @@ import FinancialTable from '../components/dashboard/FinancialTable';
 import { calculateTotal, formatKRW, formatUSD, isExcludedAccount } from '../utils/formatters';
 import { Wallet, TrendingUp, Building2, Factory, FileText, Globe, ChevronDown, ChevronUp, ListFilter } from 'lucide-react';
 
-const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAccounts: masterSmart, fxSchedule, withdrawals = [], dailyStatuses = {}, exchangeRate = 1520 }) => {
+const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAccounts: masterSmart, fxSchedule, withdrawals = [], dailyStatuses = {}, dailyIssues = {}, onUpdateIssue, exchangeRate = 1520 }) => {
   const [isRawDataOpen, setIsRawDataOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
 
@@ -164,6 +164,19 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
               <h4 className="text-2xl font-bold text-amber-400 font-mono tracking-tighter">약 {(krwEquivalent / 100000000).toFixed(1)} 억원</h4>
             </div>
           </div>
+        </section>
+
+        {/* 주요 이슈 사항 메모 */}
+        <section className="bg-amber-50 border border-amber-200 rounded-2xl p-6 shadow-sm">
+          <h3 className="text-sm font-black text-amber-900 mb-3 flex items-center gap-2">
+            <FileText className="w-4 h-4" /> 금일 주요 이슈 사항
+          </h3>
+          <textarea 
+            value={dailyIssues[selectedDate] || ''} 
+            onChange={(e) => onUpdateIssue(selectedDate, e.target.value)}
+            placeholder="오늘의 특이사항이나 자금 흐름에 관한 주요 이슈를 기록하세요. 날짜별로 자동 저장됩니다." 
+            className="w-full h-24 bg-white/60 border border-amber-200 rounded-xl p-4 text-sm font-medium outline-none focus:ring-2 focus:ring-amber-500 transition-all resize-none shadow-inner"
+          />
         </section>
 
         {/* 1. 컴포즈커피 섹션 */}
