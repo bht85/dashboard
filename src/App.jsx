@@ -12,6 +12,7 @@ import CashStatusPage from './pages/CashStatusPage';
 import MonthlyReportPage from './pages/MonthlyReportPage';
 import AuthPage from './pages/AuthPage';
 import * as XLSX from 'xlsx';
+import { isExcludedAccount } from './utils/formatters';
 
 const App = () => {
   const [user, setUser] = useState(null);
@@ -68,11 +69,23 @@ const App = () => {
 
     // 1. Accounts Sync
     const unsubCompose = onSnapshot(collection(db, "composeAccounts"), (snapshot) => {
-      setComposeAccounts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setComposeAccounts(data.filter(a => {
+          if (!a) return false;
+          const vals = Object.values(a).map(v => String(v).replace(/[\s-]/g, ''));
+          const isPension = vals.some(v => v.includes('퇴직연금신탁') || v.includes('71452') || v.includes('48252') || v.includes('10291017771452'));
+          return !isPension;
+      }));
     }, logAndHandle("composeAccounts"));
 
     const unsubSmart = onSnapshot(collection(db, "smartAccounts"), (snapshot) => {
-      setSmartAccounts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      setSmartAccounts(data.filter(a => {
+          if (!a) return false;
+          const vals = Object.values(a).map(v => String(v).replace(/[\s-]/g, ''));
+          const isPension = vals.some(v => v.includes('퇴직연금신탁') || v.includes('71452') || v.includes('48252') || v.includes('10291017771452'));
+          return !isPension;
+      }));
     }, logAndHandle("smartAccounts"));
 
     // 2. FX Schedule Sync (Simplified query to debug TypeError)
@@ -90,7 +103,31 @@ const App = () => {
     // 4. Daily Status Sync
     const unsubStatus = onSnapshot(collection(db, "dailyStatuses"), (snapshot) => {
         const statuses = {};
-        snapshot.docs.forEach(d => { statuses[d.id] = d.data(); });
+        snapshot.docs.forEach(d => { 
+          const data = d.data();
+          if (data && data.statusData) {
+              // Handle potentially nested statusData if it exists
+              // (Based on common patterns in previous turns)
+          }
+          
+          if (data.details) {
+            // Apply THE MOST aggressive filter right here
+            data.details = data.details.filter(item => {
+                if (!item) return false;
+                // Double redundant check to be absolutely sure
+                const entries = Object.values(item).map(v => String(v).replace(/[\s-]/g, ''));
+                const isPension = entries.some(v => v.includes('퇴직연금신탁') || v.includes('71452') || v.includes('48252') || v.includes('10291017771452'));
+                return !isPension;
+            });
+            
+            // Recalculate summary fields to ensure pension funds aren't summed
+            data.inflow = data.details.reduce((s, i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0);
+            data.outflow = data.details.reduce((s, i) => s + (i.currency === 'KRW' ? i.withdrawals : 0), 0);
+            data.totalBalance = data.details.reduce((s, i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0);
+            data.netChange = data.details.reduce((s, i) => s + (i.currency === 'KRW' ? (i.deposits - i.withdrawals) : 0), 0);
+          }
+          statuses[d.id] = data; 
+        });
         setDailyStatuses(statuses);
     }, logAndHandle("dailyStatuses"));
 
@@ -263,22 +300,24 @@ const App = () => {
         // 예측 모드일 경우 해당 날짜의 지출 내역을 반영하여 계산
         const dayWithdrawals = withdrawals.filter(w => w.date === selectedDate);
 
-        data = (status.details || []).map(d => {
-          const accWiths = dayWithdrawals.filter(w => w.accountId === d.id);
-          const currentWith = accWiths.reduce((sum, w) => sum + w.amount, 0);
-          
-          return {
-            '법인': d.entity,
-            '은행': d.bank,
-            '계좌번호': d.account,
-            '별칭': d.nickname || '',
-            '통화': d.currency,
-            '전일잔액': isPredicted ? d.totalBalance : d.prevBalance,
-            '입금액': isPredicted ? 0 : d.deposits,
-            '출금액': isPredicted ? currentWith : d.withdrawals,
-            '당일총잔액': isPredicted ? (d.totalBalance - currentWith) : d.totalBalance
-          };
-        });
+        data = (status.details || [])
+          .filter(d => !isExcludedAccount(d))
+          .map(d => {
+            const accWiths = dayWithdrawals.filter(w => w.accountId === d.id);
+            const currentWith = accWiths.reduce((sum, w) => sum + w.amount, 0);
+            
+            return {
+              '법인': d.entity,
+              '은행': d.bank,
+              '계좌번호': d.account,
+              '별칭': d.nickname || '',
+              '통화': d.currency,
+              '전일잔액': isPredicted ? d.totalBalance : d.prevBalance,
+              '입금액': isPredicted ? 0 : d.deposits,
+              '출금액': isPredicted ? currentWith : d.withdrawals,
+              '당일총잔액': isPredicted ? (d.totalBalance - currentWith) : d.totalBalance
+            };
+          });
         filename = `자금일보_${selectedDate}${isPredicted ? '_예상' : ''}.xlsx`;
       } else if (currentView === 'cashStatus') {
         const status = dailyStatuses[selectedDate];
@@ -286,17 +325,19 @@ const App = () => {
           alert('내보낼 확정 데이터가 없습니다.');
           return;
         }
-        data = (status.details || []).map(d => ({
-          '법인': d.entity,
-          '은행': d.bank,
-          '계좌번호': d.account,
-          '별칭': d.nickname || '',
-          '통화': d.currency,
-          '전일잔액': d.prevBalance,
-          '입금액': d.deposits,
-          '출금액': d.withdrawals,
-          '당일총잔액': d.totalBalance
-        }));
+        data = (status.details || [])
+          .filter(d => !isExcludedAccount(d))
+          .map(d => ({
+            '법인': d.entity,
+            '은행': d.bank,
+            '계좌번호': d.account,
+            '별칭': d.nickname || '',
+            '통화': d.currency,
+            '전일잔액': d.prevBalance,
+            '입금액': d.deposits,
+            '출금액': d.withdrawals,
+            '당일총잔액': d.totalBalance
+          }));
         filename = `시재현황_${selectedDate}.xlsx`;
       } else {
         alert('이 화면에서는 엑셀 내보내기를 지원하지 않습니다.');

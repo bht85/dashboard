@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ExpenseSummaryBox from '../components/dashboard/ExpenseSummaryBox';
 import FinancialTable from '../components/dashboard/FinancialTable';
-import { calculateTotal, formatKRW, formatUSD } from '../utils/formatters';
+import { calculateTotal, formatKRW, formatUSD, isExcludedAccount } from '../utils/formatters';
 import { Wallet, TrendingUp, Building2, Factory, FileText, Globe, ChevronDown, ChevronUp, ListFilter } from 'lucide-react';
 import PrintReport from '../components/dashboard/PrintReport';
 
@@ -29,7 +29,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   };
 
   const { status: baseStatus, isFinal, sourceDate } = getBaseStatus();
-  const statusDetails = baseStatus?.details || [];
+  const statusDetails = (baseStatus?.details || []).filter(d => !isExcludedAccount(d));
 
   // 2. 현재 선택된 날짜의 지출 내역 필터링 (Projection 및 로우 데이터용)
   const dailyWithdrawals = withdrawals.filter(w => w.paymentDate === selectedDate);
@@ -78,12 +78,12 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   // 법인별 데이터 필터링 및 매핑
   const composeAccounts = (statusDetails.length > 0 
     ? statusDetails.filter(d => d.entity.includes('컴포즈')).map(mapStatusToAccount)
-    : masterCompose.map(a => ({ ...a, balance: 0, withdraw: 0, internal: 0, final: 0 }))
+    : masterCompose.filter(acc => !isExcludedAccount(acc)).map(a => ({ ...a, balance: 0, withdraw: 0, internal: 0, final: 0 }))
   ).filter(acc => acc.balance !== 0 || acc.withdraw !== 0 || acc.internal !== 0 || acc.final !== 0);
 
   const smartAccounts = (statusDetails.length > 0 
     ? statusDetails.filter(d => d.entity.includes('스마트')).map(mapStatusToAccount)
-    : masterSmart.map(a => ({ ...a, balance: 0, withdraw: 0, internal: 0, final: 0 }))
+    : masterSmart.filter(acc => !isExcludedAccount(acc)).map(a => ({ ...a, balance: 0, withdraw: 0, internal: 0, final: 0 }))
   ).filter(acc => acc.balance !== 0 || acc.withdraw !== 0 || acc.internal !== 0 || acc.final !== 0);
 
   // 합계 계산

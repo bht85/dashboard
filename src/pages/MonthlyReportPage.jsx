@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatKRW } from '../utils/formatters';
+import { formatKRW, isExcludedAccount } from '../utils/formatters';
 import { Download, Printer } from 'lucide-react';
 
 const MonthlyReportPage = ({ recordDate = "2026-03-24", dailyStatuses = {}, exchangeRate = 1 }) => {
@@ -10,15 +10,27 @@ const MonthlyReportPage = ({ recordDate = "2026-03-24", dailyStatuses = {}, exch
   const monthData = Object.keys(dailyStatuses)
     .filter(date => date.startsWith(currentMonth))
     .sort()
-    .map(date => ({ date, ...dailyStatuses[date] }));
+    .map(date => {
+      const raw = dailyStatuses[date];
+      const filteredDetails = (raw.details || []).filter(item => !isExcludedAccount(item));
+      return { 
+        ...raw,
+        date, 
+        details: filteredDetails,
+        inflow: filteredDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0),
+        outflow: filteredDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.withdrawals : 0), 0),
+        totalBalance: filteredDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0),
+        netChange: filteredDetails.reduce((s, i) => s + (i.currency === 'KRW' ? (i.deposits - i.withdrawals) : 0), 0),
+      };
+    });
 
   const monthlyInflow = monthData.reduce((sum, d) => sum + (d.inflow || 0), 0);
   const monthlyOutflow = monthData.reduce((sum, d) => sum + (d.outflow || 0), 0);
   const netChange = monthlyInflow - monthlyOutflow;
   const lastStatus = monthData.length > 0 ? monthData[monthData.length - 1] : null;
 
-  // 법인별 집계 (상세 내역이 있을 경우)
-  const composeData = lastStatus?.details?.filter(d => d.entity.includes('컴포즈커피') && !d.entity.includes('소계')) || [];
+  // 법인별 집계
+  const composeData = lastStatus?.details?.filter(d => d.entity.includes('컴포즈')) || [];
   const smartData = lastStatus?.details?.filter(d => d.entity.includes('스마트팩토리')) || [];
 
   // --- 공식 보고서 스타일 테이블 컴포넌트 ---

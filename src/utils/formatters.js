@@ -14,3 +14,22 @@ export const calculateTotal = (accounts) => {
     usd: { balance: 0, withdraw: 0, internal: 0, final: 0 }
   });
 };
+
+export const isExcludedAccount = (accountData) => {
+  if (!accountData) return false;
+  
+  // Convert object to a single string for pattern matching
+  // This captures keys like 'no', 'account', 'nickname', 'note', 'bank', etc.
+  const rawData = JSON.stringify(accountData);
+  const normalized = rawData.replace(/[\s-]/g, ''); // Remove spaces and dashes
+  
+  // Specific pension account markers
+  const markers = [
+    '퇴직연금신탁',
+    '71452',
+    '48252',
+    '10291017771452'
+  ];
+  
+  return markers.some(m => rawData.includes(m) || normalized.includes(m));
+};

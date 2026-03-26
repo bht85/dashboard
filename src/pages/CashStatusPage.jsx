@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, FileText, CheckCircle2, AlertCircle, Database, ArrowRight, Loader2, Landmark, Calendar } from 'lucide-react';
-import { formatKRW, formatUSD } from '../utils/formatters';
+import { formatKRW, formatUSD, isExcludedAccount } from '../utils/formatters';
 import * as XLSX from 'xlsx';
 
 const CashStatusPage = ({ 
@@ -64,7 +64,8 @@ const CashStatusPage = ({
             return parseFloat(cleaned) || 0;
           };
 
-          parsed.push({
+
+          const accountEntry = {
             id: Date.now() + idx,
             entity: currentEntity,
             group: currentGroup,
@@ -77,7 +78,12 @@ const CashStatusPage = ({
             deposits: cleanNum(row[8]),
             withdrawals: cleanNum(row[9]),
             totalBalance: cleanNum(row[10])
-          });
+          };
+
+          if (!isExcludedAccount(accountEntry)) {
+            parsed.push(accountEntry);
+          }
+
         });
 
         setCashLogs(parsed);
@@ -111,7 +117,9 @@ const CashStatusPage = ({
     );
     
     // 3. 기존의 다른 법인 데이터와 이번에 새로 교정된 해당 법인의 데이터를 합침
-    const mergedDetails = [...otherDetails, ...correctedLogs];
+    // 4. 퇴직연금신탁 계좌 필터링 (최종 검증)
+    const mergedDetails = [...otherDetails, ...correctedLogs].filter(d => !isExcludedAccount(d));
+
 
     const statusData = {
       // 요약 필드는 KRW 중심으로 유지하되, USD 정보는 details에 보존
@@ -300,7 +308,7 @@ const CashStatusPage = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {(cashLogs.length > 0 ? cashLogs : (dailyStatuses[recordDate]?.details || []).filter(d => d.entity.includes(activeEntity) || activeEntity.includes(d.entity))).map((item) => (
+                  {(cashLogs.length > 0 ? cashLogs : (dailyStatuses[recordDate]?.details || []).filter(d => (d.entity.includes(activeEntity) || activeEntity.includes(d.entity)) && !isExcludedAccount(d))).map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                       <td className="px-3 py-2.5 border-r border-slate-100 font-bold text-slate-700">{item.entity}</td>
                       <td className="px-3 py-2.5 border-r border-slate-100">{item.bank}</td>
