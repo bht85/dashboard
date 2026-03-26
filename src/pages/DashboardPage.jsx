@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ExpenseSummaryBox from '../components/dashboard/ExpenseSummaryBox';
 import FinancialTable from '../components/dashboard/FinancialTable';
 import { calculateTotal, formatKRW, formatUSD, isExcludedAccount } from '../utils/formatters';
@@ -168,13 +168,17 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
 
         {/* 주요 이슈 사항 메모 */}
         <section className="bg-amber-50 border border-amber-200 rounded-2xl p-6 shadow-sm">
-          <h3 className="text-sm font-black text-amber-900 mb-3 flex items-center gap-2">
-            <FileText className="w-4 h-4" /> 금일 주요 이슈 사항
-          </h3>
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-sm font-black text-amber-900 flex items-center gap-2">
+              <FileText className="w-4 h-4" /> 금일 주요 이슈 사항
+            </h3>
+            <span className="text-[10px] text-amber-500 font-bold bg-amber-100/50 px-2 py-0.5 rounded italic">작성 후 입력창 밖을 클릭하면 자동 저장됩니다.</span>
+          </div>
           <textarea 
-            value={dailyIssues[selectedDate] || ''} 
-            onChange={(e) => onUpdateIssue(selectedDate, e.target.value)}
-            placeholder="오늘의 특이사항이나 자금 흐름에 관한 주요 이슈를 기록하세요. 날짜별로 자동 저장됩니다." 
+            key={selectedDate} // 날짜 변경 시 로컬 상태 초기화 강제
+            defaultValue={dailyIssues[selectedDate] || ''} 
+            onBlur={(e) => onUpdateIssue(selectedDate, e.target.value)}
+            placeholder="오늘의 특이사항이나 자금 흐름에 관한 주요 이슈를 기록하세요. (예: 정기예금 만기, 법인세 납부 등)" 
             className="w-full h-24 bg-white/60 border border-amber-200 rounded-xl p-4 text-sm font-medium outline-none focus:ring-2 focus:ring-amber-500 transition-all resize-none shadow-inner"
           />
         </section>
