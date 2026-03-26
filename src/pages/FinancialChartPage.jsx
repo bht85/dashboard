@@ -48,10 +48,17 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
         }, 0);
 
         const dailyInflow = filteredDetails.reduce((s, i) => {
-          // 내부 입금(internal) 필드가 있거나, 엑셀 컬럼 속성상 내부 입금인 경우 처리
-          // 현재 데이터 구조상 i.deposits가 내부 입금인 경우가 대부분이므로, 
-          // '내부 거래 제외'가 켜져있으면 입금을 0으로 처리 (순수 외부 유입만 보려 할 때)
-          if (excludeInternal && (i.entity.includes('스마트') || i.group === '내부')) return s;
+          // 내부 거래 제외 로직 고도화
+          // 1. 전체 법인(ALL) 보기: 모든 내부 거래(법인 간 이동 포함) 제외
+          // 2. 특정 법인(컴포즈 or 스마트) 보기: 해당 법인 '내부'의 계좌 이동만 제외 (법인 간 입금은 외부 유입으로 처리)
+          if (excludeInternal) {
+            if (selectedEntity === 'ALL') {
+              if (i.entity.includes('스마트') || i.group === '내부' || i.nickname.includes('내부')) return s;
+            } else {
+              // 특정 법인 보기일 때는 진짜 '내부'라고 명시된 경우만 제외 (다른 법인에서 들어온 돈은 유입으로 인정)
+              if (i.group === '내부' || (i.nickname && i.nickname.includes('내부') && !i.nickname.includes('환전'))) return s;
+            }
+          }
 
           const isUSD = i.currency === 'USD' || i.isUSD;
           if (isUSDMode) {
@@ -62,8 +69,14 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
         }, 0);
 
         const dailyOutflow = filteredDetails.reduce((s, i) => {
-          // 내부 출금 역시 '내부 거래 제외' 시 필터링
-          if (excludeInternal && (i.group === '내부' || i.nickname.includes('내부'))) return s;
+          if (excludeInternal) {
+            if (selectedEntity === 'ALL') {
+              if (i.group === '내부' || i.nickname.includes('내부')) return s;
+            } else {
+              // 특정 법인 보기일 때는 '내부' 계좌이동만 제외
+              if (i.group === '내부' || (i.nickname && i.nickname.includes('내부') && !i.nickname.includes('환전'))) return s;
+            }
+          }
 
           const isUSD = i.currency === 'USD' || i.isUSD;
           if (isUSDMode) {
