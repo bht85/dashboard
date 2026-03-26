@@ -206,8 +206,8 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
                <input type="text" value={manualEntry.bank} onChange={e=>setManualEntry({...manualEntry, bank:e.target.value})} placeholder="은행명" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all" />
              </div>
              <div className="col-span-1">
-               <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">금액</label>
-               <input type="number" value={manualEntry.amount} onChange={e=>setManualEntry({...manualEntry, amount:e.target.value})} placeholder="숫자만 입력" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all font-mono" />
+               <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">금액 {selectedAccount?.isUSD ? '(USD)' : '(KRW)'}</label>
+               <input type="number" value={manualEntry.amount} onChange={e=>setManualEntry({...manualEntry, amount:e.target.value})} placeholder={selectedAccount?.isUSD ? "$0.00" : "숫자만 입력"} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all font-mono" />
              </div>
              <div className="col-span-2">
                <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">예금주/거래처</label>
