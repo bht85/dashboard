@@ -86,7 +86,7 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
 
   // Summary Metrics for the selected period
   const metrics = useMemo(() => {
-    if (chartData.length === 0) return { inflow: 0, outflow: 0, net: 0, growth: 0 };
+    if (chartData.length === 0) return { inflow: 0, outflow: 0, net: 0, growth: 0, beginning: 0, current: 0 };
     
     const totalInflow = chartData.reduce((s, d) => s + d.inflow, 0);
     const totalOutflow = chartData.reduce((s, d) => s + d.outflow, 0);
@@ -98,7 +98,9 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
       inflow: totalInflow,
       outflow: totalOutflow,
       net: totalInflow - totalOutflow,
-      growth: growth.toFixed(1)
+      growth: growth.toFixed(1),
+      beginning: startBalance,
+      current: endBalance
     };
   }, [chartData]);
 
@@ -149,20 +151,34 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
       </div>
 
       {/* Summary Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
+        <StatCard 
+          title="월 초 잔액" 
+          value={formatValue(metrics.beginning)} 
+          icon={<Landmark className="w-4 h-4" />} 
+          color="slate" 
+          subtitle="해당 월 기초 시재"
+        />
         <StatCard 
           title="총 입금액" 
           value={formatValue(metrics.inflow)} 
           icon={<ArrowUpRight className="w-4 h-4" />} 
           color="emerald" 
-          subtitle="해당 월 누적 수입"
+          subtitle="기간 내 누적 수입"
         />
         <StatCard 
           title="총 출금액" 
           value={formatValue(metrics.outflow)} 
           icon={<ArrowDownRight className="w-4 h-4" />} 
           color="rose" 
-          subtitle="해당 월 누적 지출"
+          subtitle="기간 내 누적 지출"
+        />
+        <StatCard 
+          title="현 잔액" 
+          value={formatValue(metrics.current)} 
+          icon={<DollarSign className="w-4 h-4" />} 
+          color="blue" 
+          subtitle="해당 월 기말 시재"
         />
         <StatCard 
           title="순 증감액" 
@@ -246,7 +262,9 @@ const StatCard = ({ title, value, icon, color, subtitle, trend }) => {
     indigo: 'bg-indigo-50 text-indigo-600',
     emerald: 'bg-emerald-50 text-emerald-600',
     rose: 'bg-rose-50 text-rose-600',
-    amber: 'bg-amber-50 text-amber-600'
+    amber: 'bg-amber-50 text-amber-600',
+    slate: 'bg-slate-100 text-slate-600',
+    blue: 'bg-blue-50 text-blue-600'
   };
 
   return (
