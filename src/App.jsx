@@ -10,6 +10,7 @@ import TransactionsPage from './pages/TransactionsPage';
 import ForeignSchedulePage from './pages/ForeignSchedulePage';
 import CashStatusPage from './pages/CashStatusPage';
 import MonthlyReportPage from './pages/MonthlyReportPage';
+import FinancialChartPage from './pages/FinancialChartPage';
 import AuthPage from './pages/AuthPage';
 import * as XLSX from 'xlsx';
 import { isExcludedAccount } from './utils/formatters';
@@ -383,6 +384,13 @@ const App = () => {
           fxSchedule={fxSchedule} 
           withdrawals={withdrawals}
           dailyStatuses={dailyStatuses}
+          exchangeRate={exchangeRate}
+        />
+      )}
+      {currentView === 'analytics' && (
+        <FinancialChartPage 
+          dailyStatuses={dailyStatuses}
+          recordDate={selectedDate}
           exchangeRate={exchangeRate}
         />
       )}

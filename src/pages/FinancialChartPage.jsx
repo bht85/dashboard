@@ -1,0 +1,289 @@
+import React, { useState, useMemo } from 'react';
+import { 
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
+  AreaChart, Area
+} from 'recharts';
+import { 
+  TrendingUp, ArrowUpRight, ArrowDownRight, Activity, Calendar, Building2, Globe, ListFilter,
+  DollarSign, Landmark
+} from 'lucide-react';
+import { formatKRW, formatUSD } from '../utils/formatters';
+
+const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }) => {
+  const [selectedMonth, setSelectedMonth] = useState(recordDate.substring(0, 7)); // "2026-03"
+  const [selectedEntity, setSelectedEntity] = useState('ALL'); // ALL, 컴포즈, 스마트
+  const [currencyMode, setCurrencyMode] = useState('KRW'); // KRW, USD
+
+  // Available months from data
+  const availableMonths = useMemo(() => {
+    const months = new Set(Object.keys(dailyStatuses).map(d => d.substring(0, 7)));
+    return Array.from(months).sort().reverse();
+  }, [dailyStatuses]);
+
+  // Data Transformation for Recharts
+  const chartData = useMemo(() => {
+    return Object.keys(dailyStatuses)
+      .filter(date => date.startsWith(selectedMonth))
+      .sort()
+      .map(date => {
+        const status = dailyStatuses[date];
+        const details = status.details || [];
+        
+        // Filter by entity if needed
+        const filteredDetails = selectedEntity === 'ALL' 
+          ? details 
+          : details.filter(d => d.entity.includes(selectedEntity));
+
+        // Calculate totals for this day based on currency mode
+        const isUSDMode = currencyMode === 'USD';
+        
+        const dailyTotal = filteredDetails.reduce((s, i) => {
+          const isUSD = i.currency === 'USD' || i.isUSD;
+          if (isUSDMode) {
+             return s + (isUSD ? (i.totalBalance || 0) : (i.totalBalance || 0) / exchangeRate);
+          } else {
+             return s + (isUSD ? (i.totalBalance || 0) * exchangeRate : (i.totalBalance || 0));
+          }
+        }, 0);
+
+        const dailyInflow = filteredDetails.reduce((s, i) => {
+          const isUSD = i.currency === 'USD' || i.isUSD;
+          if (isUSDMode) {
+             return s + (isUSD ? (i.deposits || 0) : (i.deposits || 0) / exchangeRate);
+          } else {
+             return s + (isUSD ? (i.deposits || 0) * exchangeRate : (i.deposits || 0));
+          }
+        }, 0);
+
+        const dailyOutflow = filteredDetails.reduce((s, i) => {
+          const isUSD = i.currency === 'USD' || i.isUSD;
+          if (isUSDMode) {
+             return s + (isUSD ? (i.withdrawals || 0) : (i.withdrawals || 0) / exchangeRate);
+          } else {
+             return s + (isUSD ? (i.withdrawals || 0) * exchangeRate : (i.withdrawals || 0));
+          }
+        }, 0);
+
+        return {
+          name: date.split('-')[2] + '일',
+          fullDate: date,
+          balance: Math.floor(dailyTotal),
+          inflow: Math.floor(dailyInflow),
+          outflow: Math.floor(dailyOutflow),
+          net: Math.floor(dailyInflow - dailyOutflow)
+        };
+      });
+  }, [dailyStatuses, selectedMonth, selectedEntity, currencyMode, exchangeRate]);
+
+  // Summary Metrics for the selected period
+  const metrics = useMemo(() => {
+    if (chartData.length === 0) return { inflow: 0, outflow: 0, net: 0, growth: 0 };
+    
+    const totalInflow = chartData.reduce((s, d) => s + d.inflow, 0);
+    const totalOutflow = chartData.reduce((s, d) => s + d.outflow, 0);
+    const startBalance = chartData[0].balance;
+    const endBalance = chartData[chartData.length - 1].balance;
+    const growth = startBalance !== 0 ? ((endBalance - startBalance) / startBalance) * 100 : 0;
+
+    return {
+      inflow: totalInflow,
+      outflow: totalOutflow,
+      net: totalInflow - totalOutflow,
+      growth: growth.toFixed(1)
+    };
+  }, [chartData]);
+
+  const formatValue = (val) => currencyMode === 'KRW' ? formatKRW(val) : formatUSD(val);
+
+  return (
+    <div className="animate-in fade-in duration-700 pb-20">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
+        <div>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tighter uppercase mb-1 flex items-center gap-2">
+            <Activity className="w-6 h-6 text-indigo-500" /> 자금 분석 대시보드
+          </h2>
+          <p className="text-sm text-slate-500 font-medium">영업 및 재무 활동에 따른 현금 흐름 추이를 시각화합니다.</p>
+        </div>
+
+        {/* Filters Panel */}
+        <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
+          <div className="flex bg-slate-100 p-1 rounded-xl">
+             <button onClick={() => setCurrencyMode('KRW')} className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all ${currencyMode === 'KRW' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>KRW</button>
+             <button onClick={() => setCurrencyMode('USD')} className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all ${currencyMode === 'USD' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>USD</button>
+          </div>
+          <div className="h-6 w-px bg-slate-200 mx-1"></div>
+          <select 
+            value={selectedMonth} 
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="bg-slate-50 border-none rounded-xl px-4 py-2 text-xs font-bold outline-none cursor-pointer"
+          >
+            {availableMonths.map(m => <option key={m} value={m}>{m.replace('-', '년 ')}월</option>)}
+          </select>
+          <select 
+            value={selectedEntity} 
+            onChange={(e) => setSelectedEntity(e.target.value)}
+            className="bg-slate-50 border-none rounded-xl px-4 py-2 text-xs font-bold outline-none cursor-pointer"
+          >
+            <option value="ALL">전체 법인</option>
+            <option value="컴포즈">컴포즈커피</option>
+            <option value="스마트">스마트팩토리</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Summary Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+        <StatCard 
+          title="총 입금액" 
+          value={formatValue(metrics.inflow)} 
+          icon={<ArrowUpRight className="w-4 h-4" />} 
+          color="emerald" 
+          subtitle="해당 월 누적 수입"
+        />
+        <StatCard 
+          title="총 출금액" 
+          value={formatValue(metrics.outflow)} 
+          icon={<ArrowDownRight className="w-4 h-4" />} 
+          color="rose" 
+          subtitle="해당 월 누적 지출"
+        />
+        <StatCard 
+          title="순 증감액" 
+          value={formatValue(metrics.net)} 
+          icon={<Activity className="w-4 h-4" />} 
+          color="indigo" 
+          subtitle="자본 회전 결과"
+          trend={metrics.net >= 0 ? 'up' : 'down'}
+        />
+        <StatCard 
+          title="자산 변동률" 
+          value={`${metrics.growth}%`} 
+          icon={<TrendingUp className="w-4 h-4" />} 
+          color="amber" 
+          subtitle="기초 대비 기말 변동"
+          trend={parseFloat(metrics.growth) >= 0 ? 'up' : 'down'}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Main Balance Trend Chart */}
+        <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                <Landmark className="w-4 h-4 text-indigo-500" /> 자산 규모 추이 (Daily Balance)
+              </h3>
+              <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Total combined assets trendline</p>
+            </div>
+          </div>
+          <div className="h-[350px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} dy={10} />
+                <YAxis hide domain={['auto', 'auto']} />
+                <Tooltip content={<CustomTooltip currencyMode={currencyMode} />} />
+                <Area type="monotone" dataKey="balance" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorBalance)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Cash Flow Bar Chart */}
+        <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-emerald-500" /> 입금 vs 출금 현황
+              </h3>
+              <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Daily inflow and outflow comparison</p>
+            </div>
+          </div>
+          <div className="h-[350px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} dy={10} />
+                <YAxis hide />
+                <Tooltip content={<CustomTooltip currencyMode={currencyMode} isComparison />} />
+                <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{paddingBottom: 20, fontSize: 10, fontWeight: 800, textTransform: 'uppercase'}} />
+                <Bar dataKey="inflow" name="입금" fill="#10b981" radius={[4, 4, 0, 0]} barSize={12} />
+                <Bar dataKey="outflow" name="출금" fill="#f43f5e" radius={[4, 4, 0, 0]} barSize={12} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StatCard = ({ title, value, icon, color, subtitle, trend }) => {
+  const colors = {
+    indigo: 'bg-indigo-50 text-indigo-600',
+    emerald: 'bg-emerald-50 text-emerald-600',
+    rose: 'bg-rose-50 text-rose-600',
+    amber: 'bg-amber-50 text-amber-600'
+  };
+
+  return (
+    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:translate-y-[-4px] transition-all">
+      <div className="flex justify-between items-start mb-4">
+        <div className={`p-3 rounded-2xl ${colors[color]}`}>
+          {icon}
+        </div>
+        {trend && (
+           <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-lg ${trend === 'up' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+             {trend === 'up' ? 'Increase' : 'Decrease'}
+           </span>
+        )}
+      </div>
+      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{title}</h4>
+      <div className="text-xl font-black text-slate-900 tracking-tight mb-1">{value}</div>
+      <p className="text-[10px] text-slate-400 font-bold italic">{subtitle}</p>
+    </div>
+  );
+};
+
+const CustomTooltip = ({ active, payload, currencyMode, isComparison }) => {
+  if (active && payload && payload.length) {
+    const format = (v) => currencyMode === 'KRW' ? formatKRW(v) : formatUSD(v);
+    
+    return (
+      <div className="bg-slate-900 border-none rounded-2xl p-4 shadow-2xl">
+        <p className="text-[10px] font-black text-slate-400 uppercase mb-2 border-b border-slate-700 pb-2">{payload[0].payload.fullDate}</p>
+        <div className="space-y-1.5">
+          {payload.map((p, idx) => (
+            <div key={idx} className="flex justify-between items-center gap-6">
+              <span className="text-[10px] font-bold text-slate-300">{p.name === p.dataKey ? '잔액' : p.name}:</span>
+              <span className="text-xs font-black text-white tabular-nums" style={{color: p.color || '#fff'}}>
+                {format(p.value)}
+              </span>
+            </div>
+          ))}
+          {!isComparison && (
+             <>
+               <div className="flex justify-between items-center gap-6">
+                 <span className="text-[10px] font-bold text-slate-300">입금액:</span>
+                 <span className="text-xs font-black text-emerald-400 tabular-nums">{format(payload[0].payload.inflow)}</span>
+               </div>
+               <div className="flex justify-between items-center gap-6">
+                 <span className="text-[10px] font-bold text-slate-300">출금액:</span>
+                 <span className="text-xs font-black text-rose-400 tabular-nums">{format(payload[0].payload.outflow)}</span>
+               </div>
+             </>
+          )}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
+
+export default FinancialChartPage;

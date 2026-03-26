@@ -1,5 +1,6 @@
 import React from 'react';
 import { 
+  BarChart3,
   TrendingUp,
   LayoutDashboard, 
   ArrowLeftRight, 
@@ -11,6 +12,7 @@ import {
 const Sidebar = ({ isSidebarOpen, currentView, setCurrentView }) => {
   const navItems = [
     { id: 'dashboard', label: '일일 자금 일보', icon: LayoutDashboard },
+    { id: 'analytics', label: '추이 분석', icon: BarChart3 },
     { id: 'monthly', label: '월간 자금 일보', icon: TrendingUp },
     { id: 'transactions', label: '출금 대상', icon: ArrowLeftRight },
     { id: 'foreign', label: '외화 송금', icon: Globe },
