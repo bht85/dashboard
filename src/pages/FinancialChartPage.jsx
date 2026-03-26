@@ -13,6 +13,7 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
   const [selectedMonth, setSelectedMonth] = useState(recordDate.substring(0, 7)); // "2026-03"
   const [selectedEntity, setSelectedEntity] = useState('ALL'); // ALL, 컴포즈, 스마트
   const [currencyMode, setCurrencyMode] = useState('KRW'); // KRW, USD
+  const [excludeInternal, setExcludeInternal] = useState(true); // 내부 거래 제외 기본값 true
 
   // Available months from data
   const availableMonths = useMemo(() => {
@@ -40,27 +41,35 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
         const dailyTotal = filteredDetails.reduce((s, i) => {
           const isUSD = i.currency === 'USD' || i.isUSD;
           if (isUSDMode) {
-             return s + (isUSD ? (i.totalBalance || 0) : (i.totalBalance || 0) / exchangeRate);
+             return s + (isUSD ? Number(i.totalBalance || 0) : Number(i.totalBalance || 0) / exchangeRate);
           } else {
-             return s + (isUSD ? (i.totalBalance || 0) * exchangeRate : (i.totalBalance || 0));
+             return s + (isUSD ? Number(i.totalBalance || 0) * exchangeRate : Number(i.totalBalance || 0));
           }
         }, 0);
 
         const dailyInflow = filteredDetails.reduce((s, i) => {
+          // 내부 입금(internal) 필드가 있거나, 엑셀 컬럼 속성상 내부 입금인 경우 처리
+          // 현재 데이터 구조상 i.deposits가 내부 입금인 경우가 대부분이므로, 
+          // '내부 거래 제외'가 켜져있으면 입금을 0으로 처리 (순수 외부 유입만 보려 할 때)
+          if (excludeInternal && (i.entity.includes('스마트') || i.group === '내부')) return s;
+
           const isUSD = i.currency === 'USD' || i.isUSD;
           if (isUSDMode) {
-             return s + (isUSD ? (i.deposits || 0) : (i.deposits || 0) / exchangeRate);
+             return s + (isUSD ? Number(i.deposits || 0) : Number(i.deposits || 0) / exchangeRate);
           } else {
-             return s + (isUSD ? (i.deposits || 0) * exchangeRate : (i.deposits || 0));
+             return s + (isUSD ? Number(i.deposits || 0) * exchangeRate : Number(i.deposits || 0));
           }
         }, 0);
 
         const dailyOutflow = filteredDetails.reduce((s, i) => {
+          // 내부 출금 역시 '내부 거래 제외' 시 필터링
+          if (excludeInternal && (i.group === '내부' || i.nickname.includes('내부'))) return s;
+
           const isUSD = i.currency === 'USD' || i.isUSD;
           if (isUSDMode) {
-             return s + (isUSD ? (i.withdrawals || 0) : (i.withdrawals || 0) / exchangeRate);
+             return s + (isUSD ? Number(i.withdrawals || 0) : Number(i.withdrawals || 0) / exchangeRate);
           } else {
-             return s + (isUSD ? (i.withdrawals || 0) * exchangeRate : (i.withdrawals || 0));
+             return s + (isUSD ? Number(i.withdrawals || 0) * exchangeRate : Number(i.withdrawals || 0));
           }
         }, 0);
 
@@ -73,7 +82,7 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
           net: Math.floor(dailyInflow - dailyOutflow)
         };
       });
-  }, [dailyStatuses, selectedMonth, selectedEntity, currencyMode, exchangeRate]);
+  }, [dailyStatuses, selectedMonth, selectedEntity, currencyMode, exchangeRate, excludeInternal]);
 
   // Summary Metrics for the selected period
   const metrics = useMemo(() => {
@@ -107,6 +116,14 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
 
         {/* Filters Panel */}
         <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
+          <button 
+            onClick={() => setExcludeInternal(!excludeInternal)}
+            className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all flex items-center gap-2 ${excludeInternal ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-slate-50 text-slate-400 hover:text-slate-600'}`}
+          >
+            <ListFilter className="w-3 h-3" />
+            내부 거래 제외: {excludeInternal ? 'ON' : 'OFF'}
+          </button>
+          <div className="h-6 w-px bg-slate-200 mx-1"></div>
           <div className="flex bg-slate-100 p-1 rounded-xl">
              <button onClick={() => setCurrencyMode('KRW')} className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all ${currencyMode === 'KRW' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>KRW</button>
              <button onClick={() => setCurrencyMode('USD')} className={`px-4 py-1.5 text-[10px] font-black rounded-lg transition-all ${currencyMode === 'USD' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>USD</button>
