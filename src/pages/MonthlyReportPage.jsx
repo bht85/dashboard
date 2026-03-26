@@ -1,8 +1,25 @@
 import React from 'react';
-import { formatKRW, isExcludedAccount } from '../utils/formatters';
+import { formatKRW, formatUSD, isExcludedAccount } from '../utils/formatters';
 import { Download, Printer } from 'lucide-react';
 
-const MonthlyReportPage = ({ recordDate = "2026-03-24", dailyStatuses = {}, exchangeRate = 1 }) => {
+const MonthlyReportPage = ({ 
+  recordDate = "2026-03-24", 
+  dailyStatuses = {}, 
+  exchangeRate = 1,
+  composeAccounts = [],
+  smartAccounts = []
+}) => {
+  // --- 마스터 계좌 기반 통화 판별 로직 (데이터 정합성 보장) ---
+  const usdAccountSet = new Set([
+    ...composeAccounts.filter(a => a.isUSD).map(a => String(a.no).replace(/[\s-]/g, '')),
+    ...smartAccounts.filter(a => a.isUSD).map(a => String(a.no).replace(/[\s-]/g, ''))
+  ]);
+
+  const checkIsUSD = (accountNo) => {
+    if (!accountNo) return false;
+    return usdAccountSet.has(String(accountNo).replace(/[\s-]/g, ''));
+  };
+
   // --- 데이터 연동 로직 ---
   const currentMonth = recordDate.substring(0, 7); // "2026-03"
   const monthName = parseInt(currentMonth.split('-')[1]) + "월";
@@ -17,21 +34,74 @@ const MonthlyReportPage = ({ recordDate = "2026-03-24", dailyStatuses = {}, exch
         ...raw,
         date, 
         details: filteredDetails,
-        inflow: filteredDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0),
-        outflow: filteredDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.withdrawals : 0), 0),
-        totalBalance: filteredDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0),
-        netChange: filteredDetails.reduce((s, i) => s + (i.currency === 'KRW' ? (i.deposits - i.withdrawals) : 0), 0),
+        inflow: filteredDetails.reduce((s, i) => s + (!checkIsUSD(i.account) ? Number(i.deposits || 0) : 0), 0),
+        outflow: filteredDetails.reduce((s, i) => s + (!checkIsUSD(i.account) ? Number(i.withdrawals || 0) : 0), 0),
+        inflowUSD: filteredDetails.reduce((s, i) => s + (checkIsUSD(i.account) ? Number(i.deposits || 0) : 0), 0),
+        outflowUSD: filteredDetails.reduce((s, i) => s + (checkIsUSD(i.account) ? Number(i.withdrawals || 0) : 0), 0),
+        totalBalance: filteredDetails.reduce((s, i) => s + (!checkIsUSD(i.account) ? Number(i.totalBalance || 0) : 0), 0),
+        totalBalanceUSD: filteredDetails.reduce((s, i) => s + (checkIsUSD(i.account) ? Number(i.totalBalance || 0) : 0), 0),
       };
     });
 
-  const monthlyInflow = monthData.reduce((sum, d) => sum + (d.inflow || 0), 0);
-  const monthlyOutflow = monthData.reduce((sum, d) => sum + (d.outflow || 0), 0);
-  const netChange = monthlyInflow - monthlyOutflow;
   const lastStatus = monthData.length > 0 ? monthData[monthData.length - 1] : null;
+  const firstStatus = monthData.length > 0 ? monthData[0] : null;
 
-  // 법인별 집계
-  const composeData = lastStatus?.details?.filter(d => d.entity.includes('컴포즈')) || [];
-  const smartData = lastStatus?.details?.filter(d => d.entity.includes('스마트팩토리')) || [];
+  // 법인별 월간 집계 헬퍼
+  const getEntityStats = (entityKeyword) => {
+    const lastDetails = lastStatus?.details?.filter(d => d.entity.includes(entityKeyword)) || [];
+    const firstDetails = firstStatus?.details?.filter(d => d.entity.includes(entityKeyword)) || [];
+    const hasUSD = lastDetails.some(d => checkIsUSD(d.account));
+    
+    // 마감 잔액 (기말 시점)
+    const closingKRW = lastDetails.reduce((s, i) => s + (!checkIsUSD(i.account) ? Number(i.totalBalance || 0) : 0), 0);
+    const closingUSD = lastDetails.reduce((s, i) => s + (checkIsUSD(i.account) ? Number(i.totalBalance || 0) : 0), 0);
+    
+    // 이월 잔액 (기초 시점 - 해당 월 첫 기록의 전일 잔액 직접 참조)
+    const openingKRW = firstDetails.reduce((s, i) => s + (!checkIsUSD(i.account) ? Number(i.prevBalance || 0) : 0), 0);
+    const openingUSD = firstDetails.reduce((s, i) => s + (checkIsUSD(i.account) ? Number(i.prevBalance || 0) : 0), 0);
+    
+    // 월간 입출금 합계 (전체 기간 합산)
+    const inflowKRW = monthData.reduce((sum, day) => 
+      sum + day.details.filter(d => d.entity.includes(entityKeyword) && !checkIsUSD(d.account)).reduce((s, i) => s + Number(i.deposits || 0), 0), 0);
+    const outflowKRW = monthData.reduce((sum, day) => 
+      sum + day.details.filter(d => d.entity.includes(entityKeyword) && !checkIsUSD(d.account)).reduce((s, i) => s + Number(i.withdrawals || 0), 0), 0);
+    const inflowUSD = monthData.reduce((sum, day) => 
+      sum + day.details.filter(d => d.entity.includes(entityKeyword) && checkIsUSD(d.account)).reduce((s, i) => s + Number(i.deposits || 0), 0), 0);
+    const outflowUSD = monthData.reduce((sum, day) => 
+      sum + day.details.filter(d => d.entity.includes(entityKeyword) && checkIsUSD(d.account)).reduce((s, i) => s + Number(i.withdrawals || 0), 0), 0);
+
+    return {
+      details: lastDetails,
+      hasUSD,
+      closingKRW,
+      closingUSD,
+      inflowKRW,
+      outflowKRW,
+      inflowUSD,
+      outflowUSD,
+      openingKRW,
+      openingUSD
+    };
+  };
+
+  const composeStats = getEntityStats('컴포즈');
+  const smartStats = getEntityStats('스마트팩토리');
+
+  // --- REPORT SUMMARY ALIGNMENT ---
+  // We sum ONLY the entities displayed in this report to avoid confusion with global system data
+  const monthlyInflow = composeStats.inflowKRW + smartStats.inflowKRW;
+  const monthlyOutflow = composeStats.outflowKRW + smartStats.outflowKRW;
+  const monthlyInflowUSD = composeStats.inflowUSD + smartStats.inflowUSD;
+  const monthlyOutflowUSD = composeStats.outflowUSD + smartStats.outflowUSD;
+  
+  const netChange = monthlyInflow - monthlyOutflow;
+  const netChangeUSD = monthlyInflowUSD - monthlyOutflowUSD;
+
+  // 전체 요약용 합계 (기초/기말 잔액 포함)
+  const openingKRWTotal = (composeStats.openingKRW + smartStats.openingKRW);
+  const openingUSDTotal = (composeStats.openingUSD + smartStats.openingUSD);
+  const closingKRWTotal = (composeStats.closingKRW + smartStats.closingKRW);
+  const closingUSDTotal = (composeStats.closingUSD + smartStats.closingUSD);
 
   // --- 공식 보고서 스타일 테이블 컴포넌트 ---
   const ReportTable = ({ title, headers, children, footer }) => (
@@ -99,16 +169,49 @@ const MonthlyReportPage = ({ recordDate = "2026-03-24", dailyStatuses = {}, exch
           footer={
             <>
               <tr className="divide-x divide-slate-300">
-                <td className="px-2 py-1.5 font-bold">합계 (내부이체 제외)</td>
-                <td className="px-2 py-1.5 text-right font-mono">{(lastStatus?.totalBalance - netChange || 0).toLocaleString()}</td>
-                <td className="px-2 py-1.5 text-right font-mono">{monthlyInflow.toLocaleString()}</td>
-                <td className="px-2 py-1.5 text-right font-mono">{monthlyOutflow.toLocaleString()}</td>
-                <td className="px-2 py-1.5 text-right font-mono text-red-600 border border-red-500 bg-white">{(lastStatus?.totalBalance || 0).toLocaleString()}</td>
-                <td className="px-2 py-1.5"></td>
+                <td className="px-2 py-1.5 font-bold bg-slate-100/50">합계 (KRW/USD)</td>
+                <td className="px-2 py-1.5 text-right font-mono">
+                  <div>{openingKRWTotal.toLocaleString()}</div>
+                  {openingUSDTotal > 0 && <div className="text-blue-600 font-bold">{formatUSD(openingUSDTotal)}</div>}
+                </td>
+                <td className="px-2 py-1.5 text-right font-mono">
+                  <div>{monthlyInflow.toLocaleString()}</div>
+                  {monthlyInflowUSD > 0 && <div className="text-blue-600 font-bold">{formatUSD(monthlyInflowUSD)}</div>}
+                </td>
+                <td className="px-2 py-1.5 text-right font-mono">
+                  <div>{monthlyOutflow.toLocaleString()}</div>
+                  {monthlyOutflowUSD > 0 && <div className="text-red-500 font-bold">{formatUSD(monthlyOutflowUSD)}</div>}
+                </td>
+                <td className="px-2 py-1.5 text-right font-mono text-red-600 border border-red-500 bg-white">
+                  <div>{closingKRWTotal.toLocaleString()}</div>
+                  {closingUSDTotal > 0 && <div className="text-blue-600 font-black">{formatUSD(closingUSDTotal)}</div>}
+                </td>
+                <td className="px-2 py-1.5 text-center text-[9px] text-slate-400">Currency Breakdown</td>
               </tr>
+              {closingUSDTotal > 0 && (
+                <tr className="divide-x divide-slate-300 bg-indigo-50/50">
+                  <td className="px-2 py-1.5 font-bold italic text-indigo-700">합계 (원화 환산액)</td>
+                  <td className="px-2 py-1.5 text-right font-mono text-indigo-700">
+                    {(openingKRWTotal + openingUSDTotal * exchangeRate).toLocaleString()}
+                  </td>
+                  <td className="px-2 py-1.5 text-right font-mono text-indigo-700">
+                    {(monthlyInflow + monthlyInflowUSD * exchangeRate).toLocaleString()}
+                  </td>
+                  <td className="px-2 py-1.5 text-right font-mono text-indigo-700">
+                    {(monthlyOutflow + monthlyOutflowUSD * exchangeRate).toLocaleString()}
+                  </td>
+                  <td className="px-2 py-1.5 text-right font-mono font-black text-indigo-900 bg-white border-2 border-indigo-200">
+                    {(closingKRWTotal + closingUSDTotal * exchangeRate).toLocaleString()}
+                  </td>
+                  <td className="px-2 py-1.5 text-[8px] text-indigo-400 font-bold text-center">Appx. Total KRW<br/>(Rate: {exchangeRate})</td>
+                </tr>
+              )}
               <tr className="bg-[#fce4d6] divide-x divide-slate-300">
-                <td colSpan={4} className="px-2 py-1.5 text-center font-bold">당 월 순 증 감 액</td>
-                <td className="px-2 py-1.5 text-right font-mono font-bold text-slate-900">{netChange.toLocaleString()}</td>
+                <td colSpan={4} className="px-2 py-1.5 text-center font-bold uppercase tracking-widest">당 월 순 증 감 액</td>
+                <td className="px-2 py-1.5 text-right font-mono font-bold text-slate-900">
+                  <div>{netChange.toLocaleString()}</div>
+                  {netChangeUSD !== 0 && <div className="text-blue-600">{formatUSD(netChangeUSD)}</div>}
+                </td>
                 <td className="px-2 py-1.5"></td>
               </tr>
             </>
@@ -117,40 +220,40 @@ const MonthlyReportPage = ({ recordDate = "2026-03-24", dailyStatuses = {}, exch
           <tr className="divide-x divide-slate-200 hover:bg-slate-50">
             <td className="px-2 py-1.5 font-bold">컴포즈커피</td>
             <td className="px-2 py-1.5 text-right font-mono text-[10px]">
-              <div>{(composeData.reduce((s,i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0) - composeData.reduce((s,i) => s + (i.currency === 'KRW' ? (i.deposits - i.withdrawals) : 0), 0)).toLocaleString()}</div>
-              {composeData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-bold">{(composeData.reduce((s,i) => s + (i.currency === 'USD' ? i.totalBalance : 0), 0) - composeData.reduce((s,i) => s + (i.currency === 'USD' ? (i.deposits - i.withdrawals) : 0), 0)).toLocaleString()} USD</div>}
+              <div>{composeStats.openingKRW.toLocaleString()}</div>
+              {composeStats.hasUSD && <div className="text-blue-600 font-bold">{formatUSD(composeStats.openingUSD)}</div>}
             </td>
             <td className="px-2 py-1.5 text-right font-mono text-[10px]">
-              <div>{composeData.reduce((s,i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0).toLocaleString()}</div>
-              {composeData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-bold">{composeData.reduce((s,i) => s + (i.currency === 'USD' ? i.deposits : 0), 0).toLocaleString()} USD</div>}
+              <div>{composeStats.inflowKRW.toLocaleString()}</div>
+              {composeStats.hasUSD && <div className="text-blue-600 font-bold">{formatUSD(composeStats.inflowUSD)}</div>}
             </td>
             <td className="px-2 py-1.5 text-right font-mono text-red-500 text-[10px]">
-              <div>{composeData.reduce((s,i) => s + (i.currency === 'KRW' ? i.withdrawals : 0), 0).toLocaleString()}</div>
-              {composeData.some(d => d.currency === 'USD') && <div className="text-red-400 font-bold">{composeData.reduce((s,i) => s + (i.currency === 'USD' ? i.withdrawals : 0), 0).toLocaleString()} USD</div>}
+              <div>{composeStats.outflowKRW.toLocaleString()}</div>
+              {composeStats.hasUSD && <div className="text-red-400 font-bold">{formatUSD(composeStats.outflowUSD)}</div>}
             </td>
             <td className="px-2 py-1.5 text-right font-mono font-bold text-[10px]">
-              <div>{composeData.reduce((s,i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0).toLocaleString()}</div>
-              {composeData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-black">{composeData.reduce((s,i) => s + (i.currency === 'USD' ? i.totalBalance : 0), 0).toLocaleString()} USD</div>}
+              <div>{composeStats.closingKRW.toLocaleString()}</div>
+              {composeStats.hasUSD && <div className="text-blue-600 font-black">{formatUSD(composeStats.closingUSD)}</div>}
             </td>
             <td className="px-2 py-1.5"></td>
           </tr>
           <tr className="divide-x divide-slate-200 hover:bg-slate-50">
             <td className="px-2 py-1.5 font-bold">컴포즈커피스마트팩토리</td>
             <td className="px-2 py-1.5 text-right font-mono text-[10px]">
-              <div>{(smartData.reduce((s,i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0) - smartData.reduce((s,i) => s + (i.currency === 'KRW' ? (i.deposits - i.withdrawals) : 0), 0)).toLocaleString()}</div>
-              {smartData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-bold">{(smartData.reduce((s,i) => s + (i.currency === 'USD' ? i.totalBalance : 0), 0) - smartData.reduce((s,i) => s + (i.currency === 'USD' ? (i.deposits - i.withdrawals) : 0), 0)).toLocaleString()} USD</div>}
+              <div>{smartStats.openingKRW.toLocaleString()}</div>
+              {smartStats.hasUSD && <div className="text-blue-600 font-bold">{formatUSD(smartStats.openingUSD)}</div>}
             </td>
             <td className="px-2 py-1.5 text-right font-mono text-[10px]">
-              <div>{smartData.reduce((s,i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0).toLocaleString()}</div>
-              {smartData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-bold">{smartData.reduce((s,i) => s + (i.currency === 'USD' ? i.deposits : 0), 0).toLocaleString()} USD</div>}
+              <div>{smartStats.inflowKRW.toLocaleString()}</div>
+              {smartStats.hasUSD && <div className="text-blue-600 font-bold">{formatUSD(smartStats.inflowUSD)}</div>}
             </td>
             <td className="px-2 py-1.5 text-right font-mono text-red-500 text-[10px]">
-              <div>{smartData.reduce((s,i) => s + (i.currency === 'KRW' ? i.withdrawals : 0), 0).toLocaleString()}</div>
-              {smartData.some(d => d.currency === 'USD') && <div className="text-red-400 font-bold">{smartData.reduce((s,i) => s + (i.currency === 'USD' ? i.withdrawals : 0), 0).toLocaleString()} USD</div>}
+              <div>{smartStats.outflowKRW.toLocaleString()}</div>
+              {smartStats.hasUSD && <div className="text-red-400 font-bold">{formatUSD(smartStats.outflowUSD)}</div>}
             </td>
             <td className="px-2 py-1.5 text-right font-mono font-bold text-[10px]">
-              <div>{smartData.reduce((s,i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0).toLocaleString()}</div>
-              {smartData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-black">{smartData.reduce((s,i) => s + (i.currency === 'USD' ? i.totalBalance : 0), 0).toLocaleString()} USD</div>}
+              <div>{smartStats.closingKRW.toLocaleString()}</div>
+              {smartStats.hasUSD && <div className="text-blue-600 font-black">{formatUSD(smartStats.closingUSD)}</div>}
             </td>
             <td className="px-2 py-1.5"></td>
           </tr>
@@ -179,14 +282,14 @@ const MonthlyReportPage = ({ recordDate = "2026-03-24", dailyStatuses = {}, exch
                     <tr className="divide-x divide-slate-300">
                     <td colSpan={4} className="px-2 py-1.5 text-center font-bold">소 계</td>
                     <td className="px-2 py-1.5 text-right font-mono text-red-600 border border-red-500 bg-white">
-                      <div>{composeData.reduce((s,i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0).toLocaleString()} 원</div>
-                      {composeData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-black">{composeData.reduce((s,i) => s + (i.currency === 'USD' ? i.totalBalance : 0), 0).toLocaleString()} USD</div>}
+                      <div>{composeStats.closingKRW.toLocaleString()} 원</div>
+                      {composeStats.hasUSD && <div className="text-blue-600 font-black">{formatUSD(composeStats.closingUSD)}</div>}
                     </td>
                     <td className="px-2 py-1.5"></td>
                     </tr>
                 }
                 >
-                {composeData.map((item, i) => (
+                {composeStats.details.map((item, i) => (
                     <tr key={i} className="divide-x divide-slate-200">
                     <td className="px-2 py-1 text-center font-bold text-slate-400">{i + 1}</td>
                     <td className="px-2 py-1">{item.bank}</td>
@@ -212,14 +315,14 @@ const MonthlyReportPage = ({ recordDate = "2026-03-24", dailyStatuses = {}, exch
                     <tr className="divide-x divide-slate-300">
                     <td colSpan={4} className="px-2 py-1.5 text-center font-bold">소 계</td>
                     <td className="px-2 py-1.5 text-right font-mono text-red-600 border border-red-500 bg-white">
-                      <div>{smartData.reduce((s,i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0).toLocaleString()} 원</div>
-                      {smartData.some(d => d.currency === 'USD') && <div className="text-blue-600 font-black">{smartData.reduce((s,i) => s + (i.currency === 'USD' ? i.totalBalance : 0), 0).toLocaleString()} USD</div>}
+                      <div>{smartStats.closingKRW.toLocaleString()} 원</div>
+                      {smartStats.hasUSD && <div className="text-blue-600 font-black">{formatUSD(smartStats.closingUSD)}</div>}
                     </td>
                     <td className="px-2 py-1.5"></td>
                     </tr>
                 }
                 >
-                {smartData.map((item, i) => (
+                {smartStats.details.map((item, i) => (
                     <tr key={i} className="divide-x divide-slate-200">
                     <td className="px-2 py-1 text-center font-bold text-slate-400">{i + 1}</td>
                     <td className="px-2 py-1">{item.bank}</td>

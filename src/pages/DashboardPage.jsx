@@ -8,6 +8,17 @@ import PrintReport from '../components/dashboard/PrintReport';
 const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAccounts: masterSmart, fxSchedule, withdrawals = [], dailyStatuses = {}, exchangeRate = 1520 }) => {
   const [isRawDataOpen, setIsRawDataOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+
+  // --- 마스터 계좌 기반 통화 판별 로직 (데이터 정합성 보장) ---
+  const usdAccountSet = new Set([
+    ...masterCompose.filter(a => a.isUSD).map(a => String(a.no).replace(/[\s-]/g, '')),
+    ...masterSmart.filter(a => a.isUSD).map(a => String(a.no).replace(/[\s-]/g, ''))
+  ]);
+
+  const checkIsUSD = (accountNo) => {
+    if (!accountNo) return false;
+    return usdAccountSet.has(String(accountNo).replace(/[\s-]/g, ''));
+  };
   
   // 1. 해당 날짜 또는 가장 최근 과거의 시재 현황 데이터 추출 (Running Balance 기반)
   const getBaseStatus = () => {
@@ -36,6 +47,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
 
   // 엑셀 데이터를 테이블 형식으로 매핑하는 헬퍼
   const mapStatusToAccount = (d) => {
+    const isUSD = checkIsUSD(d.account);
     if (isFinal) {
       // 확정 리포트 모드: 업로드된 수치 그대로 표시
       return {
@@ -46,7 +58,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
         withdraw: d.withdrawals,
         internal: d.deposits,
         final: d.totalBalance,
-        isUSD: d.currency === 'USD',
+        isUSD,
         note: d.nickname || d.bank
       };
     } else {
@@ -69,7 +81,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
         withdraw: todayWithdrawSum,
         internal: todayInflowSum,
         final: d.totalBalance - todayWithdrawSum + todayInflowSum,
-        isUSD: d.currency === 'USD',
+        isUSD,
         note: d.nickname || d.bank
       };
     }
@@ -87,8 +99,9 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   ).filter(acc => acc.balance !== 0 || acc.withdraw !== 0 || acc.internal !== 0 || acc.final !== 0);
 
   // 합계 계산
-  const composeTotal = calculateTotal(composeAccounts, exchangeRate);
-  const smartTotal = calculateTotal(smartAccounts, exchangeRate);
+  const masterLists = { compose: masterCompose, smart: masterSmart };
+  const composeTotal = calculateTotal(composeAccounts, masterLists);
+  const smartTotal = calculateTotal(smartAccounts, masterLists);
   
   // 로우 데이터 필터링 (UI 하단 표시용)
   const composeWithdrawals = dailyWithdrawals.filter(w => w.section === '컴포즈커피');

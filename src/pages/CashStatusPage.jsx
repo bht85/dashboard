@@ -7,7 +7,9 @@ const CashStatusPage = ({
   selectedDate: initialDate, 
   dailyStatuses, 
   setDailyStatuses,
-  exchangeRate = 1
+  exchangeRate = 1,
+  composeAccounts = [],
+  smartAccounts = []
 }) => {
   const [recordDate, setRecordDate] = useState(initialDate);
   const [activeEntity, setActiveEntity] = useState('컴포즈커피');
@@ -38,6 +40,9 @@ const CashStatusPage = ({
         let currentGroup = '';
         const parsed = [];
 
+        // Master Account List for currency lookup (Based on activeEntity)
+        const masterList = activeEntity.includes('스마트팩토리') ? smartAccounts : composeAccounts;
+
         data.forEach((row, idx) => {
           if (idx < 1) return; // Skip header
 
@@ -45,7 +50,6 @@ const CashStatusPage = ({
           const valGroup = row[1] ? String(row[1]).trim() : '';
           const valBank = row[2] ? String(row[2]).trim() : '';
           const valAccount = row[3] ? String(row[3]).trim() : '';
-          const valCurrency = row[6] ? String(row[6]).trim() : 'KRW';
 
           // Update sticky values
           if (valEntity && !valEntity.includes('계') && !valEntity.includes('합계')) {
@@ -58,6 +62,11 @@ const CashStatusPage = ({
           if (!valAccount && !valBank) return;
           if (valEntity.includes('총계') || valEntity.includes('합계') || valGroup.includes('소계')) return;
 
+          // MASTER LIST LOOKUP: Use account number as the source of truth for currency
+          const existingMaster = masterList.find(a => String(a.no).replace(/[\s-]/g, '') === valAccount.replace(/[\s-]/g, ''));
+          const isUSD = existingMaster ? !!existingMaster.isUSD : (row[6] ? String(row[6]).trim().toUpperCase() === 'USD' : false);
+          const valCurrency = isUSD ? 'USD' : 'KRW';
+
           const cleanNum = (v) => {
             if (v === undefined || v === null || v === '' || v === '-') return 0;
             const cleaned = String(v).replace(/[^0-9.-]/g, '');
@@ -67,13 +76,14 @@ const CashStatusPage = ({
 
           const accountEntry = {
             id: Date.now() + idx,
-            entity: currentEntity,
+            entity: currentEntity || activeEntity,
             group: currentGroup,
             bank: valBank,
             account: valAccount,
             nickname: row[4] || '',
             type: row[5] || '',
             currency: valCurrency,
+            isUSD,
             prevBalance: cleanNum(row[7]),
             deposits: cleanNum(row[8]),
             withdrawals: cleanNum(row[9]),

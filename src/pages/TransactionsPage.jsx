@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, FileText, CheckCircle2, AlertCircle, Trash2, Database, ArrowRight, Calendar, Loader2, ListFilter } from 'lucide-react';
-import { formatKRW } from '../utils/formatters';
+import { formatKRW, formatUSD } from '../utils/formatters';
 import * as XLSX from 'xlsx';
 
 const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], onUpdateAccount, onSaveWithdrawals, onDeleteWithdrawal, onDeleteBatch }) => {
@@ -8,6 +8,7 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
   const [selectedSection, setSelectedSection] = useState('compose');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [manualEntry, setManualEntry] = useState({ bank: '', account: '', amount: '', payee: '', memo: '' });
   const fileInputRef = useRef(null);
@@ -39,6 +40,8 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
       accountId: selectedAccountId,
       section: selectedSection === 'compose' ? '컴포즈커피' : '스마트팩토리',
       fromAccount: selectedAccount.no,
+      currency: selectedAccount.isUSD ? 'USD' : 'KRW',
+      isUSD: selectedAccount.isUSD,
       batchId
     }));
     await onSaveWithdrawals(newItems);
@@ -256,7 +259,10 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
             <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-500" /> {paymentDate} {selectedSection === 'compose' ? '컴포즈' : '스마트'} 확정 내역
             </h3>
-            <span className="text-lg font-bold text-slate-900 tabular-nums">{formatKRW(existingRecords.reduce((s, i) => s + i.amount, 0))}</span>
+            <span className="text-lg font-bold text-slate-900 tabular-nums">
+              {formatKRW(existingRecords.filter(r => !r.isUSD).reduce((s, i) => s + i.amount, 0))}
+              {existingRecords.some(r => r.isUSD) && ` / ${formatUSD(existingRecords.filter(r => r.isUSD).reduce((s, i) => s + i.amount, 0))}`}
+            </span>
           </div>
           <div className="overflow-x-auto max-h-[600px]">
              <table className="w-full text-left text-[11px]">
@@ -290,7 +296,9 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-2.5 text-right font-black text-red-500">{formatKRW(item.amount)}</td>
+                      <td className="px-4 py-2.5 text-right font-black text-red-500">
+                        {item.isUSD ? formatUSD(item.amount) : formatKRW(item.amount)}
+                      </td>
                       <td className="px-4 py-2.5 text-center text-[10px] text-slate-500 whitespace-pre-wrap">{item.memo || '-'}</td>
                       <td className="px-4 py-2.5 text-center font-mono text-slate-400">{item.account || '-'}</td>
                       <td className="px-4 py-2.5 text-center font-mono text-slate-400">{item.fromAccount || '-'}</td>

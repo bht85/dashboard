@@ -46,8 +46,8 @@ const FinancialTable = ({ title, accounts, totals, icon: Icon }) => (
               <td className="px-4 py-3 border-r border-slate-100 font-mono text-slate-400 text-xs">{acc.no}</td>
               <td className="px-4 py-3 border-r border-slate-100 font-medium text-slate-600">{acc.type}</td>
               <td className="px-4 py-3 border-r border-slate-100 text-right font-mono font-semibold tabular-nums tracking-tight">{acc.isUSD ? formatUSD(acc.balance) : formatKRW(acc.balance)}</td>
-              <td className="px-4 py-3 border-r border-slate-100 text-right text-red-500 font-mono font-semibold tabular-nums tracking-tight">{acc.withdraw > 0 ? formatKRW(acc.withdraw) : '-'}</td>
-              <td className="px-4 py-3 border-r border-slate-100 text-right text-emerald-600 font-mono font-semibold tabular-nums tracking-tight">{acc.internal > 0 ? formatKRW(acc.internal) : '-'}</td>
+              <td className="px-4 py-3 border-r border-slate-100 text-right text-red-500 font-mono font-semibold tabular-nums tracking-tight">{acc.withdraw > 0 ? (acc.isUSD ? formatUSD(acc.withdraw) : formatKRW(acc.withdraw)) : '-'}</td>
+              <td className="px-4 py-3 border-r border-slate-100 text-right text-emerald-600 font-mono font-semibold tabular-nums tracking-tight">{acc.internal > 0 ? (acc.isUSD ? formatUSD(acc.internal) : formatKRW(acc.internal)) : '-'}</td>
               <td className="px-4 py-3 border-r border-slate-100 text-right font-bold font-mono text-indigo-900 tabular-nums tracking-tighter">{acc.isUSD ? formatUSD(acc.final) : formatKRW(acc.final)}</td>
               <td className="px-4 py-3 text-[11px] text-slate-400 font-medium leading-tight">{acc.note || acc.bank}</td>
             </tr>

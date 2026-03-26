@@ -391,6 +391,8 @@ const App = () => {
           recordDate={selectedDate}
           dailyStatuses={dailyStatuses}
           exchangeRate={exchangeRate}
+          composeAccounts={composeAccounts}
+          smartAccounts={smartAccounts}
         />
       )}
       {currentView === 'accounts' && (
@@ -426,6 +428,8 @@ const App = () => {
           dailyStatuses={dailyStatuses}
           setDailyStatuses={saveDailyStatus} // Use DB worker
           exchangeRate={exchangeRate}
+          composeAccounts={composeAccounts}
+          smartAccounts={smartAccounts}
         />
       )}
     </Layout>
