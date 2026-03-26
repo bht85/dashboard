@@ -289,14 +289,14 @@ const MonthlyReportPage = ({
                     </tr>
                 }
                 >
-                {composeStats.details.map((item, i) => (
+                {composeStats.details.filter(d => Number(d.totalBalance || 0) !== 0).map((item, i) => (
                     <tr key={i} className="divide-x divide-slate-200">
                     <td className="px-2 py-1 text-center font-bold text-slate-400">{i + 1}</td>
                     <td className="px-2 py-1">{item.bank}</td>
                     <td className="px-2 py-1 font-mono text-slate-400">{item.account}</td>
-                    <td className="px-2 py-1">{item.nickname}</td>
-                    <td className="px-2 py-1 text-right font-mono font-bold">{item.totalBalance.toLocaleString()}</td>
-                    <td className="px-2 py-1 text-[9px] text-slate-400 italic">{item.currency !== 'KRW' ? item.currency : ''}</td>
+                    <td className="px-2 py-1 font-black text-slate-700">{item.nickname || item.type || '-'}</td>
+                    <td className="px-2 py-1 text-right font-mono font-bold">{checkIsUSD(item.account) ? formatUSD(item.totalBalance) : item.totalBalance.toLocaleString()}</td>
+                    <td className="px-2 py-1 text-[9px] text-slate-400 italic">{checkIsUSD(item.account) ? item.currency : ''}</td>
                     </tr>
                 ))}
                 </ReportTable>
@@ -322,14 +322,14 @@ const MonthlyReportPage = ({
                     </tr>
                 }
                 >
-                {smartStats.details.map((item, i) => (
+                {smartStats.details.filter(d => Number(d.totalBalance || 0) !== 0).map((item, i) => (
                     <tr key={i} className="divide-x divide-slate-200">
                     <td className="px-2 py-1 text-center font-bold text-slate-400">{i + 1}</td>
                     <td className="px-2 py-1">{item.bank}</td>
                     <td className="px-2 py-1 font-mono text-slate-400">{item.account}</td>
-                    <td className="px-2 py-1">{item.nickname}</td>
-                    <td className="px-2 py-1 text-right font-mono font-bold">{item.totalBalance.toLocaleString()}</td>
-                    <td className="px-2 py-1 text-[9px] text-slate-400 italic">{item.currency !== 'KRW' ? item.currency : ''}</td>
+                    <td className="px-2 py-1 font-black text-slate-700">{item.nickname || item.type || '-'}</td>
+                    <td className="px-2 py-1 text-right font-mono font-bold">{checkIsUSD(item.account) ? formatUSD(item.totalBalance) : item.totalBalance.toLocaleString()}</td>
+                    <td className="px-2 py-1 text-[9px] text-slate-400 italic">{checkIsUSD(item.account) ? item.currency : ''}</td>
                     </tr>
                 ))}
                 </ReportTable>
