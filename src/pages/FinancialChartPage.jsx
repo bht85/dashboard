@@ -268,20 +268,20 @@ const StatCard = ({ title, value, icon, color, subtitle, trend }) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:translate-y-[-4px] transition-all">
+    <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm hover:translate-y-[-4px] transition-all">
       <div className="flex justify-between items-start mb-4">
-        <div className={`p-3 rounded-2xl ${colors[color]}`}>
+        <div className={`p-2.5 rounded-2xl ${colors[color]}`}>
           {icon}
         </div>
         {trend && (
-           <span className={`text-[10px] font-black uppercase px-2 py-1 rounded-lg ${trend === 'up' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+           <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-lg ${trend === 'up' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
              {trend === 'up' ? 'Increase' : 'Decrease'}
            </span>
         )}
       </div>
-      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{title}</h4>
-      <div className="text-xl font-black text-slate-900 tracking-tight mb-1">{value}</div>
-      <p className="text-[10px] text-slate-400 font-bold italic">{subtitle}</p>
+      <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{title}</h4>
+      <div className="text-sm font-black text-slate-900 tracking-tight mb-1 truncate" title={value}>{value}</div>
+      <p className="text-[9px] text-slate-400 font-bold italic truncate">{subtitle}</p>
     </div>
   );
 };
