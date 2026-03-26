@@ -140,13 +140,8 @@ const MonthlyReportPage = ({
           <h1 className="text-2xl font-black text-slate-900 tracking-tighter">월간 자금 일보 ({monthName})</h1>
           <p className="text-xs text-slate-500 mt-1 font-bold">작성일: {recordDate} | 보고자: 재무본부</p>
         </div>
-        <div className="flex gap-2 print:hidden">
-            <button className="flex items-center gap-2 bg-slate-100 text-slate-600 px-4 py-2 rounded-lg text-xs font-bold hover:bg-slate-200 transition-all">
-                <Printer className="w-4 h-4" /> 인쇄하기
-            </button>
-            <button className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all">
-                <Download className="w-4 h-4" /> 엑셀 다운로드
-            </button>
+        <div className="flex gap-2 print:hidden italic text-[10px] text-slate-400">
+            데이터 자동 산출 (비공식 리포트)
         </div>
       </div>
 

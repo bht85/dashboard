@@ -90,12 +90,6 @@ const Header = ({
         </div>
 
         <button 
-          onClick={() => window.print()}
-          className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
-        >
-          PDF 보고서 출력
-        </button>
-        <button 
           onClick={handleLogout}
           className="bg-white text-slate-500 border border-slate-200 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-red-50 hover:text-red-600 hover:border-red-100 transition-all active:scale-95"
         >
