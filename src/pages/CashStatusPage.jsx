@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Upload, FileText, CheckCircle2, AlertCircle, Database, ArrowRight, Loader2, Landmark, Calendar } from 'lucide-react';
-import { formatKRW } from '../utils/formatters';
+import { formatKRW, formatUSD } from '../utils/formatters';
 import * as XLSX from 'xlsx';
 
 const CashStatusPage = ({ 
