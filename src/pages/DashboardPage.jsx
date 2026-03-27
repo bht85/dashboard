@@ -123,8 +123,8 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   const composeSums = calculateSeparatedSums(composeWithdrawals);
   const smartSums = calculateSeparatedSums(smartWithdrawals);
 
-  // 3. 외화 송금 합계 계산 (송금 완료되지 않은 '송금 예정' 건만 합산)
-  const pendingFXSchedules = fxSchedule.filter(item => item.status === '송금 예정');
+  // 3. 외화 송금 합계 계산 (송금 완료(집행)되지 않은 모든 건 합산)
+  const pendingFXSchedules = fxSchedule.filter(item => item.status !== '송금 완료(집행)');
   const usdTotal = pendingFXSchedules.reduce((sum, item) => sum + item.amount, 0);
   const krwEquivalent = usdTotal * exchangeRate;
 
