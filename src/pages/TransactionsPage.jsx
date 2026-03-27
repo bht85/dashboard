@@ -73,7 +73,6 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
     const file = e.target.files[0];
     if (!file) return;
     
-    // 대량이체 양식은 계좌 선택이 선행되어야 함 (엑셀에 출금계좌가 없는 경우가 많거나 부정확함)
     if (type === 'bulk' && !selectedAccountId) {
       alert('1단계: 출금 계좌를 먼저 선택해주세요.');
       e.target.value = null;
@@ -90,13 +89,19 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
         
+        console.log(`Parsing Excel [${type}]:`, data.slice(0, 5)); // 상위 5줄 로그
+
         let parsed = [];
         let targetAccount = selectedAccount;
         let targetSection = selectedSection;
 
         if (type === 'bulk') {
-          // 대량이체 양식 파싱 (Index 기준: 입금은행[1], 입금계좌번호[2], 입금액[3], 예금주[6], 파일메모[12], 출금계좌[13])
-          parsed = data.slice(1).map((row, idx) => ({
+          // 대량이체 양식 파싱
+          // 헤더 찾기 (입금은행 또는 입금계좌번호가 있는 줄)
+          const headerIdx = data.findIndex(r => r.some(c => String(c).includes('입금은행') || String(c).includes('입금계좌번호')));
+          const dataRows = headerIdx === -1 ? data.slice(1) : data.slice(headerIdx + 1);
+
+          parsed = dataRows.map((row, idx) => ({
             id: Date.now() + idx,
             bank: row[1] || '',
             account: String(row[2] || '').replace(/[\s-]/g, ''), 
@@ -106,43 +111,46 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
             excelFromAccount: String(row[13] || '').replace(/[\s-]/g, '')
           })).filter(item => item.bank && item.amount > 0);
         } else {
-          // 등록한 내역 양식 파싱 (Index 기준: 거래구분[1], 출금계좌[2], 입금은행[3], 입금계좌[4], 예금주[5], 금액[7])
-          const rows = data.slice(1);
-          if (rows.length === 0) return;
+          // 등록한 내역 양식 파싱
+          // 헤더 찾기 (거래구분 또는 출금계좌가 있는 줄)
+          const headerIdx = data.findIndex(r => r.some(c => String(c).includes('거래구분') || String(c).includes('출금계좌')));
+          const dataRows = headerIdx === -1 ? data.slice(1) : data.slice(headerIdx + 1);
 
-          // 1. 엑셀 파일 내의 출금계좌 추출 (첫 번째 유효 행 기준)
-          const firstRow = rows.find(r => r[2]);
+          if (dataRows.length === 0) {
+            alert('데이터를 찾을 수 없습니다.');
+            return;
+          }
+
+          // 첫 번째 유효 행에서 출금계좌 추출
+          const firstRow = dataRows.find(r => r[2]);
           const excelAccountNo = firstRow ? String(firstRow[2]).replace(/[\s-]/g, '') : null;
 
           if (!selectedAccountId && excelAccountNo) {
-            // 자동 매핑 시도
             const matched = allAccounts.find(a => String(a.no).replace(/[\s-]/g, '') === excelAccountNo);
             if (matched) {
               targetAccount = matched;
               targetSection = matched.section;
-              // UI 상태 업데이트 (사용자 편의)
               setSelectedSection(matched.section);
               setSelectedAccountId(matched.id);
             } else {
-              alert(`엑셀의 출금계좌(${excelAccountNo})와 일치하는 계좌를 시스템에서 찾을 수 없습니다. 계좌를 먼저 선택 후 업로드해주세요.`);
+              alert(`시스템에 등록되지 않은 출금계좌(${excelAccountNo})입니다. 계좌 관리에서 계좌를 등록하시거나 계좌를 직접 선택 후 다시 시도해주세요.`);
               return;
             }
           } else if (selectedAccountId && excelAccountNo) {
-            // 선택된 계좌와 엑셀 계좌가 다른지 확인 (경고)
             const selectedNo = String(selectedAccount.no).replace(/[\s-]/g, '');
             if (selectedNo !== excelAccountNo) {
-              if (!window.confirm(`선택된 계좌(${selectedNo})와 엑셀 내 출금계좌(${excelAccountNo})가 다릅니다. 현재 선택된 계좌로 진행하시겠습니까?`)) {
+              if (!window.confirm(`현재 선택된 계좌(${selectedNo})와 엑셀 내 출금계좌(${excelAccountNo})가 다릅니다. 진행하시겠습니까?`)) {
                 return;
               }
             }
           }
 
           if (!targetAccount) {
-            alert('출금 계좌 정보가 없습니다. 계좌를 선택하거나 유효한 엑셀 파일을 업로드해주세요.');
+            alert('계좌 정보를 확정할 수 없습니다. 계좌를 먼저 선택 후 업로드해주세요.');
             return;
           }
 
-          parsed = rows.map((row, idx) => ({
+          parsed = dataRows.map((row, idx) => ({
             id: Date.now() + idx,
             bank: row[3] || '',
             account: String(row[4] || '').replace(/[\s-]/g, ''), 
@@ -153,12 +161,16 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
           })).filter(item => item.bank && item.amount > 0);
         }
 
+        console.log("Parsed Items:", parsed);
+
         if (parsed.length > 0) {
           await processAndSave(parsed, null, targetAccount, targetSection);
+        } else {
+          alert('유효한 출금 대상을 찾을 수 없습니다.');
         }
       } catch (err) {
         console.error(err);
-        alert('엑셀 파일 분석 중 오류가 발생했습니다. 양식이 맞는지 확인해주세요.');
+        alert('엑셀 분석 도중 오류가 발생했습니다. 브라우저 콘솔 로그를 확인해주세요.');
       } finally {
         setIsParsing(false);
         if (e.target) e.target.value = null;
