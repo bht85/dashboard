@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ExpenseSummaryBox from '../components/dashboard/ExpenseSummaryBox';
 import FinancialTable from '../components/dashboard/FinancialTable';
 import { calculateTotal, formatKRW, formatUSD, isExcludedAccount } from '../utils/formatters';
-import { Wallet, TrendingUp, Building2, Factory, FileText, Globe, ChevronDown, ChevronUp, ListFilter } from 'lucide-react';
+import { Wallet, TrendingUp, Building2, Factory, FileText, Globe, ChevronDown, ChevronUp, ListFilter, ArrowRight } from 'lucide-react';
 
 const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAccounts: masterSmart, fxSchedule, withdrawals = [], dailyStatuses = {}, dailyIssues = {}, onUpdateIssue, exchangeRate = 1520 }) => {
   const [isRawDataOpen, setIsRawDataOpen] = useState(false);
