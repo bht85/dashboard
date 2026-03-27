@@ -378,7 +378,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
-                  {fxSchedule.filter(s => s.date === selectedDate).map((s) => (
+                  {fxSchedule.filter(s => s.date === selectedDate && s.status !== '송금 완료(집행)').map((s) => (
                     <tr key={s.id} className="hover:bg-blue-50/30 transition-colors duration-150 bg-blue-50/10">
                       <td className="px-4 py-2.5 border-r border-slate-100/50 font-black text-blue-600">{s.date} (오늘)</td>
                       <td className="px-4 py-2.5 border-r border-slate-100/50 font-bold text-slate-700">{s.client}</td>
@@ -388,7 +388,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                       <td className="px-4 py-2.5"><span className="text-[10px] font-bold bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100">{s.status}</span></td>
                     </tr>
                   ))}
-                  {fxSchedule.filter(s => s.date !== selectedDate).length > 0 && (
+                  {fxSchedule.filter(s => s.date !== selectedDate && s.status !== '송금 완료(집행)').length > 0 && (
                     <>
                       <tr className="bg-slate-50">
                         <td colSpan={6} className="px-0 py-0">
@@ -397,13 +397,13 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                             className="w-full px-4 py-2.5 flex items-center justify-between group hover:bg-slate-100 transition-colors"
                           >
                             <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest pl-4">
-                              {isScheduleOpen ? '미래 송금 일정 숨기기' : `미래 송금 일정 보기 (${fxSchedule.filter(s => s.date !== selectedDate).length}건)`}
+                              {isScheduleOpen ? '미래 송금 일정 숨기기' : `미래 송금 일정 보기 (${fxSchedule.filter(s => s.date !== selectedDate && s.status !== '송금 완료(집행)').length}건)`}
                             </span>
                             {isScheduleOpen ? <ChevronUp className="w-4 h-4 text-slate-300 pr-4" /> : <ChevronDown className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 pr-4" />}
                           </button>
                         </td>
                       </tr>
-                      {isScheduleOpen && fxSchedule.filter(s => s.date !== selectedDate).map((s) => (
+                      {isScheduleOpen && fxSchedule.filter(s => s.date !== selectedDate && s.status !== '송금 완료(집행)').map((s) => (
                         <tr key={s.id} className="hover:bg-slate-50 transition-colors duration-150">
                           <td className="px-4 py-2.5 border-r border-slate-100/50 font-medium text-slate-400">{s.date}</td>
                           <td className="px-4 py-2.5 border-r border-slate-100/50 font-bold text-slate-700">{s.client}</td>
