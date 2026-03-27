@@ -40,14 +40,14 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
     // 4. 예금주명 검증 (완전 일치 또는 공식 법인명 변형만 허용)
     // "박석회(컴포즈커피)" 같은 가맹점주 거래를 내부이체로 오판하지 않도록 정확도 향상
     const internalPayeePatterns = [
-      '컴포즈커피', '스마트팩토리', '제이엠씨에프티',
-      '주식회사컴포즈커피', '주식회사스마트팩토리', '주식회사제이엠씨에프티',
-      '(주)컴포즈커피', '(주)스마트팩토리', '(주)제이엠씨에프티',
-      '컴포즈커피(주)', '스마트팩토리(주)', '제이엠씨에프티(주)'
+      '컴포즈커피', '스마트팩토리', '제이엠씨에프티', '컴포즈커피스마트',
+      '주식회사컴포즈커피', '주식회사스마트팩토리', '주식회사제이엠씨에프티', '주식회사컴포즈커피스마트',
+      '컴포즈커피(주)', '스마트팩토리(주)', '제이엠씨에프티(주)', '컴포즈커피스마트(주)'
     ];
     
-    const cleanPayee = String(w.payee || '').replace(/[\s]/g, ''); // 공백 제거 후 비교
-    const isInternalPayee = internalPayeePatterns.includes(cleanPayee);
+    // (주) 등의 괄호와 공백을 모두 제거하고 핵심어 위주로 비교하여 판별력 강화
+    const cleanPayee = String(w.payee || '').replace(/[\s()주식회사]/g, ''); 
+    const isInternalPayee = internalPayeePatterns.some(p => p.replace(/[\s()주식회사]/g, '') === cleanPayee);
     
     return isOurAccount && isInternalPayee;
   };
