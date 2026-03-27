@@ -75,14 +75,18 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
       };
     } else {
       // 예측(Projection) 모드: 전일 종가 기반으로 오늘 지출 및 내부 유입 반영
-      const accountWithdrawals = dailyWithdrawals.filter(w => String(w.fromAccount) === String(d.account));
+      const accountWithdrawals = dailyWithdrawals.filter(w => 
+        String(w.fromAccount).replace(/[\s-]/g, '') === String(d.account).replace(/[\s-]/g, '')
+      );
       const todayWithdrawSum = accountWithdrawals.reduce((sum, w) => sum + w.amount, 0);
       
       // 내부 입금(송입) 계산: 보낸 사람 계좌(account)가 현재 내 계좌(d.account)와 일치하는 내부 거래
-      const accountInflows = dailyWithdrawals.filter(w => 
-        String(w.account) === String(d.account) && 
-        (w.payee.includes('컴포즈') || w.payee.includes('스마트팩토리') || w.isInternal)
-      );
+      const accountInflows = dailyWithdrawals.filter(w => {
+        const normalizedTo = String(w.toAccount || w.account).replace(/[\s-]/g, '');
+        const normalizedMine = String(d.account).replace(/[\s-]/g, '');
+        return normalizedTo === normalizedMine && 
+               (w.payee.includes('컴포즈') || w.payee.includes('스마트팩토리') || w.isInternal);
+      });
       const todayInflowSum = accountInflows.reduce((sum, w) => sum + w.amount, 0);
       
       return {
