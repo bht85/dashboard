@@ -10,13 +10,46 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
 
   // --- 마스터 계좌 기반 통화 판별 로직 (데이터 정합성 보장) ---
   const usdAccountSet = new Set([
-    ...masterCompose.filter(a => a.isUSD).map(a => String(a.no).replace(/[\s-]/g, '')),
-    ...masterSmart.filter(a => a.isUSD).map(a => String(a.no).replace(/[\s-]/g, ''))
+    ...masterCompose.filter(a => a.isUSD).map(a => String(a.no).replace(/[^0-9]/g, '')),
+    ...masterSmart.filter(a => a.isUSD).map(a => String(a.no).replace(/[^0-9]/g, ''))
   ]);
 
   const checkIsUSD = (accountNo) => {
     if (!accountNo) return false;
-    return usdAccountSet.has(String(accountNo).replace(/[\s-]/g, ''));
+    return usdAccountSet.has(String(accountNo).replace(/[^0-9]/g, ''));
+  };
+
+  // --- 모든 자사 계좌번호 Set 정규화 (보안 및 정합성 강화) ---
+  const allCompanyAccounts = new Set([
+    ...masterCompose.map(a => String(a.no || '').replace(/[^0-9]/g, '')),
+    ...masterSmart.map(a => String(a.no || '').replace(/[^0-9]/g, ''))
+  ]);
+
+  // 내부 이체 여부 판별 로직 고도화
+  const checkIsInternal = (w) => {
+    // 1. 명시적 플래그가 있으면 즉시 반환
+    if (w.isInternal) return true;
+    
+    // 2. 출금/입금 계좌 번호 추출 및 정규화
+    const toAccount = String(w.account || w.toAccount || '').replace(/[^0-9]/g, '');
+    if (!toAccount) return false;
+
+    // 3. 우리 회사의 마스터 계좌 리스트에 존재하는지 확인
+    const isOurAccount = allCompanyAccounts.has(toAccount);
+    
+    // 4. 예금주명 검증 (완전 일치 또는 공식 법인명 변형만 허용)
+    // "박석회(컴포즈커피)" 같은 가맹점주 거래를 내부이체로 오판하지 않도록 정확도 향상
+    const internalPayeePatterns = [
+      '컴포즈커피', '스마트팩토리', '제이엠씨에프티',
+      '주식회사컴포즈커피', '주식회사스마트팩토리', '주식회사제이엠씨에프티',
+      '(주)컴포즈커피', '(주)스마트팩토리', '(주)제이엠씨에프티',
+      '컴포즈커피(주)', '스마트팩토리(주)', '제이엠씨에프티(주)'
+    ];
+    
+    const cleanPayee = String(w.payee || '').replace(/[\s]/g, ''); // 공백 제거 후 비교
+    const isInternalPayee = internalPayeePatterns.includes(cleanPayee);
+    
+    return isOurAccount && isInternalPayee;
   };
   
   // 1. 해당 날짜 또는 가장 최근 과거의 시재 현황 데이터 추출 (Running Balance 기반)
@@ -43,11 +76,11 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
 
   // --- 계좌 중복 제거 로직 (동일 계좌번호가 여러 행일 경우 합산) ---
   const deduplicatedStatusDetails = Object.values(statusDetails.reduce((acc, d) => {
-    const key = String(d.account).replace(/[\s-]/g, '');
+    const key = String(d.account).replace(/[^0-9]/g, '');
     if (!acc[key]) {
       acc[key] = { ...d };
     } else {
-      // 이미 존재하는 계좌면 잔액 합산 (기타 정보는 유지)
+      // 이미 존재하는 계좌면 잔액 합산
       acc[key].totalBalance = (acc[key].totalBalance || 0) + (d.totalBalance || 0);
       acc[key].prevBalance = (acc[key].prevBalance || 0) + (d.prevBalance || 0);
     }
@@ -76,16 +109,15 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
     } else {
       // 예측(Projection) 모드: 전일 종가 기반으로 오늘 지출 및 내부 유입 반영
       const accountWithdrawals = dailyWithdrawals.filter(w => 
-        String(w.fromAccount).replace(/[\s-]/g, '') === String(d.account).replace(/[\s-]/g, '')
+        String(w.fromAccount || '').replace(/[^0-9]/g, '') === String(d.account).replace(/[^0-9]/g, '')
       );
       const todayWithdrawSum = accountWithdrawals.reduce((sum, w) => sum + w.amount, 0);
       
-      // 내부 입금(송입) 계산: 보낸 사람 계좌(account)가 현재 내 계좌(d.account)와 일치하는 내부 거래
+      // 내부 입금(송입) 계산: 받는 사람 계좌(toAccount)가 현재 내 계좌(d.account)와 일치하는 내부 거래
       const accountInflows = dailyWithdrawals.filter(w => {
-        const normalizedTo = String(w.toAccount || w.account).replace(/[\s-]/g, '');
-        const normalizedMine = String(d.account).replace(/[\s-]/g, '');
-        return normalizedTo === normalizedMine && 
-               (w.payee.includes('컴포즈') || w.payee.includes('스마트팩토리') || w.isInternal);
+        const normalizedTo = String(w.account || w.toAccount || '').replace(/[^0-9]/g, '');
+        const normalizedMine = String(d.account).replace(/[^0-9]/g, '');
+        return normalizedTo === normalizedMine && checkIsInternal(w);
       });
       const todayInflowSum = accountInflows.reduce((sum, w) => sum + w.amount, 0);
       
@@ -125,7 +157,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   // 2. 내부 이체(내부 출금) 합계 계산 (회사 내부에서 도는 돈)
   const calculateSeparatedSums = (list) => {
     return list.reduce((acc, w) => {
-      const isInternal = w.payee.includes('컴포즈') || w.payee.includes('스마트팩토리') || w.isInternal;
+      const isInternal = checkIsInternal(w);
       if (w.isUSD) {
         acc.usdTotal += w.amount;
         if (isInternal) acc.usdInternal += w.amount;
@@ -455,7 +487,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
                   {dailyWithdrawals.length > 0 ? dailyWithdrawals.flatMap(w => {
-                    const isInternal = w.payee.includes('컴포즈') || w.payee.includes('스마트팩토리') || w.isInternal;
+                    const isInternal = checkIsInternal(w);
                     const rows = [];
                     
                     // 1. 출금 기록 (항상 표시)
@@ -489,18 +521,22 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                         <tr key={`${w.id}_dep`} className="bg-blue-50/30 border-l-4 border-l-blue-400 transition-colors">
                             <td className="px-3 py-2 border-r border-slate-100 font-medium text-slate-400 whitespace-nowrap">{w.paymentDate}</td>
                             <td className="px-3 py-2 border-r border-slate-100">
-                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black tracking-tighter bg-blue-100 text-blue-700 uppercase">INTERNAL</span>
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black tracking-tighter bg-blue-100 text-blue-700 uppercase">INTERNAL</span>
                             </td>
-                            <td className="px-3 py-2 border-r border-slate-100 font-bold text-blue-600 whitespace-nowrap bg-blue-50/50">{w.account}</td>
-                            <td className="px-3 py-2 border-r border-slate-100 font-black text-slate-700 text-center">-</td>
-                            <td className="px-3 py-2 border-r border-slate-100 font-mono text-slate-400 whitespace-nowrap tracking-tighter">{w.fromAccount}</td>
-                             <td className="px-3 py-2 border-r border-slate-100 text-right font-black tabular-nums whitespace-nowrap text-blue-600">
-                                 +{w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}
-                             </td>
+                            {/* 입금 받는 계좌가 Focal Account가 됨 */}
+                            <td className="px-3 py-2 border-r border-slate-100 font-bold text-blue-600 whitespace-nowrap bg-blue-100/20">{w.account}</td>
+                            <td className="px-3 py-2 border-r border-slate-100 font-black text-slate-400 text-center">
+                                <ArrowRight className="w-3 h-3 inline mr-1 opacity-50" />
+                            </td>
+                            {/* 돈을 보낸 계좌 정보 표시 */}
+                            <td className="px-3 py-2 border-r border-slate-100 font-mono text-slate-400 whitespace-nowrap tracking-tighter italic">From: {w.fromAccount}</td>
+                            <td className="px-3 py-2 border-r border-slate-100 text-right font-black tabular-nums whitespace-nowrap text-blue-600">
+                                +{w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}
+                            </td>
                             <td className="px-3 py-2 border-r border-slate-100 min-w-[140px]">
                                 <div className="flex flex-col">
                                     <span className="font-black text-slate-800 tracking-tight leading-none break-keep">{w.payee}</span>
-                                    <span className="text-[8px] font-black text-blue-500 uppercase tracking-tighter mt-1 whitespace-nowrap">★ 내부 자금 이체 (입금)</span>
+                                    <span className="text-[8px] font-black text-blue-500 uppercase tracking-tighter mt-1 whitespace-nowrap">★ 내부 자금 이체 (입금 반영)</span>
                                 </div>
                             </td>
                             <td className="px-3 py-2 text-slate-400 text-[10px] italic truncate max-w-[120px]">{w.memo}</td>
