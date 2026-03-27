@@ -431,10 +431,13 @@ const App = () => {
           composeAccounts={composeAccounts} 
           smartAccounts={smartAccounts} 
           withdrawals={withdrawals}
+          fxSchedule={fxSchedule}
           onUpdateAccount={updateAccount}
           onSaveWithdrawals={saveWithdrawals}
           onDeleteWithdrawal={deleteWithdrawal}
           onDeleteBatch={deleteWithdrawalBatch}
+          onUpdateFXSchedule={updateFXSchedule}
+          exchangeRate={exchangeRate}
         />
       )}
       {currentView === 'foreign' && (

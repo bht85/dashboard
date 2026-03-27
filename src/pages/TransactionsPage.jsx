@@ -3,7 +3,7 @@ import { Upload, FileText, CheckCircle2, AlertCircle, Trash2, Database, ArrowRig
 import { formatKRW, formatUSD } from '../utils/formatters';
 import * as XLSX from 'xlsx';
 
-const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], onUpdateAccount, onSaveWithdrawals, onDeleteWithdrawal, onDeleteBatch }) => {
+const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fxSchedule = [], onUpdateAccount, onSaveWithdrawals, onDeleteWithdrawal, onDeleteBatch, onUpdateFXSchedule, exchangeRate }) => {
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [selectedSection, setSelectedSection] = useState('compose');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
@@ -11,12 +11,13 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
   const [manualEntry, setManualEntry] = useState({ bank: '', account: '', amount: '', payee: '', memo: '' });
+  const [showFXImport, setShowFXImport] = useState(false);
   const fileInputRef = useRef(null);
 
   const allAccounts = [...composeAccounts.map(a => ({...a, section: 'compose'})), ...smartAccounts.map(a => ({...a, section: 'smart'}))];
   const selectedAccount = allAccounts.find(a => String(a.id) === String(selectedAccountId));
 
-  const processAndSave = async (items) => {
+  const processAndSave = async (items, sourceFXItem = null) => {
     if (items.length === 0) return;
     if (!selectedAccount) return;
 
@@ -42,9 +43,18 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
       fromAccount: selectedAccount.no,
       currency: selectedAccount.isUSD ? 'USD' : 'KRW',
       isUSD: selectedAccount.isUSD,
-      batchId
+      batchId,
+      fxSourceId: sourceFXItem?.id || null // Link back to FX schedule
     }));
     await onSaveWithdrawals(newItems);
+
+    // 3. Update FX Schedule Status if applicable
+    if (sourceFXItem) {
+      await onUpdateFXSchedule({
+        ...sourceFXItem,
+        status: '송금 완료(집행)'
+      });
+    }
 
     setIsSuccess(true);
     setTimeout(() => setIsSuccess(false), 3000);
@@ -113,11 +123,40 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
     setManualEntry({ bank: '', account: '', amount: '', payee: '', memo: '' });
   };
 
+  const handleFXScheduleSelect = async (item) => {
+    if (!selectedAccountId) { alert('출금 계좌를 먼저 선택해주세요.'); return; }
+    
+    // If account is KRW, convert schedule's USD to KRW
+    let amount = item.amount;
+    if (!selectedAccount.isUSD) {
+      amount = Math.round(item.amount * exchangeRate);
+      if (!window.confirm(`선택한 스케줄은 USD($${item.amount.toLocaleString()})이나, 현재 출금 계좌는 KRW입니다. \n현재 환율($1 = ${exchangeRate}원)을 기준으로 환산하여 ${formatKRW(amount)}으로 등록하시겠습니까?`)) {
+        return;
+      }
+    }
+
+    const newItem = {
+      id: Date.now(),
+      bank: item.bank || '',
+      account: item.account || '',
+      amount: amount,
+      payee: item.client,
+      memo: item.desc || '외화 송금 스케줄 기반 등록',
+      isManual: true
+    };
+
+    await processAndSave([newItem], item);
+    setShowFXImport(false);
+  };
+
   // 기존 등록된 내역 (현재 날짜/법인 필터링)
   const existingRecords = withdrawals.filter(w => 
     w.paymentDate === paymentDate && 
     w.section === (selectedSection === 'compose' ? '컴포즈커피' : '스마트팩토리')
   );
+
+  // 미실행된 외화송금 일정
+  const pendingFXSchedules = fxSchedule.filter(s => s.status !== '송금 완료(집행)');
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
@@ -161,7 +200,7 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
               <label className="block text-[10px] font-bold text-slate-400 uppercase mb-2 ml-1">사업부 구분</label>
               <div className="flex p-1 bg-slate-50 rounded-xl border border-slate-200">
                 <button 
-                  onClick={() => { setSelectedSection('compose'); setSelectedAccountId(''); }}
+                  onClick={() => { setSelectedSection('compose'); setSelectedAccountId(''); setShowFXImport(false); }}
                   className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${selectedSection === 'compose' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
                 >
                   컴포즈커피
@@ -192,39 +231,87 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], on
         </div>
 
         {/* Step 2: 개별 건별 등록 */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 overflow-hidden flex flex-col h-full">
-          <div className="flex items-center gap-2 mb-6">
-            <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600">
-              <FileText className="w-4 h-4" />
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 overflow-hidden flex flex-col h-full relative">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-amber-50 rounded-lg flex items-center justify-center text-amber-600">
+                <FileText className="w-4 h-4" />
+              </div>
+              <h3 className="font-bold text-slate-800">2. 개별 건별 직접 등록</h3>
             </div>
-            <h3 className="font-bold text-slate-800">2. 개별 건별 직접 등록</h3>
+            
+            {selectedSection === 'smart' && (
+              <button 
+                onClick={() => setShowFXImport(!showFXImport)}
+                className={`text-[10px] font-black px-2.5 py-1 rounded-lg border flex items-center gap-1 transition-all ${showFXImport ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100'}`}
+              >
+                <ListFilter className="w-3 h-3" />
+                예정건 불러오기
+              </button>
+            )}
           </div>
           
-          <div className="grid grid-cols-2 gap-3 flex-1">
-             <div className="col-span-1">
-               <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">은행</label>
-               <input type="text" value={manualEntry.bank} onChange={e=>setManualEntry({...manualEntry, bank:e.target.value})} placeholder="은행명" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all" />
-             </div>
-             <div className="col-span-1">
-               <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">금액 {selectedAccount?.isUSD ? '(USD)' : '(KRW)'}</label>
-               <input type="number" value={manualEntry.amount} onChange={e=>setManualEntry({...manualEntry, amount:e.target.value})} placeholder={selectedAccount?.isUSD ? "$0.00" : "숫자만 입력"} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all font-mono" />
-             </div>
-             <div className="col-span-2">
-               <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">예금주/거래처</label>
-               <input type="text" value={manualEntry.payee} onChange={e=>setManualEntry({...manualEntry, payee:e.target.value})} placeholder="받는 사람 이름" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all" />
-             </div>
-             <div className="col-span-2">
-               <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">입금 계좌번호</label>
-               <input type="text" value={manualEntry.account} onChange={e=>setManualEntry({...manualEntry, account:e.target.value})} placeholder="계좌번호 입력" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all font-mono" />
-             </div>
-             <div className="col-span-2">
-               <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">메모</label>
-               <input type="text" value={manualEntry.memo} onChange={e=>setManualEntry({...manualEntry, memo:e.target.value})} placeholder="상세 내용" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all" />
-             </div>
-             <button onClick={handleAddManual} className="col-span-2 mt-2 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-amber-100 transition-all active:scale-95 text-xs">
-               반영 및 저장하기
-             </button>
-          </div>
+          {showFXImport && selectedSection === 'smart' ? (
+            <div className="flex-1 overflow-y-auto pr-1">
+              <p className="text-[10px] font-bold text-slate-400 mb-3 uppercase tracking-wider">미실행 외화 송금 예정 리스트</p>
+              <div className="space-y-2">
+                {pendingFXSchedules.length === 0 ? (
+                  <div className="py-10 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                    <p className="text-[10px] font-bold text-slate-300">표시할 예정건이 없습니다.</p>
+                  </div>
+                ) : (
+                  pendingFXSchedules.map(s => (
+                    <div 
+                      key={s.id}
+                      onClick={() => handleFXScheduleSelect(s)}
+                      className="group p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-emerald-300 hover:bg-emerald-50/30 cursor-pointer transition-all active:scale-95"
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <p className="text-[10px] font-black text-slate-900">{s.client}</p>
+                        <p className="text-[10px] font-black text-indigo-600">{formatUSD(s.amount)}</p>
+                      </div>
+                      <div className="flex justify-between items-center text-[9px] font-bold text-slate-400">
+                        <span>{s.date} | {s.bank}</span>
+                        <ArrowRight className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity translate-x--2 group-hover:translate-x-0" />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              <button 
+                onClick={() => setShowFXImport(false)}
+                className="w-full mt-4 text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors py-2"
+              >
+                직접 입력으로 돌아가기
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 flex-1">
+              <div className="col-span-1">
+                <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">은행</label>
+                <input type="text" value={manualEntry.bank} onChange={e=>setManualEntry({...manualEntry, bank:e.target.value})} placeholder="은행명" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all" />
+              </div>
+              <div className="col-span-1">
+                <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">금액 {selectedAccount?.isUSD ? '(USD)' : '(KRW)'}</label>
+                <input type="number" value={manualEntry.amount} onChange={e=>setManualEntry({...manualEntry, amount:e.target.value})} placeholder={selectedAccount?.isUSD ? "$0.00" : "숫자만 입력"} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all font-mono" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">예금주/거래처</label>
+                <input type="text" value={manualEntry.payee} onChange={e=>setManualEntry({...manualEntry, payee:e.target.value})} placeholder="받는 사람 이름" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">입금 계좌번호</label>
+                <input type="text" value={manualEntry.account} onChange={e=>setManualEntry({...manualEntry, account:e.target.value})} placeholder="계좌번호 입력" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all font-mono" />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-[10px] text-slate-400 font-bold mb-1 ml-1 uppercase">메모</label>
+                <input type="text" value={manualEntry.memo} onChange={e=>setManualEntry({...manualEntry, memo:e.target.value})} placeholder="상세 내용" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-500 transition-all" />
+              </div>
+              <button onClick={handleAddManual} className="col-span-2 mt-2 bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 rounded-xl shadow-lg shadow-amber-100 transition-all active:scale-95 text-xs">
+                반영 및 저장하기
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Step 3: 대량 엑셀 업로드 */}
