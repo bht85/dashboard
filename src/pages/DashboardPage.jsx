@@ -170,11 +170,13 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
           </div>
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between group hover:shadow-md transition-all">
             <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 tracking-widest">금일 지출 (자금일보 기준)</p>
-              <h4 className="text-xl font-bold text-red-500 tracking-tighter tabular-nums whitespace-nowrap">{formatKRW(composeSums.krwTotal + smartSums.krwTotal)}</h4>
-              {(composeSums.usdTotal + smartSums.usdTotal) > 0 && (
+              <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 tracking-widest">금일 지출 (자금일보 기준 - 내부이체 제외)</p>
+              <h4 className="text-xl font-bold text-red-500 tracking-tighter tabular-nums whitespace-nowrap">
+                {formatKRW((composeSums.krwTotal - composeSums.krwInternal) + (smartSums.krwTotal - smartSums.krwInternal))}
+              </h4>
+              {((composeSums.usdTotal - composeSums.usdInternal) + (smartSums.usdTotal - smartSums.usdInternal)) > 0 && (
                 <p className="text-[11px] font-black text-blue-600 font-mono mt-0.5 tabular-nums">
-                  {formatUSD(composeSums.usdTotal + smartSums.usdTotal)} (USD)
+                  {formatUSD((composeSums.usdTotal - composeSums.usdInternal) + (smartSums.usdTotal - smartSums.usdInternal))} (USD)
                 </p>
               )}
             </div>
