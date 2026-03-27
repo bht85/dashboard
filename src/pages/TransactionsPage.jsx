@@ -40,6 +40,7 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
       paymentDate,
       accountId: selectedAccountId,
       section: selectedSection === 'compose' ? '컴포즈커피' : '스마트팩토리',
+      toAccount: item.account || '', // 입금계좌 저장
       fromAccount: selectedAccount.no,
       currency: selectedAccount.isUSD ? 'USD' : 'KRW',
       isUSD: selectedAccount.isUSD,
@@ -60,7 +61,7 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
     setTimeout(() => setIsSuccess(false), 3000);
   };
 
-  const handleFileSelect = (e) => {
+  const handleFileSelect = (type) => (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
@@ -80,23 +81,37 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
         
-        const parsed = data.slice(1).map((row, idx) => ({
-          id: Date.now() + idx,
-          bank: row[0] || '',
-          account: row[1] || '',
-          amount: parseFloat(String(row[2]).replace(/,/g, '')) || 0,
-          payee: row[3] || '',
-          depositLabel: row[4] || '',
-          withdrawLabel: row[5] || '',
-          memo: row[6] || ''
-        })).filter(item => item.bank && item.amount > 0);
+        let parsed = [];
+        if (type === 'bulk') {
+          // 대량이체 양식 파싱 (Index 기준: 입금은행[1], 입금계좌번호[2], 입금액[3], 예금주[6], 파일메모[12], 출금계좌[13])
+          parsed = data.slice(1).map((row, idx) => ({
+            id: Date.now() + idx,
+            bank: row[1] || '',
+            account: String(row[2] || '').replace(/[\s-]/g, ''), // 입금계좌
+            amount: parseFloat(String(row[3]).replace(/,/g, '')) || 0,
+            payee: row[6] || '',
+            memo: row[12] || row[8] || '', // 파일메모 또는 출금통장표시
+            excelFromAccount: String(row[13] || '').replace(/[\s-]/g, '') // 파일 내 출금계좌 (참고용)
+          })).filter(item => item.bank && item.amount > 0);
+        } else {
+          // 등록한 내역 양식 파싱 (Index 기준: 거래구분[1], 출금계좌[2], 입금은행[3], 입금계좌[4], 예금주[5], 금액[7])
+          parsed = data.slice(1).map((row, idx) => ({
+            id: Date.now() + idx,
+            bank: row[3] || '',
+            account: String(row[4] || '').replace(/[\s-]/g, ''), // 입금계좌
+            amount: parseFloat(String(row[7]).replace(/,/g, '')) || 0,
+            payee: row[5] || '',
+            memo: row[1] || '', // 거래구분
+            excelFromAccount: String(row[2] || '').replace(/[\s-]/g, '') // 파일 내 출금계좌
+          })).filter(item => item.bank && item.amount > 0);
+        }
 
         if (parsed.length > 0) {
           await processAndSave(parsed);
         }
       } catch (err) {
         console.error(err);
-        alert('엑셀 파일 분석 중 오류가 발생했습니다.');
+        alert('엑셀 파일 분석 중 오류가 발생했습니다. 양식이 맞는지 확인해주세요.');
       } finally {
         setIsParsing(false);
         e.target.value = null;
@@ -323,17 +338,31 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
             <h3 className="font-bold text-slate-800">3. 대량 엑셀 파일 업로드</h3>
           </div>
           
-          <div className="flex-1 flex flex-col justify-center">
+          <div className="flex-1 flex flex-col gap-4">
+            {/* 양식 1: 대량이체 실행 내역 */}
             <div 
-              onClick={() => fileInputRef.current?.click()}
-              className="cursor-pointer group relative overflow-hidden bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center transition-all hover:border-emerald-400 hover:bg-white h-full flex flex-col justify-center"
+              onClick={() => document.getElementById('file-bulk').click()}
+              className="flex-1 cursor-pointer group relative overflow-hidden bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center transition-all hover:border-emerald-400 hover:bg-white flex flex-col justify-center"
             >
-              <input type="file" ref={fileInputRef} onChange={handleFileSelect} accept=".xlsx, .xls" className="hidden" />
-              <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center mx-auto mb-3 shadow-sm group-hover:bg-emerald-50 transition-colors">
-                {isParsing ? <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" /> : <Upload className="w-5 h-5 text-slate-300 group-hover:text-emerald-500" />}
+              <input type="file" id="file-bulk" onChange={handleFileSelect('bulk')} accept=".xlsx, .xls" className="hidden" />
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mx-auto mb-2 shadow-sm group-hover:bg-emerald-50 transition-colors">
+                {isParsing ? <Loader2 className="w-4 h-4 text-emerald-500 animate-spin" /> : <Upload className="w-4 h-4 text-slate-300 group-hover:text-emerald-500" />}
               </div>
-              <p className="text-xs font-bold text-slate-500 mb-4">엑셀 파일을 선택하세요</p>
-              <button className="bg-slate-900 group-hover:bg-emerald-600 text-white px-6 py-2 rounded-lg text-[10px] font-black uppercase transition-colors">파일 찾기 및 즉시 반영</button>
+              <p className="text-[10px] font-bold text-slate-500 mb-1">양식 A: 대량이체 조회/실행</p>
+              <p className="text-[9px] text-slate-400">은행, 계좌번호, 금액, 예금주 등</p>
+            </div>
+
+            {/* 양식 2: 기존 등록 내역 */}
+            <div 
+              onClick={() => document.getElementById('file-history').click()}
+              className="flex-1 cursor-pointer group relative overflow-hidden bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center transition-all hover:border-blue-400 hover:bg-white flex flex-col justify-center"
+            >
+              <input type="file" id="file-history" onChange={handleFileSelect('history')} accept=".xlsx, .xls" className="hidden" />
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mx-auto mb-2 shadow-sm group-hover:bg-blue-50 transition-colors">
+                {isParsing ? <Loader2 className="w-4 h-4 text-blue-500 animate-spin" /> : <Upload className="w-4 h-4 text-slate-300 group-hover:text-blue-500" />}
+              </div>
+              <p className="text-[10px] font-bold text-slate-500 mb-1">양식 B: 등록한 내역 (뱅킹)</p>
+              <p className="text-[9px] text-slate-400">거래구분, 출금계좌, 입금은행 등</p>
             </div>
           </div>
         </div>
