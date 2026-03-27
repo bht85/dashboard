@@ -105,16 +105,23 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   // 로우 데이터 필터링 (UI 하단 표시용)
   const composeWithdrawals = dailyWithdrawals.filter(w => w.section === '컴포즈커피');
   const smartWithdrawals = dailyWithdrawals.filter(w => w.section === '스마트팩토리');
-  const composeWithdrawTotal = composeWithdrawals.reduce((sum, w) => sum + w.amount, 0);
-  const smartWithdrawTotal = smartWithdrawals.reduce((sum, w) => sum + w.amount, 0);
-
-  // 3. 내부 이체(내부 출금) 합계 계산 (회사 내부에서 도는 돈)
-  const calculateInternalSum = (list) => list
-    .filter(w => w.payee.includes('컴포즈') || w.payee.includes('스마트팩토리') || w.isInternal)
-    .reduce((sum, w) => sum + w.amount, 0);
+  // 2. 내부 이체(내부 출금) 합계 계산 (회사 내부에서 도는 돈)
+  const calculateSeparatedSums = (list) => {
+    return list.reduce((acc, w) => {
+      const isInternal = w.payee.includes('컴포즈') || w.payee.includes('스마트팩토리') || w.isInternal;
+      if (w.isUSD) {
+        acc.usdTotal += w.amount;
+        if (isInternal) acc.usdInternal += w.amount;
+      } else {
+        acc.krwTotal += w.amount;
+        if (isInternal) acc.krwInternal += w.amount;
+      }
+      return acc;
+    }, { krwTotal: 0, usdTotal: 0, krwInternal: 0, usdInternal: 0 });
+  };
   
-  const composeInternalSum = calculateInternalSum(composeWithdrawals);
-  const smartInternalSum = calculateInternalSum(smartWithdrawals);
+  const composeSums = calculateSeparatedSums(composeWithdrawals);
+  const smartSums = calculateSeparatedSums(smartWithdrawals);
 
   // 3. 외화 송금 합계 계산 (실시간 환율 적용)
   const usdTotal = fxSchedule.reduce((sum, item) => sum + item.amount, 0);
@@ -146,7 +153,12 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between group hover:shadow-md transition-all">
             <div>
               <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 tracking-widest">금일 지출 (자금일보 기준)</p>
-              <h4 className="text-xl font-bold text-red-500 tracking-tighter tabular-nums whitespace-nowrap">{formatKRW(composeWithdrawTotal + smartWithdrawTotal)}</h4>
+              <h4 className="text-xl font-bold text-red-500 tracking-tighter tabular-nums whitespace-nowrap">{formatKRW(composeSums.krwTotal + smartSums.krwTotal)}</h4>
+              {(composeSums.usdTotal + smartSums.usdTotal) > 0 && (
+                <p className="text-[11px] font-black text-blue-600 font-mono mt-0.5 tabular-nums">
+                  {formatUSD(composeSums.usdTotal + smartSums.usdTotal)} (USD)
+                </p>
+              )}
             </div>
             <div className="p-3 bg-red-50 rounded-xl text-red-600"><TrendingUp className="w-6 h-6" /></div>
           </div>
@@ -203,9 +215,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                 title="> 금일 출금 요청 (컴포즈)" 
                 data={{ 
                   count: composeWithdrawals.length, 
-                  total: composeWithdrawTotal, 
-                  internal: composeInternalSum, 
-                  net: composeWithdrawTotal - composeInternalSum 
+                  sums: composeSums
                 }} 
               />
             </div>
@@ -257,9 +267,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                 title="> 금일 지출 (스마트팩토리)" 
                 data={{ 
                   count: smartWithdrawals.length, 
-                  total: smartWithdrawTotal, 
-                  internal: smartInternalSum, 
-                  net: smartWithdrawTotal - smartInternalSum 
+                  sums: smartSums
                 }} 
               />
             </div>
