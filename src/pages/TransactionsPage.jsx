@@ -17,33 +17,41 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
   const allAccounts = [...composeAccounts.map(a => ({...a, section: 'compose'})), ...smartAccounts.map(a => ({...a, section: 'smart'}))];
   const selectedAccount = allAccounts.find(a => String(a.id) === String(selectedAccountId));
 
-  const processAndSave = async (items, sourceFXItem = null) => {
+  const processAndSave = async (items, sourceFXItem = null, overrideAccount = null, overrideSection = null) => {
     if (items.length === 0) return;
-    if (!selectedAccount) return;
+    
+    // Use override if provided (e.g., from auto-mapping), otherwise fallback to state
+    const targetAccount = overrideAccount || selectedAccount;
+    const targetSection = overrideSection || selectedSection;
+
+    if (!targetAccount) {
+      alert('출금 계좌를 선택하거나 엑셀 파일 내 계좌 정보를 확인해주세요.');
+      return;
+    }
 
     const totalWithdraw = items.reduce((sum, item) => sum + item.amount, 0);
     const batchId = items.length > 1 ? `batch_${Date.now()}` : null;
 
     // 1. Update Account Balance
-    const newWithdraw = (selectedAccount.withdraw || 0) + totalWithdraw;
+    const newWithdraw = (targetAccount.withdraw || 0) + totalWithdraw;
     const updatedAccount = { 
-      ...selectedAccount, 
+      ...targetAccount, 
       withdraw: newWithdraw, 
-      final: (selectedAccount.balance || 0) - newWithdraw + (selectedAccount.internal || 0) 
+      final: (targetAccount.balance || 0) - newWithdraw + (targetAccount.internal || 0) 
     };
-    const { section, ...finalAccount } = updatedAccount;
-    await onUpdateAccount(selectedSection, finalAccount);
+    const { section: unused, ...finalAccount } = updatedAccount;
+    await onUpdateAccount(targetSection, finalAccount);
 
     // 2. Save Transactions
     const newItems = items.map(item => ({
       ...item,
       paymentDate,
-      accountId: selectedAccountId,
-      section: selectedSection === 'compose' ? '컴포즈커피' : '스마트팩토리',
+      accountId: targetAccount.id,
+      section: targetSection === 'compose' ? '컴포즈커피' : '스마트팩토리',
       toAccount: item.account || '', // 입금계좌 저장
-      fromAccount: selectedAccount.no,
-      currency: selectedAccount.isUSD ? 'USD' : 'KRW',
-      isUSD: selectedAccount.isUSD,
+      fromAccount: targetAccount.no,
+      currency: targetAccount.isUSD ? 'USD' : 'KRW',
+      isUSD: targetAccount.isUSD,
       batchId,
       fxSourceId: sourceFXItem?.id || null // Link back to FX schedule
     }));
@@ -65,7 +73,8 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
     const file = e.target.files[0];
     if (!file) return;
     
-    if (!selectedAccountId) {
+    // 대량이체 양식은 계좌 선택이 선행되어야 함 (엑셀에 출금계좌가 없는 경우가 많거나 부정확함)
+    if (type === 'bulk' && !selectedAccountId) {
       alert('1단계: 출금 계좌를 먼저 선택해주세요.');
       e.target.value = null;
       return;
@@ -82,39 +91,77 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
         const data = XLSX.utils.sheet_to_json(ws, { header: 1 });
         
         let parsed = [];
+        let targetAccount = selectedAccount;
+        let targetSection = selectedSection;
+
         if (type === 'bulk') {
           // 대량이체 양식 파싱 (Index 기준: 입금은행[1], 입금계좌번호[2], 입금액[3], 예금주[6], 파일메모[12], 출금계좌[13])
           parsed = data.slice(1).map((row, idx) => ({
             id: Date.now() + idx,
             bank: row[1] || '',
-            account: String(row[2] || '').replace(/[\s-]/g, ''), // 입금계좌
+            account: String(row[2] || '').replace(/[\s-]/g, ''), 
             amount: parseFloat(String(row[3]).replace(/,/g, '')) || 0,
             payee: row[6] || '',
-            memo: row[12] || row[8] || '', // 파일메모 또는 출금통장표시
-            excelFromAccount: String(row[13] || '').replace(/[\s-]/g, '') // 파일 내 출금계좌 (참고용)
+            memo: row[12] || row[8] || '', 
+            excelFromAccount: String(row[13] || '').replace(/[\s-]/g, '')
           })).filter(item => item.bank && item.amount > 0);
         } else {
           // 등록한 내역 양식 파싱 (Index 기준: 거래구분[1], 출금계좌[2], 입금은행[3], 입금계좌[4], 예금주[5], 금액[7])
-          parsed = data.slice(1).map((row, idx) => ({
+          const rows = data.slice(1);
+          if (rows.length === 0) return;
+
+          // 1. 엑셀 파일 내의 출금계좌 추출 (첫 번째 유효 행 기준)
+          const firstRow = rows.find(r => r[2]);
+          const excelAccountNo = firstRow ? String(firstRow[2]).replace(/[\s-]/g, '') : null;
+
+          if (!selectedAccountId && excelAccountNo) {
+            // 자동 매핑 시도
+            const matched = allAccounts.find(a => String(a.no).replace(/[\s-]/g, '') === excelAccountNo);
+            if (matched) {
+              targetAccount = matched;
+              targetSection = matched.section;
+              // UI 상태 업데이트 (사용자 편의)
+              setSelectedSection(matched.section);
+              setSelectedAccountId(matched.id);
+            } else {
+              alert(`엑셀의 출금계좌(${excelAccountNo})와 일치하는 계좌를 시스템에서 찾을 수 없습니다. 계좌를 먼저 선택 후 업로드해주세요.`);
+              return;
+            }
+          } else if (selectedAccountId && excelAccountNo) {
+            // 선택된 계좌와 엑셀 계좌가 다른지 확인 (경고)
+            const selectedNo = String(selectedAccount.no).replace(/[\s-]/g, '');
+            if (selectedNo !== excelAccountNo) {
+              if (!window.confirm(`선택된 계좌(${selectedNo})와 엑셀 내 출금계좌(${excelAccountNo})가 다릅니다. 현재 선택된 계좌로 진행하시겠습니까?`)) {
+                return;
+              }
+            }
+          }
+
+          if (!targetAccount) {
+            alert('출금 계좌 정보가 없습니다. 계좌를 선택하거나 유효한 엑셀 파일을 업로드해주세요.');
+            return;
+          }
+
+          parsed = rows.map((row, idx) => ({
             id: Date.now() + idx,
             bank: row[3] || '',
-            account: String(row[4] || '').replace(/[\s-]/g, ''), // 입금계좌
+            account: String(row[4] || '').replace(/[\s-]/g, ''), 
             amount: parseFloat(String(row[7]).replace(/,/g, '')) || 0,
             payee: row[5] || '',
-            memo: row[1] || '', // 거래구분
-            excelFromAccount: String(row[2] || '').replace(/[\s-]/g, '') // 파일 내 출금계좌
+            memo: row[1] || '',
+            excelFromAccount: String(row[2] || '').replace(/[\s-]/g, '')
           })).filter(item => item.bank && item.amount > 0);
         }
 
         if (parsed.length > 0) {
-          await processAndSave(parsed);
+          await processAndSave(parsed, null, targetAccount, targetSection);
         }
       } catch (err) {
         console.error(err);
         alert('엑셀 파일 분석 중 오류가 발생했습니다. 양식이 맞는지 확인해주세요.');
       } finally {
         setIsParsing(false);
-        e.target.value = null;
+        if (e.target) e.target.value = null;
       }
     };
     reader.readAsBinaryString(file);
