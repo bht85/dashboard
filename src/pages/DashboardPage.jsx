@@ -155,40 +155,59 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
         </div>
 
         {/* 상단 요약 바 */}
-        <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between group hover:shadow-md transition-all">
-            <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 tracking-widest">총 가용 자산</p>
-              <h4 className="text-xl font-bold text-slate-800 tracking-tighter tabular-nums whitespace-nowrap">{formatKRW(composeTotal.krw.final + smartTotal.krw.final)}</h4>
-              {(composeTotal.usd.final + smartTotal.usd.final) > 0 && (
-                <p className="text-[11px] font-black text-blue-600 font-mono mt-0.5 tabular-nums animate-in fade-in slide-in-from-top-1">
-                  {formatUSD(composeTotal.usd.final + smartTotal.usd.final)} (USD)
+            <div className="flex-1">
+              <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 tracking-widest">기초 가용 자산 (Baseline)</p>
+              <h4 className="text-xl font-bold text-slate-600 tracking-tighter tabular-nums whitespace-nowrap">
+                {formatKRW(composeTotal.krw.balance + smartTotal.krw.balance)}
+              </h4>
+              {(composeTotal.usd.balance + smartTotal.usd.balance) > 0 && (
+                <p className="text-[11px] font-black text-blue-500 font-mono mt-0.5 tabular-nums">
+                  {formatUSD(composeTotal.usd.balance + smartTotal.usd.balance)} (USD)
                 </p>
               )}
             </div>
-            <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600"><Wallet className="w-6 h-6" /></div>
+            <div className="p-3 bg-indigo-50 rounded-xl text-indigo-600 ml-2"><Wallet className="w-5 h-5" /></div>
           </div>
+
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center justify-between group hover:shadow-md transition-all">
-            <div>
-              <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 tracking-widest">금일 지출 (자금일보 기준 - 내부이체 제외)</p>
+            <div className="flex-1">
+              <p className="text-[10px] text-slate-400 font-bold uppercase mb-1 tracking-widest">금일 지출 (외부 집행)</p>
               <h4 className="text-xl font-bold text-red-500 tracking-tighter tabular-nums whitespace-nowrap">
                 {formatKRW((composeSums.krwTotal - composeSums.krwInternal) + (smartSums.krwTotal - smartSums.krwInternal))}
               </h4>
               {((composeSums.usdTotal - composeSums.usdInternal) + (smartSums.usdTotal - smartSums.usdInternal)) > 0 && (
                 <p className="text-[11px] font-black text-blue-600 font-mono mt-0.5 tabular-nums">
-                  {formatUSD((composeSums.usdTotal - composeSums.usdInternal) + (smartSums.usdTotal - smartSums.usdInternal))} (USD)
+                   {formatUSD((composeSums.usdTotal - composeSums.usdInternal) + (smartSums.usdTotal - smartSums.usdInternal))} (USD)
                 </p>
               )}
             </div>
-            <div className="p-3 bg-red-50 rounded-xl text-red-600"><TrendingUp className="w-6 h-6" /></div>
+            <div className="p-3 bg-red-50 rounded-xl text-red-600 ml-2"><TrendingUp className="w-5 h-5" /></div>
           </div>
-          <div className="bg-slate-900 p-5 rounded-2xl shadow-xl flex items-center justify-between col-span-1 md:col-span-2 relative overflow-hidden">
+
+          <div className="bg-indigo-600 p-5 rounded-2xl shadow-lg flex items-center justify-between group transform hover:-translate-y-1 transition-all duration-300">
+            <div className="flex-1">
+              <p className="text-[10px] text-indigo-200 font-bold uppercase mb-1 tracking-widest">출금 후 예상 잔액 (Closing)</p>
+              <h4 className="text-xl font-bold text-white tracking-tighter tabular-nums whitespace-nowrap">
+                {formatKRW(composeTotal.krw.final + smartTotal.krw.final)}
+              </h4>
+              {(composeTotal.usd.final + smartTotal.usd.final) > 0 && (
+                <p className="text-[11px] font-black text-emerald-300 font-mono mt-0.5 tabular-nums">
+                  {formatUSD(composeTotal.usd.final + smartTotal.usd.final)} (USD)
+                </p>
+              )}
+            </div>
+            <div className="p-3 bg-white/10 rounded-xl text-white ml-2"><Wallet className="w-5 h-5" /></div>
+          </div>
+
+          <div className="bg-slate-900 p-5 rounded-2xl shadow-xl flex items-center justify-between col-span-1 lg:col-span-2 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-10"><Globe className="w-24 h-24 text-white" /></div>
-            <div>
+            <div className="z-10">
               <p className="text-[10px] text-slate-500 font-bold uppercase mb-1 tracking-widest">외화 송금 대기 (USD)</p>
               <h4 className="text-2xl font-bold text-emerald-400 font-mono tracking-tight">{formatUSD(usdTotal)}</h4>
             </div>
-            <div className="text-right flex flex-col items-end">
+            <div className="text-right flex flex-col items-end z-10">
               <div className="flex items-center gap-2 mb-1">
                 <span className="bg-white/10 px-1.5 py-0.5 rounded text-[8px] font-bold text-slate-400">Rate: {formatKRW(exchangeRate)}</span>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">환전 필요 예상액</p>
