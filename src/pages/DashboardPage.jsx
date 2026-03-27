@@ -41,6 +41,19 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   const { status: baseStatus, isFinal, sourceDate } = getBaseStatus();
   const statusDetails = (baseStatus?.details || []).filter(d => !isExcludedAccount(d));
 
+  // --- 계좌 중복 제거 로직 (동일 계좌번호가 여러 행일 경우 합산) ---
+  const deduplicatedStatusDetails = Object.values(statusDetails.reduce((acc, d) => {
+    const key = String(d.account).replace(/[\s-]/g, '');
+    if (!acc[key]) {
+      acc[key] = { ...d };
+    } else {
+      // 이미 존재하는 계좌면 잔액 합산 (기타 정보는 유지)
+      acc[key].totalBalance = (acc[key].totalBalance || 0) + (d.totalBalance || 0);
+      acc[key].prevBalance = (acc[key].prevBalance || 0) + (d.prevBalance || 0);
+    }
+    return acc;
+  }, {}));
+
   // 2. 현재 선택된 날짜의 지출 내역 필터링 (Projection 및 로우 데이터용)
   const dailyWithdrawals = withdrawals.filter(w => w.paymentDate === selectedDate);
 
@@ -87,13 +100,13 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   };
 
   // 법인별 데이터 필터링 및 매핑
-  const composeAccounts = (statusDetails.length > 0 
-    ? statusDetails.filter(d => d.entity.includes('컴포즈')).map(mapStatusToAccount)
+  const composeAccounts = (deduplicatedStatusDetails.length > 0 
+    ? deduplicatedStatusDetails.filter(d => d.entity.includes('컴포즈')).map(mapStatusToAccount)
     : masterCompose.filter(acc => !isExcludedAccount(acc)).map(a => ({ ...a, balance: 0, withdraw: 0, internal: 0, final: 0 }))
   ).filter(acc => acc.balance !== 0 || acc.withdraw !== 0 || acc.internal !== 0 || acc.final !== 0);
 
-  const smartAccounts = (statusDetails.length > 0 
-    ? statusDetails.filter(d => d.entity.includes('스마트')).map(mapStatusToAccount)
+  const smartAccounts = (deduplicatedStatusDetails.length > 0 
+    ? deduplicatedStatusDetails.filter(d => d.entity.includes('스마트')).map(mapStatusToAccount)
     : masterSmart.filter(acc => !isExcludedAccount(acc)).map(a => ({ ...a, balance: 0, withdraw: 0, internal: 0, final: 0 }))
   ).filter(acc => acc.balance !== 0 || acc.withdraw !== 0 || acc.internal !== 0 || acc.final !== 0);
 
