@@ -222,7 +222,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                         <p className="text-slate-500 mt-0.5 text-[10px] italic">{w.withdrawLabel}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-mono font-bold text-red-500 text-[15px] tabular-nums leading-none">{formatKRW(w.amount)}</p>
+                        <p className="font-mono font-bold text-red-500 text-[15px] tabular-nums leading-none">{w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}</p>
                         <p className="text-[9px] text-slate-400 mt-1 font-medium italic opacity-80">{w.bank} {w.account}</p>
                       </div>
                     </div>
@@ -277,7 +277,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                         <p className="text-slate-500 mt-0.5 text-[10px] italic">{w.withdrawLabel}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-mono font-bold text-red-500 text-[14px] tabular-nums leading-none">{formatKRW(w.amount)}</p>
+                        <p className="font-mono font-bold text-red-500 text-[14px] tabular-nums leading-none">{w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}</p>
                         <p className="text-[8px] text-slate-400 mt-1 font-medium italic truncate max-w-[110px] opacity-80">{w.bank} {w.account}</p>
                       </div>
                     </div>
@@ -424,7 +424,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                           <td className="px-3 py-2 border-r border-slate-100 font-black text-slate-700 text-center">{w.bank}</td>
                           <td className="px-3 py-2 border-r border-slate-100 font-mono text-slate-400 whitespace-nowrap tracking-tighter">{w.account}</td>
                           <td className={`px-3 py-2 border-r border-slate-100 text-right font-black tabular-nums whitespace-nowrap text-red-500`}>
-                              -{formatKRW(w.amount)}
+                              -{w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}
                           </td>
                           <td className="px-3 py-2 border-r border-slate-100 min-w-[140px]">
                               <div className="flex flex-col">
@@ -447,9 +447,9 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                             <td className="px-3 py-2 border-r border-slate-100 font-bold text-blue-600 whitespace-nowrap bg-blue-50/50">{w.account}</td>
                             <td className="px-3 py-2 border-r border-slate-100 font-black text-slate-700 text-center">-</td>
                             <td className="px-3 py-2 border-r border-slate-100 font-mono text-slate-400 whitespace-nowrap tracking-tighter">{w.fromAccount}</td>
-                            <td className="px-3 py-2 border-r border-slate-100 text-right font-black tabular-nums whitespace-nowrap text-blue-600">
-                                +{formatKRW(w.amount)}
-                            </td>
+                             <td className="px-3 py-2 border-r border-slate-100 text-right font-black tabular-nums whitespace-nowrap text-blue-600">
+                                 +{w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}
+                             </td>
                             <td className="px-3 py-2 border-r border-slate-100 min-w-[140px]">
                                 <div className="flex flex-col">
                                     <span className="font-black text-slate-800 tracking-tight leading-none break-keep">{w.payee}</span>
