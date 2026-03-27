@@ -20,42 +20,72 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
   const processAndSave = async (items, sourceFXItem = null, overrideAccount = null, overrideSection = null) => {
     if (items.length === 0) return;
     
-    // Use override if provided (e.g., from auto-mapping), otherwise fallback to state
-    const targetAccount = overrideAccount || selectedAccount;
-    const targetSection = overrideSection || selectedSection;
+    // Group items by account to support multi-account uploads from one file
+    const accountGroups = {};
+    
+    for (const item of items) {
+      // 1. Identify which account this item belongs to
+      let itemAccount = overrideAccount;
+      let itemSection = overrideSection;
 
-    if (!targetAccount) {
-      alert('출금 계좌를 선택하거나 엑셀 파일 내 계좌 정보를 확인해주세요.');
+      if (!itemAccount && item.excelFromAccount) {
+        // Try to find by excelFromAccount if no bulk-mode override exists
+        const matched = allAccounts.find(a => String(a.no).replace(/[\s-]/g, '') === item.excelFromAccount);
+        if (matched) {
+          itemAccount = matched;
+          itemSection = matched.section;
+        }
+      }
+
+      // Fallback to selectedAccount if still none (for bulk/manual)
+      itemAccount = itemAccount || selectedAccount;
+      itemSection = itemSection || selectedSection;
+
+      if (!itemAccount) continue;
+
+      const key = `${itemSection}_${itemAccount.id}`;
+      if (!accountGroups[key]) {
+        accountGroups[key] = { account: itemAccount, section: itemSection, items: [] };
+      }
+      accountGroups[key].items.push(item);
+    }
+
+    const groups = Object.values(accountGroups);
+    if (groups.length === 0) {
+      alert('유효한 계좌 정보를 찾을 수 없습니다.');
       return;
     }
 
-    const totalWithdraw = items.reduce((sum, item) => sum + item.amount, 0);
-    const batchId = items.length > 1 ? `batch_${Date.now()}` : null;
+    for (const group of groups) {
+      const { account, section, items: groupItems } = group;
+      const totalWithdraw = groupItems.reduce((sum, item) => sum + item.amount, 0);
+      const batchId = groupItems.length > 1 ? `batch_${Date.now()}_${account.id}` : null;
 
-    // 1. Update Account Balance
-    const newWithdraw = (targetAccount.withdraw || 0) + totalWithdraw;
-    const updatedAccount = { 
-      ...targetAccount, 
-      withdraw: newWithdraw, 
-      final: (targetAccount.balance || 0) - newWithdraw + (targetAccount.internal || 0) 
-    };
-    const { section: unused, ...finalAccount } = updatedAccount;
-    await onUpdateAccount(targetSection, finalAccount);
+      // 1. Update Account Balance
+      const newWithdraw = (account.withdraw || 0) + totalWithdraw;
+      const updatedAccount = { 
+        ...account, 
+        withdraw: newWithdraw, 
+        final: (account.balance || 0) - newWithdraw + (account.internal || 0) 
+      };
+      const { section: unused, ...finalAccount } = updatedAccount;
+      await onUpdateAccount(section, finalAccount);
 
-    // 2. Save Transactions
-    const newItems = items.map(item => ({
-      ...item,
-      paymentDate,
-      accountId: targetAccount.id,
-      section: targetSection === 'compose' ? '컴포즈커피' : '스마트팩토리',
-      toAccount: item.account || '', // 입금계좌 저장
-      fromAccount: targetAccount.no,
-      currency: targetAccount.isUSD ? 'USD' : 'KRW',
-      isUSD: targetAccount.isUSD,
-      batchId,
-      fxSourceId: sourceFXItem?.id || null // Link back to FX schedule
-    }));
-    await onSaveWithdrawals(newItems);
+      // 2. Save Transactions
+      const newItems = groupItems.map(item => ({
+        ...item,
+        paymentDate,
+        accountId: account.id,
+        section: section === 'compose' ? '컴포즈커피' : '스마트팩토리',
+        toAccount: item.account || '',
+        fromAccount: account.no,
+        currency: account.isUSD ? 'USD' : 'KRW',
+        isUSD: account.isUSD,
+        batchId,
+        fxSourceId: sourceFXItem?.id || null
+      }));
+      await onSaveWithdrawals(newItems);
+    }
 
     // 3. Update FX Schedule Status if applicable
     if (sourceFXItem) {
@@ -96,8 +126,7 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
         let targetSection = selectedSection;
 
         if (type === 'bulk') {
-          // 대량이체 양식 파싱
-          // 헤더 찾기 (입금은행 또는 입금계좌번호가 있는 줄)
+          // 대량이체 양식 파싱 (Index 기준: 입금은행[1], 입금계좌번호[2], 입금액[3], 예금주[6], 파일메모[12], 출금계좌[13])
           const headerIdx = data.findIndex(r => r.some(c => String(c).includes('입금은행') || String(c).includes('입금계좌번호')));
           const dataRows = headerIdx === -1 ? data.slice(1) : data.slice(headerIdx + 1);
 
@@ -111,42 +140,12 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
             excelFromAccount: String(row[13] || '').replace(/[\s-]/g, '')
           })).filter(item => item.bank && item.amount > 0);
         } else {
-          // 등록한 내역 양식 파싱
-          // 헤더 찾기 (거래구분 또는 출금계좌가 있는 줄)
+          // 등록한 내역 양식 파싱 (Index 기준: 거래구분[1], 출금계좌[2], 입금은행[3], 입금계좌[4], 예금주[5], 금액[7])
           const headerIdx = data.findIndex(r => r.some(c => String(c).includes('거래구분') || String(c).includes('출금계좌')));
           const dataRows = headerIdx === -1 ? data.slice(1) : data.slice(headerIdx + 1);
 
           if (dataRows.length === 0) {
             alert('데이터를 찾을 수 없습니다.');
-            return;
-          }
-
-          // 첫 번째 유효 행에서 출금계좌 추출
-          const firstRow = dataRows.find(r => r[2]);
-          const excelAccountNo = firstRow ? String(firstRow[2]).replace(/[\s-]/g, '') : null;
-
-          if (!selectedAccountId && excelAccountNo) {
-            const matched = allAccounts.find(a => String(a.no).replace(/[\s-]/g, '') === excelAccountNo);
-            if (matched) {
-              targetAccount = matched;
-              targetSection = matched.section;
-              setSelectedSection(matched.section);
-              setSelectedAccountId(matched.id);
-            } else {
-              alert(`시스템에 등록되지 않은 출금계좌(${excelAccountNo})입니다. 계좌 관리에서 계좌를 등록하시거나 계좌를 직접 선택 후 다시 시도해주세요.`);
-              return;
-            }
-          } else if (selectedAccountId && excelAccountNo) {
-            const selectedNo = String(selectedAccount.no).replace(/[\s-]/g, '');
-            if (selectedNo !== excelAccountNo) {
-              if (!window.confirm(`현재 선택된 계좌(${selectedNo})와 엑셀 내 출금계좌(${excelAccountNo})가 다릅니다. 진행하시겠습니까?`)) {
-                return;
-              }
-            }
-          }
-
-          if (!targetAccount) {
-            alert('계좌 정보를 확정할 수 없습니다. 계좌를 먼저 선택 후 업로드해주세요.');
             return;
           }
 
@@ -159,12 +158,29 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
             memo: row[1] || '',
             excelFromAccount: String(row[2] || '').replace(/[\s-]/g, '')
           })).filter(item => item.bank && item.amount > 0);
+
+          // 선택된 계좌가 있는데 엑셀 내용과 다를 경우 경고 (첫 번째 행 기준 1회만 노출)
+          if (selectedAccountId && parsed.length > 0) {
+            const excelNo = parsed[0].excelFromAccount;
+            const selectedNo = String(selectedAccount.no).replace(/[\s-]/g, '');
+            if (excelNo && selectedNo !== excelNo) {
+              if (!window.confirm(`현재 선택된 계좌(${selectedNo})와 엑셀 내 출금계좌(${excelNo})가 다릅니다. 엑셀의 계좌 정보에 맞춰 등록하시겠습니까?`)) {
+                return;
+              }
+              // 사용자가 승인하면 UI에서도 해당 계좌로 자동 전환되도록 유도 (선택 사항)
+              const matched = allAccounts.find(a => String(a.no).replace(/[\s-]/g, '') === excelNo);
+              if (matched) {
+                setSelectedSection(matched.section);
+                setSelectedAccountId(matched.id);
+              }
+            }
+          }
         }
 
-        console.log("Parsed Items:", parsed);
+        console.log("Parsed Items for Processing:", parsed);
 
         if (parsed.length > 0) {
-          await processAndSave(parsed, null, targetAccount, targetSection);
+          await processAndSave(parsed); // targetAccount/Section은 processAndSave 내부에서 row마다 판단
         } else {
           alert('유효한 출금 대상을 찾을 수 없습니다.');
         }
