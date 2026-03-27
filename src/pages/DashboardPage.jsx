@@ -162,7 +162,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
               <h4 className="text-xl font-bold text-slate-600 tracking-tighter tabular-nums whitespace-nowrap">
                 {formatKRW(composeTotal.krw.balance + smartTotal.krw.balance)}
               </h4>
-              {(composeTotal.usd.balance + smartTotal.usd.balance) > 0 && (
+              {(composeTotal.usd.balance + smartTotal.usd.balance) !== 0 && (
                 <p className="text-[11px] font-black text-blue-500 font-mono mt-0.5 tabular-nums">
                   {formatUSD(composeTotal.usd.balance + smartTotal.usd.balance)} (USD)
                 </p>
@@ -177,7 +177,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
               <h4 className="text-xl font-bold text-red-500 tracking-tighter tabular-nums whitespace-nowrap">
                 {formatKRW((composeSums.krwTotal - composeSums.krwInternal) + (smartSums.krwTotal - smartSums.krwInternal))}
               </h4>
-              {((composeSums.usdTotal - composeSums.usdInternal) + (smartSums.usdTotal - smartSums.usdInternal)) > 0 && (
+              {((composeSums.usdTotal - composeSums.usdInternal) + (smartSums.usdTotal - smartSums.usdInternal)) !== 0 && (
                 <p className="text-[11px] font-black text-blue-600 font-mono mt-0.5 tabular-nums">
                    {formatUSD((composeSums.usdTotal - composeSums.usdInternal) + (smartSums.usdTotal - smartSums.usdInternal))} (USD)
                 </p>
@@ -192,7 +192,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
               <h4 className="text-xl font-bold text-white tracking-tighter tabular-nums whitespace-nowrap">
                 {formatKRW(composeTotal.krw.final + smartTotal.krw.final)}
               </h4>
-              {(composeTotal.usd.final + smartTotal.usd.final) > 0 && (
+              {(composeTotal.usd.final + smartTotal.usd.final) !== 0 && (
                 <p className="text-[11px] font-black text-emerald-300 font-mono mt-0.5 tabular-nums">
                   {formatUSD(composeTotal.usd.final + smartTotal.usd.final)} (USD)
                 </p>
