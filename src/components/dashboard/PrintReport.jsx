@@ -117,7 +117,9 @@ const PrintReport = ({
 
   return createPortal(
     <div id="print-report-root">
-      {/* ─── 보고서 헤더 ─── */}
+      {/* ─── 1페이지 래퍼 (break-after로 빈 페이지 방지) ─── */}
+      <div className="print-page">
+        {/* ─── 보고서 헤더 ─── */}
       <div className="print-header">
         <div className="print-header-left">
           <div className="print-company-badge">CONFIDENTIAL</div>
@@ -253,10 +255,11 @@ const PrintReport = ({
         <span style={{ fontWeight: 700 }}>본 문서는 대외비입니다. 무단 배포를 금합니다.</span>
         <span>© (주)컴포즈커피 / (주)스마트팩토리 재무팀</span>
       </div>
+      </div> {/* /print-page (1페이지 끝) */}
 
       {/* ─── 2페이지: 금일 출금 요청 로우 데이터 ─── */}
       {dailyWithdrawals.length > 0 && (
-        <div style={{ pageBreakBefore: 'always', breakBefore: 'page' }}>
+        <div className="print-page">
           {/* 2페이지 헤더 */}
           <div className="print-header" style={{ marginBottom: 12 }}>
             <div className="print-header-left">

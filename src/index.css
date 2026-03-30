@@ -60,6 +60,21 @@
     page-break-inside: avoid;
     break-inside: avoid;
   }
+
+  /* 페이지 구분 — break-after 방식 (Windows 빈 페이지 버그 방지) */
+  .print-page {
+    page-break-after: always;
+    break-after: page;
+    /* 남은 공간을 억제하여 빈 페이지 생성 차단 */
+    orphans: 1;
+    widows: 1;
+  }
+
+  /* 마지막 print-page는 강제 줄바꿈 없음 */
+  .print-page:last-of-type {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
 }
 
 /* 화면에서 PDF 보고서 영역 숨김 */
