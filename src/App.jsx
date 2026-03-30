@@ -31,6 +31,32 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
+  // --- Auto Logout Timer (10 Minutes) ---
+  useEffect(() => {
+    if (!user) return;
+
+    let timeoutId;
+    const INACTIVITY_LIMIT = 10 * 60 * 1000; // 10 minutes
+
+    const resetTimer = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        console.log("Auto logging out due to inactivity...");
+        auth.signOut();
+      }, INACTIVITY_LIMIT);
+    };
+
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    
+    resetTimer();
+    events.forEach(event => window.addEventListener(event, resetTimer));
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+    };
+  }, [user]);
+
   // --- Exchange Rate Fetching ---
   useEffect(() => {
     const fetchRate = async () => {

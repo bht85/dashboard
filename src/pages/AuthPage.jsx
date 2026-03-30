@@ -11,7 +11,9 @@ import { Mail, Lock, User, TrendingUp, AlertCircle, Loader2 } from 'lucide-react
 const ALLOWED_EMAILS = [
   'jiin0723@composecoffee.co.kr',
   'kth@composecoffee.co.kr',
-  'choihy@composecoffee.co.kr'
+  'choihy@composecoffee.co.kr',
+  'daisy@composecoffee.co.kr',
+  'smin@composecoffee.co.kr'
 ];
 
 const AuthPage = () => {

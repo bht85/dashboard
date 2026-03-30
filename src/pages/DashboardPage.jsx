@@ -94,14 +94,25 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   const mapStatusToAccount = (d) => {
     const isUSD = checkIsUSD(d.account);
     if (isFinal) {
-      // 확정 리포트 모드: 업로드된 수치 그대로 표시
+      // 확정 리포트 모드: 업로드된 수치 그대로 표시. 
+      // 만약 엑셀 양식 문제로 입출금액이 0이지만 잔액이 변동되었다면 차액을 통해 입출금액을 역산하여 보정 (외화 계좌 대응)
+      let finalWithdrawals = d.withdrawals || 0;
+      let finalDeposits = d.deposits || 0;
+
+      if (finalWithdrawals === 0 && finalDeposits === 0) {
+        const diff = d.totalBalance - d.prevBalance;
+        // 부동소수점 오차 방지를 위해 차이가 0.01 이상일 때만 반영
+        if (diff > 0.001) finalDeposits = diff;
+        else if (diff < -0.001) finalWithdrawals = Math.abs(diff);
+      }
+
       return {
         id: d.id,
         no: d.account,
         type: d.bank,
         balance: d.prevBalance,
-        withdraw: d.withdrawals,
-        internal: d.deposits,
+        withdraw: finalWithdrawals,
+        internal: finalDeposits,
         final: d.totalBalance,
         isUSD,
         note: d.nickname || d.bank

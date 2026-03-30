@@ -74,6 +74,18 @@ const CashStatusPage = ({
           };
 
 
+          let parsedPrevBalance = cleanNum(row[7]);
+          let parsedDeposits = cleanNum(row[8]);
+          let parsedWithdrawals = cleanNum(row[9]);
+          let parsedTotalBalance = cleanNum(row[10]);
+
+          // 외화 계좌 등 특정 양식에서 입출금액 열이 누락되었으나 잔액에 변동이 있는 경우 역산하여 자동 보정
+          if (parsedDeposits === 0 && parsedWithdrawals === 0) {
+              const diff = parsedTotalBalance - parsedPrevBalance;
+              if (diff > 0.001) parsedDeposits = diff;
+              else if (diff < -0.001) parsedWithdrawals = Math.abs(diff);
+          }
+
           const accountEntry = {
             id: Date.now() + idx,
             entity: currentEntity || activeEntity,
@@ -84,10 +96,10 @@ const CashStatusPage = ({
             type: row[5] || '',
             currency: valCurrency,
             isUSD,
-            prevBalance: cleanNum(row[7]),
-            deposits: cleanNum(row[8]),
-            withdrawals: cleanNum(row[9]),
-            totalBalance: cleanNum(row[10])
+            prevBalance: parsedPrevBalance,
+            deposits: parsedDeposits,
+            withdrawals: parsedWithdrawals,
+            totalBalance: parsedTotalBalance
           };
 
           if (!isExcludedAccount(accountEntry)) {
