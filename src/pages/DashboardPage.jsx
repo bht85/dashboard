@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import ExpenseSummaryBox from '../components/dashboard/ExpenseSummaryBox';
 import FinancialTable from '../components/dashboard/FinancialTable';
+import PrintReport from '../components/dashboard/PrintReport';
 import { calculateTotal, formatKRW, formatUSD, isExcludedAccount } from '../utils/formatters';
-import { Wallet, TrendingUp, Building2, Factory, FileText, Globe, ChevronDown, ChevronUp, ListFilter, ArrowRight } from 'lucide-react';
+import { Wallet, TrendingUp, Building2, Factory, FileText, Globe, ChevronDown, ChevronUp, ListFilter, ArrowRight, Printer } from 'lucide-react';
 
 const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAccounts: masterSmart, fxSchedule, withdrawals = [], dailyStatuses = {}, dailyIssues = {}, onUpdateIssue, exchangeRate = 1520 }) => {
   const [isRawDataOpen, setIsRawDataOpen] = useState(false);
@@ -192,8 +193,33 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
 
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-700">
+
+      {/* ─── 인쇄 전용 PDF 보고서 컴포넌트 (화면에서는 숨겨짐) ─── */}
+      <PrintReport
+        selectedDate={selectedDate}
+        composeAccounts={composeAccounts}
+        smartAccounts={smartAccounts}
+        composeTotal={composeTotal}
+        smartTotal={smartTotal}
+        fxSchedule={fxSchedule}
+        dailyIssues={dailyIssues}
+        exchangeRate={exchangeRate}
+        isFinal={isFinal}
+        usdPending={usdTotal}
+      />
+
       {/* 1. 웹 전용 화면 (인쇄 시 숨김) */}
       <div className="print-hide space-y-8">
+        {/* PDF 출력 버튼 (대시보드 우상단) */}
+        <div className="flex justify-end -mb-4">
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-2 bg-slate-900 text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-slate-200 active:scale-95"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            PDF 보고서 출력
+          </button>
+        </div>
         {/* 인쇄 전용 헤더 (Legacy - now in PrintReport) */}
         <div className="hidden mb-10 border-b-2 border-slate-900 pb-6">
           {/* ... */}
