@@ -214,7 +214,12 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
         {/* PDF 출력 버튼 (대시보드 우상단) */}
         <div className="flex justify-end -mb-4">
           <button
-            onClick={() => window.print()}
+            onClick={() => {
+              const prev = document.title;
+              document.title = `compose_${selectedDate}`;
+              window.print();
+              document.title = prev;
+            }}
             className="flex items-center gap-2 bg-slate-900 text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-slate-200 active:scale-95"
           >
             <Printer className="w-3.5 h-3.5" />
