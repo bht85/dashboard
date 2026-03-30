@@ -80,9 +80,11 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
     if (!acc[key]) {
       acc[key] = { ...d };
     } else {
-      // 이미 존재하는 계좌면 잔액 합산
+      // 이미 존재하는 계좌면 잔액 및 입출금액 합산
       acc[key].totalBalance = (acc[key].totalBalance || 0) + (d.totalBalance || 0);
       acc[key].prevBalance = (acc[key].prevBalance || 0) + (d.prevBalance || 0);
+      acc[key].deposits = (acc[key].deposits || 0) + (d.deposits || 0);
+      acc[key].withdrawals = (acc[key].withdrawals || 0) + (d.withdrawals || 0);
     }
     return acc;
   }, {}));
