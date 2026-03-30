@@ -38,7 +38,16 @@ const PrintReport = ({
       <div className="print-table-header" style={{ background: color }}>
         {title}
       </div>
-      <table className="print-table">
+      <table className="print-table" style={{ tableLayout: 'fixed', width: '100%' }}>
+        <colgroup>
+          <col style={{ width: '19%' }} />
+          <col style={{ width: '7%' }} />
+          <col style={{ width: '18%' }} />
+          <col style={{ width: '17%' }} />
+          <col style={{ width: '17%' }} />
+          <col style={{ width: '15%' }} />
+          <col style={{ width: '7%' }} />
+        </colgroup>
         <thead>
           <tr>
             <th>계좌번호</th>
@@ -117,8 +126,8 @@ const PrintReport = ({
 
   return createPortal(
     <div id="print-report-root">
-      {/* ─── 1페이지 래퍼 (break-after로 빈 페이지 방지) ─── */}
-      <div className="print-page">
+      {/* ─── 1페이지 콘텐츠 ─── */}
+      <div>
         {/* ─── 보고서 헤더 ─── */}
       <div className="print-header">
         <div className="print-header-left">
@@ -255,11 +264,14 @@ const PrintReport = ({
         <span style={{ fontWeight: 700 }}>본 문서는 대외비입니다. 무단 배포를 금합니다.</span>
         <span>© (주)컴포즈커피 / (주)스마트팩토리 재무팀</span>
       </div>
-      </div> {/* /print-page (1페이지 끝) */}
+      </div> {/* /1페이지 */}
+
+      {/* ─── 페이지 구분선 (zero-height separator, 빈 페이지 방지 - Windows/Chrome 호환) ─── */}
+      {dailyWithdrawals.length > 0 && <div className="print-page-break" />}
 
       {/* ─── 2페이지: 금일 출금 요청 로우 데이터 ─── */}
       {dailyWithdrawals.length > 0 && (
-        <div className="print-page">
+        <div>
           {/* 2페이지 헤더 */}
           <div className="print-header" style={{ marginBottom: 12 }}>
             <div className="print-header-left">
