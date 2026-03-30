@@ -206,6 +206,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
         exchangeRate={exchangeRate}
         isFinal={isFinal}
         usdPending={usdTotal}
+        dailyWithdrawals={dailyWithdrawals}
       />
 
       {/* 1. 웹 전용 화면 (인쇄 시 숨김) */}

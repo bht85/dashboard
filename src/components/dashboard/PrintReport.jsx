@@ -13,6 +13,7 @@ const PrintReport = ({
   exchangeRate = 1520,
   isFinal = false,
   usdPending = 0,
+  dailyWithdrawals = [],
 }) => {
   const issueText = dailyIssues[selectedDate] || '';
   const printTime = new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
@@ -252,10 +253,116 @@ const PrintReport = ({
         <span style={{ fontWeight: 700 }}>본 문서는 대외비입니다. 무단 배포를 금합니다.</span>
         <span>© (주)컴포즈커피 / (주)스마트팩토리 재무팀</span>
       </div>
+
+      {/* ─── 2페이지: 금일 출금 요청 로우 데이터 ─── */}
+      {dailyWithdrawals.length > 0 && (
+        <div style={{ pageBreakBefore: 'always', breakBefore: 'page' }}>
+          {/* 2페이지 헤더 */}
+          <div className="print-header" style={{ marginBottom: 12 }}>
+            <div className="print-header-left">
+              <div className="print-company-badge">CONFIDENTIAL</div>
+              <h1 className="print-title">일일 자금 일보 — 출금 세부 내역</h1>
+              <p className="print-subtitle">{selectedDate} · Daily Withdrawal Details</p>
+            </div>
+            <div className="print-header-right">
+              <table className="print-meta-table">
+                <tbody>
+                  <tr>
+                    <td className="print-meta-label">기준일</td>
+                    <td className="print-meta-value">{selectedDate}</td>
+                  </tr>
+                  <tr>
+                    <td className="print-meta-label">출금 건수</td>
+                    <td className="print-meta-value" style={{ fontWeight: 900, color: '#dc2626' }}>
+                      {dailyWithdrawals.length}건
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="print-meta-label">총 출금 (KRW)</td>
+                    <td className="print-meta-value" style={{ fontWeight: 900 }}>
+                      {formatKRW(dailyWithdrawals.filter(w => !w.isUSD).reduce((s, w) => s + w.amount, 0))}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* 출금 로우 데이터 테이블 */}
+          <div className="print-table-section">
+            <div className="print-table-header" style={{ background: '#1e293b' }}>
+              ■ 금일 출금 요청 전체 내역
+            </div>
+            <table className="print-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '70px' }}>지급일</th>
+                  <th style={{ width: '70px' }}>담당 법인</th>
+                  <th>출금 계좌</th>
+                  <th>입금은행</th>
+                  <th>입금 계좌번호</th>
+                  <th style={{ textAlign: 'right', width: '130px' }}>금액</th>
+                  <th>예금주 (지급대상)</th>
+                  <th>메모</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dailyWithdrawals.map((w, idx) => (
+                  <tr key={w.id || idx} style={{
+                    background: idx % 2 === 0 ? '#ffffff' : '#f8fafc',
+                    borderLeft: w.isInternal ? '3px solid #818cf8' : '3px solid transparent'
+                  }}>
+                    <td style={{ color: '#64748b', fontSize: '10px' }}>{w.paymentDate}</td>
+                    <td>
+                      <span style={{
+                        fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '3px',
+                        background: w.section === '컴포즈커피' ? '#eef2ff' : '#ecfdf5',
+                        color: w.section === '컴포즈커피' ? '#4338ca' : '#065f46'
+                      }}>
+                        {w.section === '컴포즈커피' ? '컴포즈' : '스마트'}
+                      </span>
+                    </td>
+                    <td style={{ fontFamily: 'monospace', fontSize: '10px', color: '#475569' }}>
+                      {w.fromAccount}
+                    </td>
+                    <td style={{ fontWeight: 700, fontSize: '10px' }}>{w.bank}</td>
+                    <td style={{ fontFamily: 'monospace', fontSize: '10px', color: '#64748b' }}>
+                      {w.account}
+                    </td>
+                    <td style={{
+                      textAlign: 'right', fontWeight: 900, color: '#dc2626',
+                      fontFamily: 'monospace', whiteSpace: 'nowrap'
+                    }}>
+                      {w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}
+                    </td>
+                    <td style={{ fontWeight: 700, fontSize: '11px' }}>
+                      {w.payee}
+                      {w.isInternal && (
+                        <span style={{ fontSize: '8px', color: '#6366f1', fontWeight: 900, marginLeft: 4 }}>
+                          ★ 내부
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ fontSize: '10px', color: '#94a3b8', fontStyle: 'italic' }}>
+                      {w.memo || w.withdrawLabel || '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 2페이지 하단 */}
+          <div className="print-footer">
+            <span>출력일시: {printTime}</span>
+            <span style={{ fontWeight: 700 }}>본 문서는 대외비입니다. 무단 배포를 금합니다.</span>
+            <span>© (주)컴포즈커피 / (주)스마트팩토리 재무팀</span>
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );
 };
 
 export default PrintReport;
-
