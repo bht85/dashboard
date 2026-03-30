@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { formatKRW, formatUSD } from '../../utils/formatters';
 
 const PrintReport = ({
@@ -113,8 +114,8 @@ const PrintReport = ({
     </div>
   );
 
-  return (
-    <div id="print-report-root" className="print-only">
+  return createPortal(
+    <div id="print-report-root">
       {/* ─── 보고서 헤더 ─── */}
       <div className="print-header">
         <div className="print-header-left">
@@ -251,8 +252,10 @@ const PrintReport = ({
         <span style={{ fontWeight: 700 }}>본 문서는 대외비입니다. 무단 배포를 금합니다.</span>
         <span>© (주)컴포즈커피 / (주)스마트팩토리 재무팀</span>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 
 export default PrintReport;
+

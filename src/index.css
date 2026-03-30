@@ -27,18 +27,13 @@
    @media print — 일일 자금 일보 PDF 출력 스타일
    ───────────────────────────────────────── */
 @media print {
-  /* 모든 웹 UI 숨김 */
-  aside,
-  header,
-  nav,
-  button,
-  textarea,
-  .print-hide,
-  #root > div > div:first-child {
-    display: none !important;
+  /* A4 가로 페이지 설정 */
+  @page {
+    size: A4 landscape;
+    margin: 12mm 15mm;
   }
 
-  /* 레이아웃 초기화 */
+  /* 레이아웃 리셋 */
   html, body {
     height: auto !important;
     overflow: visible !important;
@@ -50,15 +45,14 @@
     color: #1e293b !important;
   }
 
-  /* 인쇄 전용 컴포넌트만 표시 */
-  .print-only {
-    display: block !important;
+  /* 웹 앱 전체 숨김 (Portal로 렌더된 PrintReport는 #root 바깥이라 영향 없음) */
+  #root {
+    display: none !important;
   }
 
-  /* A4 페이지 설정 */
-  @page {
-    size: A4 landscape;
-    margin: 12mm 15mm;
+  /* PrintReport Portal만 표시 */
+  #print-report-root {
+    display: block !important;
   }
 
   /* 페이지 분리 방지 */
@@ -66,6 +60,11 @@
     page-break-inside: avoid;
     break-inside: avoid;
   }
+}
+
+/* 화면에서 PDF 보고서 영역 숨김 */
+#print-report-root {
+  display: none;
 }
 
 /* 화면에서 인쇄 전용 요소 숨김 */
