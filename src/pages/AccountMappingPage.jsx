@@ -3,15 +3,15 @@ import { FileText, CheckCircle2, Search, Filter, CheckSquare } from 'lucide-reac
 import { formatKRW, formatUSD } from '../utils/formatters';
 
 const COMPOSE_SUBJECTS = {
+  '공통': ['내부이체'],
   '매출': ['상품매출', '공사매출', '가맹비매출', '용역매출'],
-  '매입': ['임원급여', '직원급여', '상여금', '퇴직급여', '복리후생비', '여비교통비', '접대비', '통신비', '수도광열비', '전력비', '세금과공과금', '감가상각비', '지급임차료', '보험료', '차량유지비', '운반비', '교육훈련비', '도서인쇄비', '사무용품비', '소모품비', '지급수수료', '광고선전비', '판매촉진비', '대손상각비', '건물관리비', '무형고정자산상각', '리스료', '이자수익', '배당금수익', '외환차익', '판매장려금', '잡이익', '외환차손', '기부금', '유형자산처분손실', '잡손실', '법인세등', '원재료(도급)', '복리후생비(도급)', '여비교통비(도급)', '접대비(도급)', '감가상각비(도급)', '보험료(도급)', '차량유지비(도급)', '운반비(도급)', '사무용품비(도급)', '소모품비(도급)', '지급수수료(도급)', '외주공사비(도급)'],
-  '공통': ['내부이체']
+  '매입': ['임원급여', '직원급여', '상여금', '퇴직급여', '복리후생비', '여비교통비', '접대비', '통신비', '수도광열비', '전력비', '세금과공과금', '감가상각비', '지급임차료', '보험료', '차량유지비', '운반비', '교육훈련비', '도서인쇄비', '사무용품비', '소모품비', '지급수수료', '광고선전비', '판매촉진비', '대손상각비', '건물관리비', '무형고정자산상각', '리스료', '이자수익', '배당금수익', '외환차익', '판매장려금', '잡이익', '외환차손', '기부금', '유형자산처분손실', '잡손실', '법인세등', '원재료(도급)', '복리후생비(도급)', '여비교통비(도급)', '접대비(도급)', '감가상각비(도급)', '보험료(도급)', '차량유지비(도급)', '운반비(도급)', '사무용품비(도급)', '소모품비(도급)', '지급수수료(도급)', '외주공사비(도급)']
 };
 
 const SMART_SUBJECTS = {
+  '공통': ['내부이체'],
   '매출': ['제품매출'],
-  '매입': ['복리후생비(원가)', '여비교통비(원가)', '접대비(원가)', '통신비(원가)', '가스수도료(원가)', '전력비(원가)', '세금과공과금(원가)', '감가상각비(원가)', '보험료(원가)', '차량유지비(원가)', '운반비(원가)', '교육훈련비(원가)', '소모품비(원가)', '지급수수료(원가)', '복리후생비', '지급수수료', '이자수익', '외환차익', '잡이익', '이자비용', '외환차손', '법인세등'],
-  '공통': ['내부이체']
+  '매입': ['복리후생비(원가)', '여비교통비(원가)', '접대비(원가)', '통신비(원가)', '가스수도료(원가)', '전력비(원가)', '세금과공과금(원가)', '감가상각비(원가)', '보험료(원가)', '차량유지비(원가)', '운반비(원가)', '교육훈련비(원가)', '소모품비(원가)', '지급수수료(원가)', '복리후생비', '지급수수료', '이자수익', '외환차익', '잡이익', '이자비용', '외환차손', '법인세등']
 };
 
 const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawals }) => {
@@ -104,14 +104,14 @@ const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawals }) 
                 className="bg-white border border-indigo-200 rounded-lg px-2 py-1.5 text-xs font-bold outline-none text-indigo-600 w-36"
               >
                 <option value="">설정할 과목...</option>
+                <optgroup label="■ 공통">
+                  {getSubjects(selectedSection)['공통'].map(s => <option key={s} value={s}>{s}</option>)}
+                </optgroup>
                 <optgroup label="■ 매출">
                   {getSubjects(selectedSection)['매출'].map(s => <option key={s} value={s}>{s}</option>)}
                 </optgroup>
                 <optgroup label="■ 매입">
                   {getSubjects(selectedSection)['매입'].map(s => <option key={s} value={s}>{s}</option>)}
-                </optgroup>
-                <optgroup label="■ 공통">
-                  {getSubjects(selectedSection)['공통'].map(s => <option key={s} value={s}>{s}</option>)}
                 </optgroup>
               </select>
               <button 
@@ -216,14 +216,14 @@ const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawals }) 
                           className={`flex-1 w-full bg-white border ${w.accountSubject ? 'border-indigo-300 text-indigo-700 shadow-sm' : 'border-rose-200 text-rose-600 bg-rose-50/50'} rounded-lg px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all`}
                         >
                           <option value="">-- 과목 미지정 --</option>
+                          <optgroup label="■ 공통">
+                            {subjects['공통'].map(s => <option key={s} value={s}>{s}</option>)}
+                          </optgroup>
                           <optgroup label="■ 매출">
                             {subjects['매출'].map(s => <option key={s} value={s}>{s}</option>)}
                           </optgroup>
                           <optgroup label="■ 매입">
                             {subjects['매입'].map(s => <option key={s} value={s}>{s}</option>)}
-                          </optgroup>
-                          <optgroup label="■ 공통">
-                            {subjects['공통'].map(s => <option key={s} value={s}>{s}</option>)}
                           </optgroup>
                         </select>
                         {w.accountSubject && (

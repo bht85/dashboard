@@ -19,10 +19,10 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView,
     { id: 'analytics', label: '추이 분석', icon: BarChart3 },
     { id: 'monthly', label: '월간 자금 일보', icon: TrendingUp },
     { id: 'transactions', label: '출금 대상', icon: ArrowLeftRight },
-    { id: 'accountMapping', label: '계정과목 매칭', icon: ListFilter },
     { id: 'foreign', label: '외화 송금', icon: Globe },
     { id: 'accounts', label: '계좌 관리', icon: Settings },
     { id: 'cashStatus', label: '일일 자금 업로드', icon: Receipt },
+    { id: 'accountMapping', label: '계정과목 매칭', icon: ListFilter },
   ];
 
   const cashFlowItems = [
