@@ -3,12 +3,13 @@ import Sidebar from './Sidebar';
 import Header from './Header';
 
 const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, onExport, children }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
 
   return (
-    <div className="flex min-h-screen bg-[#f8fafc] text-slate-900 font-sans">
+    <div className="flex min-h-screen bg-[#f8fafc] text-slate-900 font-sans overflow-x-hidden">
       <Sidebar 
         isSidebarOpen={isSidebarOpen} 
+        setIsSidebarOpen={setIsSidebarOpen}
         currentView={currentView} 
         setCurrentView={setCurrentView} 
       />
@@ -37,7 +38,7 @@ const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, on
           onExport={onExport}
         />
 
-        <main className="flex-1 p-8 lg:p-12 overflow-y-auto">
+        <main className="flex-1 p-4 lg:p-12 overflow-y-auto max-w-full overflow-x-hidden">
           <div className="max-w-7xl mx-auto">
             {children}
           </div>

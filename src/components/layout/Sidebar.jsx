@@ -9,7 +9,7 @@ import {
   Receipt
 } from 'lucide-react';
 
-const Sidebar = ({ isSidebarOpen, currentView, setCurrentView }) => {
+const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView }) => {
   const navItems = [
     { id: 'dashboard', label: '일일 자금 일보', icon: LayoutDashboard },
     { id: 'analytics', label: '추이 분석', icon: BarChart3 },
@@ -35,7 +35,10 @@ const Sidebar = ({ isSidebarOpen, currentView, setCurrentView }) => {
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setCurrentView(item.id)}
+              onClick={() => {
+                setCurrentView(item.id);
+                if (window.innerWidth < 1024) setIsSidebarOpen(false);
+              }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${
                 currentView === item.id 
                 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' 

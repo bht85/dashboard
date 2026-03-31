@@ -504,7 +504,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
              <span className="text-[10px] bg-white text-slate-500 px-2 py-0.5 rounded border border-slate-200 font-bold">TOTAL: {fxSchedule.length}건</span>
            </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-[13px] border-collapse bg-white">
+              <table className="w-full text-left text-[13px] border-collapse bg-white min-w-[700px]">
                 <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
                   <tr>
                     <th className="px-4 py-3 border-r border-slate-100/50">지급예정일</th>
@@ -611,7 +611,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                       </div>
                     </div>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-[10.5px] border-collapse bg-white leading-tight">
+                      <table className="w-full text-left text-[10.5px] border-collapse bg-white leading-tight min-w-[800px]">
                         <thead className="bg-slate-50/50 text-slate-400 font-black border-b border-slate-100 uppercase tracking-tighter">
                           <tr>
                             <th className="px-4 py-2 border-r border-slate-100/50">지급일</th>
