@@ -128,8 +128,7 @@ const PrintReport = ({
   return createPortal(
     <div id="print-report-root">
       {/* ─── 1페이지 콘텐츠 ─── */}
-      <div>
-        {/* ─── 보고서 헤더 ─── */}
+      {/* ─── 보고서 헤더 ─── */}
       <div className="print-header">
         <div className="print-header-left">
           <div className="print-company-badge">CONFIDENTIAL</div>
@@ -262,19 +261,15 @@ const PrintReport = ({
       )}
 
       {/* ─── 보고서 하단 ─── */}
-      <div className="print-footer">
+      <div className="print-footer" style={dailyWithdrawals.length > 0 ? { pageBreakAfter: 'always', breakAfter: 'page' } : {}}>
         <span>출력일시: {printTime}</span>
         <span style={{ fontWeight: 700 }}>본 문서는 대외비입니다. 무단 배포를 금합니다.</span>
         <span>© (주)컴포즈커피 / (주)스마트팩토리 재무팀</span>
       </div>
-      </div> {/* /1페이지 */}
-
-      {/* ─── 페이지 구분선 (zero-height separator, 빈 페이지 방지 - Windows/Chrome 호환) ─── */}
-      {dailyWithdrawals.length > 0 && <div className="print-page-break" />}
 
       {/* ─── 2페이지: 금일 출금 요청 로우 데이터 ─── */}
       {dailyWithdrawals.length > 0 && (
-        <div>
+        <>
           {/* 2페이지 헤더 */}
           <div className="print-header" style={{ marginBottom: 12 }}>
             <div className="print-header-left">
@@ -376,7 +371,7 @@ const PrintReport = ({
             <span style={{ fontWeight: 700 }}>본 문서는 대외비입니다. 무단 배포를 금합니다.</span>
             <span>© (주)컴포즈커피 / (주)스마트팩토리 재무팀</span>
           </div>
-        </div>
+        </>
       )}
     </div>,
     document.body
