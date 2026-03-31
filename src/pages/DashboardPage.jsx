@@ -191,6 +191,19 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   const usdTotal = pendingFXSchedules.reduce((sum, item) => sum + item.amount, 0);
   const krwEquivalent = usdTotal * exchangeRate;
 
+  const getEndOfWeek = (dateString) => {
+    const d = new Date(dateString);
+    const day = d.getDay();
+    const diffToSun = day === 0 ? 0 : 7 - day;
+    d.setDate(d.getDate() + diffToSun);
+    return d.toISOString().split('T')[0];
+  };
+  const endOfWeekDate = getEndOfWeek(selectedDate);
+  const usdThisWeek = pendingFXSchedules
+    .filter(item => item.date >= selectedDate && item.date <= endOfWeekDate)
+    .reduce((sum, item) => sum + item.amount, 0);
+  const krwThisWeekEquivalent = usdThisWeek * exchangeRate;
+
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-700">
 
@@ -206,6 +219,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
         exchangeRate={exchangeRate}
         isFinal={isFinal}
         usdPending={usdTotal}
+        usdThisWeek={usdThisWeek}
         dailyWithdrawals={dailyWithdrawals}
       />
 
@@ -281,15 +295,29 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
           <div className="bg-slate-900 p-5 rounded-2xl shadow-xl flex items-center justify-between col-span-1 lg:col-span-2 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-10"><Globe className="w-24 h-24 text-white" /></div>
             <div className="z-10">
-              <p className="text-[10px] text-slate-500 font-bold uppercase mb-1 tracking-widest">외화 송금 대기 (USD)</p>
-              <h4 className="text-2xl font-bold text-emerald-400 font-mono tracking-tight">{formatUSD(usdTotal)}</h4>
+              <p className="text-[10px] text-slate-500 font-bold uppercase mb-2 tracking-widest">외화 송금 대기 (USD)</p>
+              <div>
+                <p className="text-[10px] text-slate-400 mb-0.5">금주 필요액</p>
+                <h4 className="text-xl font-bold text-emerald-400 font-mono tracking-tight">{formatUSD(usdThisWeek)}</h4>
+              </div>
+              <div className="mt-2 text-slate-400">
+                <span className="text-[10px] mr-2">총 필요액</span>
+                <span className="text-sm font-bold font-mono text-emerald-600 border-b border-slate-700/50 pb-0.5">{formatUSD(usdTotal)}</span>
+              </div>
             </div>
             <div className="text-right flex flex-col items-end z-10">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-2">
                 <span className="bg-white/10 px-1.5 py-0.5 rounded text-[8px] font-bold text-slate-400">Rate: {formatKRW(exchangeRate)}</span>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">환전 필요 예상액</p>
               </div>
-              <h4 className="text-2xl font-bold text-amber-400 font-mono tracking-tighter">약 {(krwEquivalent / 100000000).toFixed(1)} 억원</h4>
+              <div className="text-right">
+                <p className="text-[10px] text-slate-400 mb-0.5">금주 예상액</p>
+                <h4 className="text-xl font-bold text-amber-400 font-mono tracking-tighter">약 {(krwThisWeekEquivalent / 100000000).toFixed(1)} 억원</h4>
+              </div>
+              <div className="mt-2 text-right">
+                <span className="text-[10px] text-slate-400 mr-2">총 예상액</span>
+                <span className="text-sm font-bold font-mono text-amber-600 border-b border-slate-700/50 pb-0.5">약 {(krwEquivalent / 100000000).toFixed(1)} 억원</span>
+              </div>
             </div>
           </div>
         </section>
@@ -418,16 +446,16 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
               <h4 className="text-xs font-bold text-emerald-400 mb-4 flex items-center gap-2">기타 외화 요약</h4>
               <div className="space-y-3">
                 <div className="flex justify-between text-xs border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">송금 예정 총액</span>
-                  <span className="font-mono font-bold text-emerald-400">{formatUSD(usdTotal)}</span>
+                  <span className="text-slate-400">금주 필요 송금액</span>
+                  <span className="font-mono font-bold text-emerald-400">{formatUSD(usdThisWeek)}</span>
                 </div>
                 <div className="flex justify-between text-xs border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">필요 외화 (KRW 환산)</span>
-                  <span className="font-mono font-bold text-amber-400">{formatKRW(krwEquivalent)}</span>
+                  <span className="text-slate-400">총 송금 대기 (잔액)</span>
+                  <span className="font-mono font-bold text-emerald-600">{formatUSD(usdTotal)}</span>
                 </div>
-                <div className="flex justify-between text-sm pt-1">
-                  <span className="font-bold">합계 (예상)</span>
-                  <span className="font-mono font-black text-amber-500">{formatKRW(krwEquivalent)}</span>
+                <div className="flex justify-between text-sm pt-1 mt-2">
+                  <span className="font-bold text-slate-300">금주 예상 한화</span>
+                  <span className="font-mono font-black text-amber-400">{formatKRW(krwThisWeekEquivalent)}</span>
                 </div>
               </div>
             </div>

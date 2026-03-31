@@ -13,6 +13,7 @@ const PrintReport = ({
   exchangeRate = 1520,
   isFinal = false,
   usdPending = 0,
+  usdThisWeek = 0,
   dailyWithdrawals = [],
 }) => {
   const issueText = dailyIssues[selectedDate] || '';
@@ -192,11 +193,13 @@ const PrintReport = ({
         </div>
         <div className="print-summary-box">
           <div className="print-summary-label">외화 송금 대기 (USD)</div>
-          <div className="print-summary-value" style={{ color: '#059669', fontSize: '14px' }}>
-            {formatUSD(usdPending)}
+          <div className="print-summary-value" style={{ color: '#059669', fontSize: '13px', lineHeight: '1.2' }}>
+            <span style={{ fontSize: '9px', color: '#64748b', marginRight: '4px' }}>금주:</span>
+            {formatUSD(usdThisWeek)}
           </div>
-          <div className="print-summary-sub">
-            ≈ {formatKRW(usdPending * exchangeRate)} (환산)
+          <div className="print-summary-sub" style={{ fontSize: '10px' }}>
+            <span style={{ fontSize: '8px', color: '#94a3b8', marginRight: '4px' }}>총액:</span>
+            {formatUSD(usdPending)}
           </div>
         </div>
       </div>
