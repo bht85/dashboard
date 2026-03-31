@@ -34,12 +34,52 @@ const PrintReport = ({
     (s) => s.date === selectedDate && s.status !== '송금 완료(집행)'
   );
 
-  const renderTable = (accounts, totals, title, color) => (
+  const renderHeader = (pageTitle = '일일 자금 일보', subtitle = 'Daily Treasury Report') => (
+    <div className="print-header">
+      <div className="print-header-left">
+        <div className="print-company-badge">CONFIDENTIAL</div>
+        <h1 className="print-title">{pageTitle}</h1>
+        <p className="print-subtitle">{subtitle}</p>
+      </div>
+      <div className="print-header-right">
+        <table className="print-meta-table">
+          <tbody>
+            <tr>
+              <td className="print-meta-label">기준일</td>
+              <td className="print-meta-value">{selectedDate}</td>
+            </tr>
+            <tr>
+              <td className="print-meta-label">리포트 유형</td>
+              <td className="print-meta-value">
+                <span style={{ color: isFinal ? '#16a34a' : '#d97706', fontWeight: 900 }}>
+                  {isFinal ? '✓ 확정 리포트' : '⚠ 예측 리포트'}
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td className="print-meta-label">기준 환율</td>
+              <td className="print-meta-value">{formatKRW(exchangeRate)} / USD</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderFooter = (showBreak = false) => (
+    <div className="print-footer" style={showBreak ? { pageBreakAfter: 'always', breakAfter: 'page' } : {}}>
+      <span>출력일시: {printTime}</span>
+      <span style={{ fontWeight: 700 }}>본 문서는 대외비입니다. 무단 배포를 금합니다.</span>
+      <span>© (주)컴포즈커피 / (주)스마트팩토리 재무팀</span>
+    </div>
+  );
+
+  const renderTableContent = (accounts, totals, title, color) => (
     <div className="print-table-section">
       <div className="print-table-header" style={{ background: color }}>
         {title}
       </div>
-      <table className="print-table" style={{ tableLayout: 'fixed', width: '100%' }}>
+      <table className="print-table" style={{ tableLayout: 'fixed', width: '100%', marginBottom: 0 }}>
         <colgroup>
           <col style={{ width: '18%' }} />
           <col style={{ width: '7%' }} />
@@ -127,150 +167,115 @@ const PrintReport = ({
 
   return createPortal(
     <div id="print-report-root">
-      {/* ─── 1페이지 콘텐츠 ─── */}
-      {/* ─── 보고서 헤더 ─── */}
-      <div className="print-header">
-        <div className="print-header-left">
-          <div className="print-company-badge">CONFIDENTIAL</div>
-          <h1 className="print-title">일일 자금 일보</h1>
-          <p className="print-subtitle">Daily Treasury Report</p>
+      {/* ─── 페이지 1: 요약 및 컴포즈커피 ─── */}
+      <div className="print-page-wrapper">
+        {renderHeader()}
+        <div className="print-summary-grid">
+          <div className="print-summary-box">
+            <div className="print-summary-label">기초 가용 자산 (Baseline)</div>
+            <div className="print-summary-value">{formatKRW(totalKRWAssets)}</div>
+            {totalUSDAssets > 0 && (
+              <div className="print-summary-sub">{formatUSD(totalUSDAssets)} (USD)</div>
+            )}
+          </div>
+          <div className="print-summary-box print-summary-box--red">
+            <div className="print-summary-label">금일 순지출 (외부 집행)</div>
+            <div className="print-summary-value" style={{ color: '#dc2626' }}>
+              {formatKRW(totalNetOut)}
+            </div>
+            {totalNetOutUSD > 0 && (
+              <div className="print-summary-sub" style={{ color: '#dc2626' }}>
+                {formatUSD(totalNetOutUSD)} (USD)
+              </div>
+            )}
+          </div>
+          <div className="print-summary-box print-summary-box--indigo">
+            <div className="print-summary-label" style={{ color: '#c7d2fe' }}>출금 후 예상 잔액 (Closing)</div>
+            <div className="print-summary-value" style={{ color: '#fff', fontSize: '15px' }}>
+              {formatKRW(totalKRWFinal)}
+            </div>
+            {totalUSDFinal > 0 && (
+              <div className="print-summary-sub" style={{ color: '#a5f3fc' }}>
+                {formatUSD(totalUSDFinal)} (USD)
+              </div>
+            )}
+          </div>
+          <div className="print-summary-box">
+            <div className="print-summary-label">외화 송금 대기 (USD)</div>
+            <div className="print-summary-value" style={{ color: '#059669', fontSize: '13px', lineHeight: '1.2' }}>
+              <span style={{ fontSize: '9px', color: '#64748b', marginRight: '4px' }}>금주:</span>
+              {formatUSD(usdThisWeek)}
+            </div>
+            <div className="print-summary-sub" style={{ fontSize: '10px' }}>
+              <span style={{ fontSize: '8px', color: '#94a3b8', marginRight: '4px' }}>총액:</span>
+              {formatUSD(usdPending)}
+            </div>
+          </div>
         </div>
-        <div className="print-header-right">
-          <table className="print-meta-table">
-            <tbody>
-              <tr>
-                <td className="print-meta-label">기준일</td>
-                <td className="print-meta-value">{selectedDate}</td>
-              </tr>
-              <tr>
-                <td className="print-meta-label">리포트 유형</td>
-                <td className="print-meta-value">
-                  <span style={{ color: isFinal ? '#16a34a' : '#d97706', fontWeight: 900 }}>
-                    {isFinal ? '✓ 확정 리포트' : '⚠ 예측 리포트'}
-                  </span>
-                </td>
-              </tr>
-              <tr>
-                <td className="print-meta-label">기준 환율</td>
-                <td className="print-meta-value">{formatKRW(exchangeRate)} / USD</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+
+        {issueText && (
+          <div className="print-issues-box">
+            <div className="print-issues-title">■ 금일 주요 이슈 사항</div>
+            <div className="print-issues-content">{issueText}</div>
+          </div>
+        )}
+
+        {renderTableContent(composeAccounts, composeTotal, '1. 컴포즈커피 계좌 현황 (확정 리포트)', '#0f172a')}
+        {renderFooter(true)}
       </div>
 
-      {/* ─── 핵심 요약 수치 4박스 ─── */}
-      <div className="print-summary-grid">
-        <div className="print-summary-box">
-          <div className="print-summary-label">기초 가용 자산 (Baseline)</div>
-          <div className="print-summary-value">{formatKRW(totalKRWAssets)}</div>
-          {totalUSDAssets > 0 && (
-            <div className="print-summary-sub">{formatUSD(totalUSDAssets)} (USD)</div>
-          )}
-        </div>
-        <div className="print-summary-box print-summary-box--red">
-          <div className="print-summary-label">금일 순지출 (외부 집행)</div>
-          <div className="print-summary-value" style={{ color: '#dc2626' }}>
-            {formatKRW(totalNetOut)}
-          </div>
-          {totalNetOutUSD > 0 && (
-            <div className="print-summary-sub" style={{ color: '#dc2626' }}>
-              {formatUSD(totalNetOutUSD)} (USD)
+      {/* ─── 페이지 2: 스마트팩토리 및 외화 일정 ─── */}
+      <div className="print-page-wrapper">
+        {renderHeader('일일 자금 일보 (계속)', 'Smart Factory & FX Schedule')}
+        {renderTableContent(smartAccounts, smartTotal, '2. 스마트팩토리 계좌 현황 (확정 리포트)', '#064e4b')}
+
+        {todayFXSchedule.length > 0 && (
+          <div className="print-table-section">
+            <div className="print-table-header" style={{ background: '#1e3a5f' }}>
+              3. 금일 외화 송금 예정 일정 (스마트팩토리_생두)
             </div>
-          )}
-        </div>
-        <div className="print-summary-box print-summary-box--indigo">
-          <div className="print-summary-label" style={{ color: '#c7d2fe' }}>출금 후 예상 잔액 (Closing)</div>
-          <div className="print-summary-value" style={{ color: '#fff', fontSize: '15px' }}>
-            {formatKRW(totalKRWFinal)}
-          </div>
-          {totalUSDFinal > 0 && (
-            <div className="print-summary-sub" style={{ color: '#a5f3fc' }}>
-              {formatUSD(totalUSDFinal)} (USD)
-            </div>
-          )}
-        </div>
-        <div className="print-summary-box">
-          <div className="print-summary-label">외화 송금 대기 (USD)</div>
-          <div className="print-summary-value" style={{ color: '#059669', fontSize: '13px', lineHeight: '1.2' }}>
-            <span style={{ fontSize: '9px', color: '#64748b', marginRight: '4px' }}>금주:</span>
-            {formatUSD(usdThisWeek)}
-          </div>
-          <div className="print-summary-sub" style={{ fontSize: '10px' }}>
-            <span style={{ fontSize: '8px', color: '#94a3b8', marginRight: '4px' }}>총액:</span>
-            {formatUSD(usdPending)}
-          </div>
-        </div>
-      </div>
-
-      {/* ─── 주요 이슈 사항 ─── */}
-      {issueText && (
-        <div className="print-issues-box">
-          <div className="print-issues-title">■ 금일 주요 이슈 사항</div>
-          <div className="print-issues-content">{issueText}</div>
-        </div>
-      )}
-
-      {/* ─── 컴포즈커피 계좌 현황 ─── */}
-      {renderTable(composeAccounts, composeTotal, '1. 컴포즈커피 계좌 현황 (확정 리포트)', '#0f172a')}
-
-      {/* ─── 스마트팩토리 계좌 현황 ─── */}
-      {renderTable(smartAccounts, smartTotal, '2. 스마트팩토리 계좌 현황 (확정 리포트)', '#064e3b')}
-
-      {/* ─── 외화 송금 일정 (오늘) ─── */}
-      {todayFXSchedule.length > 0 && (
-        <div className="print-table-section">
-          <div className="print-table-header" style={{ background: '#1e3a5f' }}>
-            3. 금일 외화 송금 예정 일정 (스마트팩토리_생두)
-          </div>
-          <table className="print-table">
-            <thead>
-              <tr>
-                <th>지급예정일</th>
-                <th>거래처</th>
-                <th style={{ textAlign: 'right' }}>금액 (USD)</th>
-                <th>은행명</th>
-                <th>내용</th>
-                <th>상태</th>
-              </tr>
-            </thead>
-            <tbody>
-              {todayFXSchedule.map((s) => (
-                <tr key={s.id}>
-                  <td style={{ fontWeight: 700, color: '#2563eb' }}>{s.date}</td>
-                  <td style={{ fontWeight: 700 }}>{s.client}</td>
-                  <td style={{ textAlign: 'right', fontWeight: 900, color: '#2563eb' }}>
-                    {formatUSD(s.amount)}
-                  </td>
-                  <td>{s.bank}</td>
-                  <td style={{ fontSize: '10px', color: '#64748b' }}>{s.desc}</td>
-                  <td>
-                    <span style={{
-                      fontSize: '9px', fontWeight: 700, padding: '1px 6px',
-                      background: '#eff6ff', color: '#1d4ed8', borderRadius: '4px',
-                      border: '1px solid #bfdbfe'
-                    }}>
-                      {s.status}
-                    </span>
-                  </td>
+            <table className="print-table">
+              <thead>
+                <tr>
+                  <th>지급예정일</th>
+                  <th>거래처</th>
+                  <th style={{ textAlign: 'right' }}>금액 (USD)</th>
+                  <th>은행명</th>
+                  <th>내용</th>
+                  <th>상태</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* ─── 보고서 하단 ─── */}
-      <div className="print-footer" style={dailyWithdrawals.length > 0 ? { pageBreakAfter: 'always', breakAfter: 'page' } : {}}>
-        <span>출력일시: {printTime}</span>
-        <span style={{ fontWeight: 700 }}>본 문서는 대외비입니다. 무단 배포를 금합니다.</span>
-        <span>© (주)컴포즈커피 / (주)스마트팩토리 재무팀</span>
+              </thead>
+              <tbody>
+                {todayFXSchedule.map((s) => (
+                  <tr key={s.id}>
+                    <td style={{ fontWeight: 700, color: '#2563eb' }}>{s.date}</td>
+                    <td style={{ fontWeight: 700 }}>{s.client}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 900, color: '#2563eb' }}>
+                      {formatUSD(s.amount)}
+                    </td>
+                    <td>{s.bank}</td>
+                    <td style={{ fontSize: '10px', color: '#64748b' }}>{s.desc}</td>
+                    <td>
+                      <span style={{
+                        fontSize: '9px', fontWeight: 700, padding: '1px 6px',
+                        background: '#eff6ff', color: '#1d4ed8', borderRadius: '4px',
+                        border: '1px solid #bfdbfe'
+                      }}>
+                        {s.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {renderFooter(dailyWithdrawals.length > 0)}
       </div>
 
-      {/* ─── 2페이지: 금일 출금 요청 로우 데이터 ─── */}
+      {/* ─── 페이지 3: 출금 세부 내역 ─── */}
       {dailyWithdrawals.length > 0 && (
-        <>
-          {/* 2페이지 헤더 */}
+        <div className="print-page-wrapper">
           <div className="print-header" style={{ marginBottom: 12 }}>
             <div className="print-header-left">
               <div className="print-company-badge">CONFIDENTIAL</div>
@@ -301,7 +306,6 @@ const PrintReport = ({
             </div>
           </div>
 
-          {/* 출금 로우 데이터 테이블 */}
           <div className="print-table-section">
             <div className="print-table-header" style={{ background: '#1e293b' }}>
               ■ 금일 출금 요청 전체 내역
@@ -310,7 +314,7 @@ const PrintReport = ({
               <thead>
                 <tr>
                   <th style={{ width: '70px' }}>지급일</th>
-                  <th style={{ width: '70px' }}>담당 법인</th>
+                  <th style={{ width: '70px' }}>법인</th>
                   <th>출금 계좌</th>
                   <th>입금은행</th>
                   <th>입금 계좌번호</th>
@@ -364,14 +368,8 @@ const PrintReport = ({
               </tbody>
             </table>
           </div>
-
-          {/* 2페이지 하단 */}
-          <div className="print-footer">
-            <span>출력일시: {printTime}</span>
-            <span style={{ fontWeight: 700 }}>본 문서는 대외비입니다. 무단 배포를 금합니다.</span>
-            <span>© (주)컴포즈커피 / (주)스마트팩토리 재무팀</span>
-          </div>
-        </>
+          {renderFooter()}
+        </div>
       )}
     </div>,
     document.body

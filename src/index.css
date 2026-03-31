@@ -55,21 +55,12 @@
     display: block !important;
   }
 
-  /* 페이지 분리 방지 */
-  .print-table-section {
-    page-break-inside: avoid;
-    break-inside: avoid;
-  }
-
-  /* 페이지 구분 — zero-height separator (Windows/Chrome 빈 페이지 방지) */
-  .print-page-break {
+  /* 개별 페이지 래퍼 */
+  .print-page-wrapper {
     display: block !important;
-    height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: none !important;
-    page-break-after: always !important;
-    break-after: page !important;
+    width: 100% !important;
+    height: auto !important;
+    position: relative !important;
   }
 }
 
