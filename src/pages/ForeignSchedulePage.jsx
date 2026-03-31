@@ -56,6 +56,14 @@ const ForeignSchedulePage = ({ fxSchedule, onUpdateSchedule, onDeleteSchedule, e
     }
   };
 
+  const handleDateChange = async (id, newDate) => {
+    const item = fxSchedule.find(i => String(i.id) === String(id));
+    if (item) {
+      await onUpdateSchedule({ ...item, date: newDate });
+    }
+  };
+
+
   return (
     <div className="animate-in slide-in-from-bottom-4 duration-500">
       <div className="mb-8">
@@ -140,7 +148,14 @@ const ForeignSchedulePage = ({ fxSchedule, onUpdateSchedule, onDeleteSchedule, e
             <tbody className="divide-y divide-slate-100 text-slate-600">
               {fxSchedule.map((s) => (
                 <tr key={s.id} className="hover:bg-slate-50 group">
-                  <td className="px-4 py-3 border-r">{s.date}</td>
+                  <td className="px-4 py-3 border-r">
+                    <input 
+                      type="date" 
+                      value={s.date} 
+                      onChange={(e) => handleDateChange(s.id, e.target.value)}
+                      className="text-[11px] font-bold bg-transparent border border-transparent hover:border-slate-200 focus:border-indigo-500 rounded px-1 py-0.5 outline-none transition-colors cursor-pointer block w-full"
+                    />
+                  </td>
                   <td className="px-4 py-3 border-r font-bold text-slate-800">{s.client}</td>
                   <td className="px-4 py-3 border-r text-right font-mono font-bold text-blue-600">{formatUSD(s.amount)}</td>
                   <td className="px-6 py-3 border-r text-right font-mono font-black text-slate-900 bg-indigo-50/10">
