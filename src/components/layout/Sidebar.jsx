@@ -6,10 +6,13 @@ import {
   ArrowLeftRight, 
   Globe, 
   Settings,
-  Receipt
+  Receipt,
+  Calendar,
+  CalendarPlus
 } from 'lucide-react';
 
-const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView }) => {
+const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView, user }) => {
+  const isAuthorized = ['jiin0723@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email);
   const navItems = [
     { id: 'dashboard', label: '일일 자금 일보', icon: LayoutDashboard },
     { id: 'analytics', label: '추이 분석', icon: BarChart3 },
@@ -18,6 +21,11 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView 
     { id: 'foreign', label: '외화 송금', icon: Globe },
     { id: 'accounts', label: '계좌 관리', icon: Settings },
     { id: 'cashStatus', label: '일일 자금 업로드', icon: Receipt },
+  ];
+
+  const cashFlowItems = [
+    { id: 'cashFlow', label: '자금 흐름 추정', icon: Calendar },
+    { id: 'cashEvent', label: '자금 이벤트 등록', icon: CalendarPlus },
   ];
 
   return (
@@ -49,6 +57,29 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView 
               {item.label}
             </button>
           ))}
+          
+          {isAuthorized && (
+            <div className="my-6 pt-4 border-t-2 border-slate-100">
+              <p className="px-4 mb-3 text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Simulation & Event</p>
+              {cashFlowItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setCurrentView(item.id);
+                    if (window.innerWidth < 1024) setIsSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 mt-1 rounded-xl text-sm font-bold transition-all ${
+                    currentView === item.id 
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' 
+                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
         </nav>
 
         <div className="p-4 mb-4">

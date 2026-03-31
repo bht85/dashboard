@@ -12,6 +12,7 @@ const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, on
         setIsSidebarOpen={setIsSidebarOpen}
         currentView={currentView} 
         setCurrentView={setCurrentView} 
+        user={user}
       />
 
       {/* Mobile Overlay */}

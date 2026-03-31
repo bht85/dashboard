@@ -11,6 +11,8 @@ import ForeignSchedulePage from './pages/ForeignSchedulePage';
 import CashStatusPage from './pages/CashStatusPage';
 import MonthlyReportPage from './pages/MonthlyReportPage';
 import FinancialChartPage from './pages/FinancialChartPage';
+import CashFlowPage from './pages/CashFlowPage';
+import CashEventPage from './pages/CashEventPage';
 import AuthPage from './pages/AuthPage';
 import * as XLSX from 'xlsx';
 import { isExcludedAccount } from './utils/formatters';
@@ -81,6 +83,7 @@ const App = () => {
   const [smartAccounts, setSmartAccounts] = useState([]);
   const [fxSchedule, setFxSchedule] = useState([]);
   const [withdrawals, setWithdrawals] = useState([]);
+  const [cashFlowSchedules, setCashFlowSchedules] = useState([]); // 신규: 자금 추정 스케줄
   const [dailyStatuses, setDailyStatuses] = useState({});
   const [dailyIssues, setDailyIssues] = useState({}); // { "2024-03-26": "이슈내용..." }
 
@@ -138,6 +141,12 @@ const App = () => {
         setDailyIssues(data);
     }, logAndHandle("dailyIssues"));
 
+    // 6. Cash Flow Schedules Sync (신규: 자금 추정 스케줄 연동)
+    const unsubCashFlow = onSnapshot(collection(db, "cashFlowSchedules"), (snapshot) => {
+        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        setCashFlowSchedules(data.sort((a,b) => (a.date > b.date ? 1 : -1)));
+    }, logAndHandle("cashFlowSchedules"));
+
     // 4. Daily Status Sync
     const unsubStatus = onSnapshot(collection(db, "dailyStatuses"), (snapshot) => {
         const statuses = {};
@@ -169,7 +178,7 @@ const App = () => {
         setDailyStatuses(statuses);
     }, logAndHandle("dailyStatuses"));
 
-    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); };
+    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); unsubCashFlow(); };
   }, [user]);
 
   // --- Firestore Update Wrappers ---
@@ -245,6 +254,18 @@ const App = () => {
     if (!id) return;
     console.log(`Deleting FX Schedule: ${id}`);
     await deleteDoc(doc(collection(db, "fxSchedule"), String(id)));
+  };
+
+  const updateCashFlowSchedule = async (data) => {
+    const docId = data.id ? String(data.id) : Date.now().toString();
+    console.log(`Updating Cash Flow Schedule: ${docId}`);
+    await setDoc(doc(collection(db, "cashFlowSchedules"), docId), data);
+  };
+
+  const deleteCashFlowSchedule = async (id) => {
+    if (!id) return;
+    console.log(`Deleting Cash Flow Schedule: ${id}`);
+    await deleteDoc(doc(collection(db, "cashFlowSchedules"), String(id)));
   };
 
   const updateDailyIssue = async (date, content) => {
@@ -491,6 +512,28 @@ const App = () => {
           smartAccounts={smartAccounts}
         />
       )}
+      {/* Simulation & Event (Restricted Access) */}
+      {currentView === 'cashFlow' && (['jiin0723@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email) ? (
+        <CashFlowPage 
+          cashFlowSchedules={cashFlowSchedules}
+          onUpdateSchedule={updateCashFlowSchedule}
+          onDeleteSchedule={deleteCashFlowSchedule}
+          fxSchedule={fxSchedule}
+          exchangeRate={exchangeRate}
+          dailyStatuses={dailyStatuses}
+          withdrawals={withdrawals}
+        />
+      ) : <div className="p-20 text-center font-black text-slate-400">접근 권한이 없습니다. (Test Period)</div>)}
+      
+      {currentView === 'cashEvent' && (['jiin0723@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email) ? (
+        <CashEventPage 
+          cashFlowSchedules={cashFlowSchedules}
+          onUpdateSchedule={updateCashFlowSchedule}
+          onDeleteSchedule={deleteCashFlowSchedule}
+          fxSchedule={fxSchedule}
+          exchangeRate={exchangeRate}
+        />
+      ) : <div className="p-20 text-center font-black text-slate-400">접근 권한이 없습니다. (Test Period)</div>)}
     </Layout>
   );
 };
