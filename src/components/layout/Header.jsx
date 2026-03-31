@@ -38,6 +38,7 @@ const Header = ({
       case 'monthly': return "월간 자금 일보";
       case 'accounts': return "계좌 관리";
       case 'transactions': return "출금 대상";
+      case 'accountMapping': return "계정과목 매칭";
       case 'foreign': return "외화 송금";
       case 'cashStatus': return "일일 자금 업로드";
       default: return "자금 관리 시스템";

@@ -13,6 +13,7 @@ import MonthlyReportPage from './pages/MonthlyReportPage';
 import FinancialChartPage from './pages/FinancialChartPage';
 import CashFlowPage from './pages/CashFlowPage';
 import CashEventPage from './pages/CashEventPage';
+import AccountMappingPage from './pages/AccountMappingPage';
 import AuthPage from './pages/AuthPage';
 import * as XLSX from 'xlsx';
 import { isExcludedAccount } from './utils/formatters';
@@ -492,6 +493,18 @@ const App = () => {
           onDeleteBatch={deleteWithdrawalBatch}
           onUpdateFXSchedule={updateFXSchedule}
           exchangeRate={exchangeRate}
+        />
+      )}
+      {currentView === 'accountMapping' && (
+        <AccountMappingPage 
+          withdrawals={withdrawals}
+          selectedDate={selectedDate}
+          onUpdateWithdrawal={async (id, subject) => {
+            const item = withdrawals.find(w => w.id === id);
+            if (item) {
+              await saveWithdrawals([{ ...item, accountSubject: subject }]);
+            }
+          }}
         />
       )}
       {currentView === 'foreign' && (

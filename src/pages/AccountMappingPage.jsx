@@ -1,0 +1,165 @@
+import React, { useState } from 'react';
+import { FileText, CheckCircle2, Search, Filter } from 'lucide-react';
+import { formatKRW, formatUSD } from '../utils/formatters';
+
+const COMPOSE_SUBJECTS = {
+  '매출': ['상품매출', '공사매출', '가맹비매출', '용역매출'],
+  '매입': ['임원급여', '직원급여', '상여금', '퇴직급여', '복리후생비', '여비교통비', '접대비', '통신비', '수도광열비', '전력비', '세금과공과금', '감가상각비', '지급임차료', '보험료', '차량유지비', '운반비', '교육훈련비', '도서인쇄비', '사무용품비', '소모품비', '지급수수료', '광고선전비', '판매촉진비', '대손상각비', '건물관리비', '무형고정자산상각', '리스료', '이자수익', '배당금수익', '외환차익', '판매장려금', '잡이익', '외환차손', '기부금', '유형자산처분손실', '잡손실', '법인세등', '원재료(도급)', '복리후생비(도급)', '여비교통비(도급)', '접대비(도급)', '감가상각비(도급)', '보험료(도급)', '차량유지비(도급)', '운반비(도급)', '사무용품비(도급)', '소모품비(도급)', '지급수수료(도급)', '외주공사비(도급)']
+};
+
+const SMART_SUBJECTS = {
+  '매출': ['제품매출'],
+  '매입': ['복리후생비(원가)', '여비교통비(원가)', '접대비(원가)', '통신비(원가)', '가스수도료(원가)', '전력비(원가)', '세금과공과금(원가)', '감가상각비(원가)', '보험료(원가)', '차량유지비(원가)', '운반비(원가)', '교육훈련비(원가)', '소모품비(원가)', '지급수수료(원가)', '복리후생비', '지급수수료', '이자수익', '외환차익', '잡이익', '이자비용', '외환차손', '법인세등']
+};
+
+const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawal }) => {
+  const [selectedSection, setSelectedSection] = useState('컴포즈커피');
+  const [filterMode, setFilterMode] = useState('all'); // 'all', 'unmapped', 'mapped'
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // Filter withdrawals
+  const targetWithdrawals = withdrawals.filter(w => {
+    // 1. 사업부 필터
+    if (w.section !== selectedSection) return false;
+    // 2. 날짜 필터 (현재 선택된 날짜 기준이 좋지만, 매칭 안된건 다 보여줄까? -> 일단 해당 날짜만 보여주거나 전체를 보여주는게 좋음. 날짜 필터 적용)
+    if (w.paymentDate !== selectedDate) return false;
+    // 3. 매칭 상태 필터
+    const isMapped = !!w.accountSubject;
+    if (filterMode === 'unmapped' && isMapped) return false;
+    if (filterMode === 'mapped' && !isMapped) return false;
+    // 4. 검색 필터
+    if (searchTerm && !(w.payee || '').includes(searchTerm) && !(w.memo || '').includes(searchTerm)) return false;
+    
+    return true;
+  });
+
+  const handleSubjectChange = async (id, subject) => {
+    await onUpdateWithdrawal(id, subject);
+  };
+
+  const getSubjects = (section) => {
+    return section === '컴포즈커피' ? COMPOSE_SUBJECTS : SMART_SUBJECTS;
+  };
+
+  return (
+    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+      <div className="mb-8">
+        <h2 className="text-2xl font-black text-slate-900 tracking-tighter uppercase mb-1">계정과목 매칭</h2>
+        <p className="text-sm text-slate-500">지급 예정된 출금 내역({selectedDate})에 대해 각각 올바른 계정과목을 지정합니다.</p>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[600px]">
+        {/* 상단 컨트롤러 */}
+        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50">
+          <div className="flex bg-slate-100 rounded-xl p-1 border border-slate-200">
+            <button 
+              onClick={() => setSelectedSection('컴포즈커피')}
+              className={`px-6 py-2 rounded-lg text-sm font-bold transition-colors ${selectedSection === '컴포즈커피' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              컴포즈커피
+            </button>
+            <button 
+              onClick={() => setSelectedSection('스마트팩토리')}
+              className={`px-6 py-2 rounded-lg text-sm font-bold transition-colors ${selectedSection === '스마트팩토리' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              스마트팩토리
+            </button>
+          </div>
+
+          <div className="flex gap-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:w-64">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input 
+                type="text" 
+                placeholder="예금주 또는 내용 검색..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+              />
+            </div>
+            <select 
+              value={filterMode}
+              onChange={(e) => setFilterMode(e.target.value)}
+              className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-medium outline-none text-slate-600 cursor-pointer"
+            >
+              <option value="all">전체 보기</option>
+              <option value="unmapped">미매칭 건만 보기</option>
+              <option value="mapped">매칭 완료 건 보기</option>
+            </select>
+          </div>
+        </div>
+
+        {/* 메인 리스트 */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="bg-[#f8fafc] text-slate-500 font-bold border-b border-slate-200 sticky top-0 z-10">
+              <tr>
+                <th className="px-5 py-3.5 border-r border-slate-100 font-bold">은행/계좌</th>
+                <th className="px-5 py-3.5 border-r border-slate-100 font-bold">예금주 (지급처)</th>
+                <th className="px-5 py-3.5 border-r border-slate-100 font-bold text-right w-32">출금액</th>
+                <th className="px-5 py-3.5 border-r border-slate-100 font-bold w-1/3">메모</th>
+                <th className="px-5 py-3.5 font-bold w-64 text-center">계정과목 매칭</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {targetWithdrawals.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="py-20 text-center">
+                    <div className="inline-flex flex-col items-center justify-center text-slate-400">
+                      <FileText className="w-10 h-10 mb-3 text-slate-200" />
+                      <p className="font-bold">조건에 맞는 출금 내역이 없습니다.</p>
+                      <p className="text-xs mt-1">지급일({selectedDate})에 등록된 '{selectedSection}' 출금 내역을 확인해주세요.</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : targetWithdrawals.map(w => {
+                 const subjects = getSubjects(w.section);
+                 return (
+                  <tr key={w.id} className={`hover:bg-slate-50 transition-colors ${w.accountSubject ? '' : 'bg-rose-50/20'}`}>
+                    <td className="px-5 py-3 border-r border-slate-100/50">
+                      <div className="font-bold text-slate-700">{w.bank}</div>
+                      <div className="text-[10px] text-slate-400 font-mono mt-0.5">{w.fromAccount || '-'}</div>
+                    </td>
+                    <td className="px-5 py-3 border-r border-slate-100/50">
+                      <div className="font-black text-slate-800">{w.payee}</div>
+                    </td>
+                    <td className="px-5 py-3 border-r border-slate-100/50 text-right">
+                      <span className="font-mono font-bold text-rose-500">
+                        {w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 border-r border-slate-100/50">
+                      <p className="text-xs text-slate-500 truncate max-w-[200px]" title={w.memo}>{w.memo || '-'}</p>
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2">
+                        <select 
+                          value={w.accountSubject || ''}
+                          onChange={(e) => handleSubjectChange(w.id, e.target.value)}
+                          className={`flex-1 w-full bg-white border ${w.accountSubject ? 'border-indigo-300 text-indigo-700 shadow-sm' : 'border-rose-200 text-rose-600 bg-rose-50/50'} rounded-lg px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all`}
+                        >
+                          <option value="">-- 과목 미지정 --</option>
+                          <optgroup label="■ 매출">
+                            {subjects['매출'].map(s => <option key={s} value={s}>{s}</option>)}
+                          </optgroup>
+                          <optgroup label="■ 매입">
+                            {subjects['매입'].map(s => <option key={s} value={s}>{s}</option>)}
+                          </optgroup>
+                        </select>
+                        {w.accountSubject && (
+                          <CheckCircle2 className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                 );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AccountMappingPage;
