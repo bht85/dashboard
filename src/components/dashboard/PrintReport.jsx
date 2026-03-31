@@ -213,10 +213,24 @@ const PrintReport = ({
           </div>
         </div>
 
-        {issueText && (
+        {/* 법인이 분리된 주요 이슈 사항 */}
+        {(typeof dailyIssues[selectedDate] === 'object' ? (dailyIssues[selectedDate]?.compose || dailyIssues[selectedDate]?.smart) : dailyIssues[selectedDate]) && (
           <div className="print-issues-box">
             <div className="print-issues-title">■ 금일 주요 이슈 사항</div>
-            <div className="print-issues-content">{issueText}</div>
+            <div style={{ display: 'flex', gap: '30px' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '8px', fontWeight: 900, color: '#4338ca', marginBottom: '3px', borderBottom: '1px solid #eef2ff' }}>[1] 컴포즈커피</div>
+                <div className="print-issues-content" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
+                  {typeof dailyIssues[selectedDate] === 'object' ? (dailyIssues[selectedDate]?.compose || '-') : dailyIssues[selectedDate]}
+                </div>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '8px', fontWeight: 900, color: '#059669', marginBottom: '3px', borderBottom: '1px solid #ecfdf5' }}>[2] 스마트팩토리</div>
+                <div className="print-issues-content" style={{ whiteSpace: 'pre-wrap', lineHeight: '1.4' }}>
+                  {typeof dailyIssues[selectedDate] === 'object' ? (dailyIssues[selectedDate]?.smart || '-') : '-'}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

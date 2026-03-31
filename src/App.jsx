@@ -128,10 +128,13 @@ const App = () => {
         setWithdrawals(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     }, logAndHandle("withdrawals"));
 
-    // 5. Daily Issues/Memos Sync
+    // 5. Daily Issues/Memos Sync (Object mapping 지원)
     const unsubIssues = onSnapshot(collection(db, "dailyIssues"), (snapshot) => {
         const data = {};
-        snapshot.docs.forEach(d => { data[d.id] = d.data().content; });
+        snapshot.docs.forEach(d => { 
+          const docData = d.data();
+          data[d.id] = docData.content; // content 자체가 객체일 수도, 기존처럼 문자열일 수도 있음
+        });
         setDailyIssues(data);
     }, logAndHandle("dailyIssues"));
 
@@ -246,7 +249,11 @@ const App = () => {
 
   const updateDailyIssue = async (date, content) => {
     if (!date) return;
-    await setDoc(doc(collection(db, "dailyIssues"), date), { content, updatedAt: new Date().toISOString() });
+    // content는 { compose: string, smart: string } 객체 또는 기존 문자열
+    await setDoc(doc(collection(db, "dailyIssues"), date), { 
+      content, 
+      updatedAt: new Date().toISOString() 
+    });
   };
 
   const deleteWithdrawal = async (withdrawId, accountId, section, amount) => {

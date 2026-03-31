@@ -324,21 +324,52 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
           </div>
         </section>
 
-        {/* 주요 이슈 사항 메모 */}
+        {/* 주요 이슈 사항 메모 (좌우 법인별 분리) */}
         <section className="bg-amber-50 border border-amber-200 rounded-2xl p-6 shadow-sm">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-sm font-black text-amber-900 flex items-center gap-2">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-sm font-black text-amber-900 flex items-center gap-2 uppercase tracking-tight">
               <FileText className="w-4 h-4" /> 금일 주요 이슈 사항
             </h3>
-            <span className="text-[10px] text-amber-500 font-bold bg-amber-100/50 px-2 py-0.5 rounded italic">작성 후 입력창 밖을 클릭하면 자동 저장됩니다.</span>
+            <span className="text-[9px] text-amber-500 font-bold bg-amber-100 px-2 py-0.5 rounded tracking-tighter">
+              각 법인별 특이사항을 기록하세요. 입력창 밖을 클릭 시 자동 저장됩니다.
+            </span>
           </div>
-          <textarea 
-            key={selectedDate} // 날짜 변경 시 로컬 상태 초기화 강제
-            defaultValue={dailyIssues[selectedDate] || ''} 
-            onBlur={(e) => onUpdateIssue(selectedDate, e.target.value)}
-            placeholder="오늘의 특이사항이나 자금 흐름에 관한 주요 이슈를 기록하세요. (예: 정기예금 만기, 법인세 납부 등)" 
-            className="w-full h-24 bg-white/60 border border-amber-200 rounded-xl p-4 text-sm font-medium outline-none focus:ring-2 focus:ring-amber-500 transition-all resize-none shadow-inner"
-          />
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* 컴포즈커피 이슈 */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-black text-indigo-700 flex items-center gap-1.5 ml-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" /> [1] 컴포즈커피 이슈
+              </label>
+              <textarea 
+                key={`${selectedDate}_compose`}
+                defaultValue={typeof dailyIssues[selectedDate] === 'object' ? dailyIssues[selectedDate]?.compose : (dailyIssues[selectedDate] || '')} 
+                onBlur={(e) => {
+                  const current = typeof dailyIssues[selectedDate] === 'object' ? { ...dailyIssues[selectedDate] } : { compose: dailyIssues[selectedDate] || '', smart: '' };
+                  onUpdateIssue(selectedDate, { ...current, compose: e.target.value });
+                }}
+                placeholder="컴포즈커피의 정기 지출, 법인세, 특이 자금 흐름 등" 
+                className="w-full h-28 bg-white/70 border border-amber-200/50 rounded-xl p-4 text-[12px] font-medium outline-none focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 transition-all resize-none shadow-sm placeholder:text-slate-300"
+              />
+            </div>
+
+            {/* 스마트팩토리 이슈 */}
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-black text-emerald-700 flex items-center gap-1.5 ml-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> [2] 스마트팩토리 이슈
+              </label>
+              <textarea 
+                key={`${selectedDate}_smart`}
+                defaultValue={typeof dailyIssues[selectedDate] === 'object' ? dailyIssues[selectedDate]?.smart : ''} 
+                onBlur={(e) => {
+                   const current = typeof dailyIssues[selectedDate] === 'object' ? { ...dailyIssues[selectedDate] } : { compose: dailyIssues[selectedDate] || '', smart: '' };
+                   onUpdateIssue(selectedDate, { ...current, smart: e.target.value });
+                }}
+                placeholder="스마트팩토리의 생두 대금, 외화 송금 특이사항 등" 
+                className="w-full h-28 bg-white/70 border border-amber-200/50 rounded-xl p-4 text-[12px] font-medium outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition-all resize-none shadow-sm placeholder:text-slate-300"
+              />
+            </div>
+          </div>
         </section>
 
         {/* 1. 컴포즈커피 섹션 */}
