@@ -40,13 +40,13 @@ const PrintReport = ({
       </div>
       <table className="print-table" style={{ tableLayout: 'fixed', width: '100%' }}>
         <colgroup>
-          <col style={{ width: '19%' }} />
-          <col style={{ width: '7%' }} />
           <col style={{ width: '18%' }} />
-          <col style={{ width: '17%' }} />
-          <col style={{ width: '17%' }} />
-          <col style={{ width: '15%' }} />
           <col style={{ width: '7%' }} />
+          <col style={{ width: '17%' }} />
+          <col style={{ width: '16%' }} />
+          <col style={{ width: '15%' }} />
+          <col style={{ width: '15%' }} />
+          <col style={{ width: '12%' }} />
         </colgroup>
         <thead>
           <tr>
