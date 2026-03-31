@@ -103,7 +103,7 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
     const file = e.target.files[0];
     if (!file) return;
     
-    if (type === 'bulk' && !selectedAccountId) {
+    if ((type === 'bulk' || type === 'hana') && !selectedAccountId) {
       alert('1단계: 출금 계좌를 먼저 선택해주세요.');
       e.target.value = null;
       return;
@@ -125,7 +125,21 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
         let targetAccount = selectedAccount;
         let targetSection = selectedSection;
 
-        if (type === 'bulk') {
+        if (type === 'hana') {
+          // 하나은행 업로드 양식 파싱 (Index 기준: 입금은행[0], 입금계좌번호[1], 입금액[2], 예상예금주[3], 입금통장표시[4], 출금통장표시[5], 메모[6])
+          const headerIdx = data.findIndex(r => r.some(c => String(c).includes('입금은행') || String(c).includes('입금계좌번호')));
+          const dataRows = headerIdx === -1 ? data.slice(1) : data.slice(headerIdx + 1);
+
+          parsed = dataRows.map((row, idx) => ({
+            id: Date.now() + idx,
+            bank: row[0] || '',
+            account: String(row[1] || '').replace(/[\s-]/g, ''), 
+            amount: parseFloat(String(row[2]).replace(/,/g, '')) || 0,
+            payee: row[3] || '',
+            memo: row[5] || row[6] || '',
+            excelFromAccount: '' // Doesn't have excelFromAccount, so it will use selectedAccountId (checked above)
+          })).filter(item => item.bank && item.amount > 0);
+        } else if (type === 'bulk') {
           // 대량이체 양식 파싱 (Index 기준: 입금은행[1], 입금계좌번호[2], 입금액[3], 예금주[6], 파일메모[12], 출금계좌[13])
           const headerIdx = data.findIndex(r => r.some(c => String(c).includes('입금은행') || String(c).includes('입금계좌번호')));
           const dataRows = headerIdx === -1 ? data.slice(1) : data.slice(headerIdx + 1);
@@ -438,6 +452,19 @@ const TransactionsPage = ({ composeAccounts, smartAccounts, withdrawals = [], fx
               </div>
               <p className="text-[10px] font-bold text-slate-500 mb-1">양식 B: 등록한 내역 (뱅킹)</p>
               <p className="text-[9px] text-slate-400">거래구분, 출금계좌, 입금은행 등</p>
+            </div>
+
+            {/* 양식 3: 하나은행 대량이체 업로드 */}
+            <div 
+              onClick={() => document.getElementById('file-hana').click()}
+              className="flex-1 cursor-pointer group relative overflow-hidden bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-4 text-center transition-all hover:border-teal-400 hover:bg-white flex flex-col justify-center"
+            >
+              <input type="file" id="file-hana" onChange={handleFileSelect('hana')} accept=".xlsx, .xls" className="hidden" />
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center mx-auto mb-2 shadow-sm group-hover:bg-teal-50 transition-colors">
+                {isParsing ? <Loader2 className="w-4 h-4 text-teal-500 animate-spin" /> : <Upload className="w-4 h-4 text-slate-300 group-hover:text-teal-500" />}
+              </div>
+              <p className="text-[10px] font-bold text-slate-500 mb-1">양식 C: 하나은행 업로드</p>
+              <p className="text-[9px] text-slate-400">입금은행, 입금계좌번호, 입금액, 예상예금주 등</p>
             </div>
           </div>
         </div>
