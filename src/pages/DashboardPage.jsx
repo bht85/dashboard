@@ -538,7 +538,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                 <ListFilter className="w-4 h-4" />
               </div>
               <div className="text-left">
-                <h3 className="font-bold text-sm tracking-tight">금일 출금 요청 로우 데이터</h3>
+                <h3 className="font-bold text-sm tracking-tight">금일 출금 요청 로우 데이터 (법인별 분리)</h3>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Total {dailyWithdrawals.length} items for {selectedDate}</p>
               </div>
             </div>
@@ -546,88 +546,118 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
           </button>
           
           {isRawDataOpen && (
-            <div className="animate-in slide-in-from-top-2 duration-300 overflow-x-auto">
-              <table className="w-full text-left text-[10.5px] border-collapse bg-white leading-tight">
-                <thead className="bg-[#f8fafc] text-[#64748b] font-black border-b border-slate-200 uppercase tracking-tighter">
-                  <tr>
-                    <th className="px-4 py-3 border-r border-slate-100">지급일</th>
-                    <th className="px-4 py-3 border-r border-slate-100">법인</th>
-                    <th className="px-4 py-3 border-r border-slate-100">출금계좌</th>
-                     <th className="px-4 py-3 border-r border-slate-100">입금은행</th>
-                    <th className="px-4 py-3 border-r border-slate-100">입금계좌번호</th>
-                    <th className="px-4 py-3 border-r border-slate-100 text-right">금액</th>
-                    <th className="px-4 py-3 border-r border-slate-100">예금주(구분)</th>
-                    <th className="px-4 py-3">메모</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 text-slate-600">
-                  {dailyWithdrawals.length > 0 ? dailyWithdrawals.flatMap(w => {
-                    const isInternal = checkIsInternal(w);
-                    const rows = [];
-                    
-                    // 1. 출금 기록 (항상 표시)
-                    rows.push(
-                      <tr key={w.id} className={`transition-colors border-l-4 ${isInternal ? 'bg-indigo-50/30 border-l-indigo-400' : 'hover:bg-slate-50 border-l-transparent'}`}>
-                          <td className="px-3 py-2 border-r border-slate-100 font-medium text-slate-400 whitespace-nowrap">{w.paymentDate}</td>
-                          <td className="px-3 py-2 border-r border-slate-100">
-                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-black tracking-tighter break-keep whitespace-nowrap ${w.section === '컴포즈커피' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                              {w.section}
-                          </span>
-                          </td>
-                          <td className="px-3 py-2 border-r border-slate-100 font-bold text-slate-600 whitespace-nowrap">{w.fromAccount}</td>
-                          <td className="px-3 py-2 border-r border-slate-100 font-black text-slate-700 text-center">{w.bank}</td>
-                          <td className="px-3 py-2 border-r border-slate-100 font-mono text-slate-400 whitespace-nowrap tracking-tighter">{w.account}</td>
-                          <td className={`px-3 py-2 border-r border-slate-100 text-right font-black tabular-nums whitespace-nowrap text-red-500`}>
-                              -{w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}
-                          </td>
-                          <td className="px-3 py-2 border-r border-slate-100 min-w-[140px]">
-                              <div className="flex flex-col">
-                                  <span className="font-black text-slate-800 tracking-tight leading-none break-keep">{w.payee}</span>
-                                  {isInternal && <span className="text-[8px] font-black text-indigo-500 uppercase tracking-tighter mt-1 whitespace-nowrap">★ 내부 자금 이체 (출금)</span>}
-                              </div>
-                          </td>
-                          <td className="px-3 py-2 text-slate-400 text-[10px] italic truncate max-w-[120px]">{w.memo}</td>
-                      </tr>
-                    );
+            <div className="animate-in slide-in-from-top-2 duration-300">
+              {['컴포즈커피', '스마트팩토리'].map((section) => {
+                const sectionWithdrawals = dailyWithdrawals.filter(w => w.section === section);
+                const sectionColor = section === '컴포즈커피' ? 'indigo' : 'emerald';
+                
+                // 해당 법인으로 들어온 내부 이체도 포함 (입금 행)
+                const internalDeposits = dailyWithdrawals.filter(w => {
+                  if (!checkIsInternal(w)) return false;
+                  const toAcc = String(w.account || '').replace(/[^0-9]/g, '');
+                  const isComposeAcc = masterCompose.some(a => String(a.no).replace(/[^0-9]/g, '') === toAcc);
+                  const isSmartAcc = masterSmart.some(a => String(a.no).replace(/[^0-9]/g, '') === toAcc);
+                  return (section === '컴포즈커피' && isComposeAcc) || (section === '스마트팩토리' && isSmartAcc);
+                });
 
-                    // 2. 내부 입금 기록 (입금 받는 계좌 입장에서 가상 행 생성)
-                    if (isInternal) {
-                      rows.push(
-                        <tr key={`${w.id}_dep`} className="bg-blue-50/30 border-l-4 border-l-blue-400 transition-colors">
-                            <td className="px-3 py-2 border-r border-slate-100 font-medium text-slate-400 whitespace-nowrap">{w.paymentDate}</td>
-                            <td className="px-3 py-2 border-r border-slate-100">
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black tracking-tighter bg-blue-100 text-blue-700 uppercase">INTERNAL</span>
-                            </td>
-                            {/* 입금 받는 계좌가 Focal Account가 됨 */}
-                            <td className="px-3 py-2 border-r border-slate-100 font-bold text-blue-600 whitespace-nowrap bg-blue-100/20">{w.account}</td>
-                            <td className="px-3 py-2 border-r border-slate-100 font-black text-slate-400 text-center">
-                                <ArrowRight className="w-3 h-3 inline mr-1 opacity-50" />
-                            </td>
-                            {/* 돈을 보낸 계좌 정보 표시 */}
-                            <td className="px-3 py-2 border-r border-slate-100 font-mono text-slate-400 whitespace-nowrap tracking-tighter italic">From: {w.fromAccount}</td>
-                            <td className="px-3 py-2 border-r border-slate-100 text-right font-black tabular-nums whitespace-nowrap text-blue-600">
-                                +{w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}
-                            </td>
-                            <td className="px-3 py-2 border-r border-slate-100 min-w-[140px]">
-                                <div className="flex flex-col">
+                const totalOut = sectionWithdrawals.reduce((sum, w) => sum + (w.isUSD ? 0 : w.amount), 0);
+                const totalIn = internalDeposits.reduce((sum, w) => sum + (w.isUSD ? 0 : w.amount), 0);
+
+                if (sectionWithdrawals.length === 0 && internalDeposits.length === 0) return null;
+
+                return (
+                  <div key={section} className="mb-8 last:mb-0">
+                    <div className={`px-5 py-2.5 bg-${sectionColor}-50 border-y border-slate-100 flex justify-between items-center`}>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full bg-${sectionColor}-500 animate-pulse`}></span>
+                        <h4 className={`font-black text-xs text-${sectionColor}-900 underline underline-offset-4 decoration-2 decoration-${sectionColor}-200`}>
+                          {section} 출금 요청 내역
+                        </h4>
+                      </div>
+                      <div className="flex gap-4 text-[10px] font-black italic">
+                        <span className="text-red-600">지출계: -{formatKRW(totalOut)}</span>
+                        <span className="text-blue-600">내부입금계: +{formatKRW(totalIn)}</span>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-[10.5px] border-collapse bg-white leading-tight">
+                        <thead className="bg-slate-50/50 text-slate-400 font-black border-b border-slate-100 uppercase tracking-tighter">
+                          <tr>
+                            <th className="px-4 py-2 border-r border-slate-100/50">지급일</th>
+                            <th className="px-4 py-2 border-r border-slate-100/50">출금계좌</th>
+                            <th className="px-4 py-2 border-r border-slate-100/50">입금은행</th>
+                            <th className="px-4 py-2 border-r border-slate-100/50">입금계좌번호</th>
+                            <th className="px-4 py-2 border-r border-slate-100/50 text-right">금액</th>
+                            <th className="px-4 py-2 border-r border-slate-100">예금주(구분)</th>
+                            <th className="px-4 py-2">메모</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-slate-600">
+                          {sectionWithdrawals.map(w => {
+                            const isInternal = checkIsInternal(w);
+                            return (
+                              <tr key={w.id} className={`transition-colors border-l-4 ${isInternal ? 'bg-indigo-50/30 border-l-indigo-400' : 'hover:bg-slate-50 border-l-transparent'}`}>
+                                <td className="px-3 py-2.5 border-r border-slate-100/50 font-medium text-slate-400 whitespace-nowrap">{w.paymentDate}</td>
+                                <td className="px-3 py-2.5 border-r border-slate-100/50 font-bold text-slate-600 whitespace-nowrap">{w.fromAccount}</td>
+                                <td className="px-3 py-2.5 border-r border-slate-100/50 font-black text-slate-700 text-center">{w.bank}</td>
+                                <td className="px-3 py-2.5 border-r border-slate-100/50 font-mono text-slate-400 whitespace-nowrap tracking-tighter">{w.account}</td>
+                                <td className="px-3 py-2.5 border-r border-slate-100/50 text-right font-black tabular-nums whitespace-nowrap text-red-500">
+                                  -{w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}
+                                </td>
+                                <td className="px-3 py-2.5 border-r border-slate-100 min-w-[140px]">
+                                  <div className="flex flex-col">
                                     <span className="font-black text-slate-800 tracking-tight leading-none break-keep">{w.payee}</span>
-                                    <span className="text-[8px] font-black text-blue-500 uppercase tracking-tighter mt-1 whitespace-nowrap">★ 내부 자금 이체 (입금 반영)</span>
+                                    {isInternal && <span className="text-[8px] font-black text-indigo-500 uppercase tracking-tighter mt-1 whitespace-nowrap">★ 내부 자금 이체 (출금)</span>}
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2.5 text-slate-400 text-[10px] italic truncate max-w-[120px]">{w.memo}</td>
+                              </tr>
+                            );
+                          })}
+                          {internalDeposits.map(w => (
+                            <tr key={`${w.id}_dep`} className="bg-blue-50/30 border-l-4 border-l-blue-400 transition-colors">
+                              <td className="px-3 py-2.5 border-r border-slate-100/50 font-medium text-slate-400 whitespace-nowrap">{w.paymentDate}</td>
+                              <td className="px-3 py-2.5 border-r border-slate-100/50 font-bold text-blue-600 whitespace-nowrap bg-blue-100/10 tracking-tighter italic">TO: {w.account}</td>
+                              <td className="px-3 py-2.5 border-r border-slate-100/50 font-black text-slate-300 text-center uppercase text-[8px]">Depo</td>
+                              <td className="px-3 py-2.5 border-r border-slate-100/50 font-mono text-slate-400 whitespace-nowrap tracking-tighter italic">From: {w.fromAccount}</td>
+                              <td className="px-3 py-2.5 border-r border-slate-100/50 text-right font-black tabular-nums whitespace-nowrap text-blue-600">
+                                +{w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}
+                              </td>
+                              <td className="px-3 py-2.5 border-r border-slate-100 min-w-[140px]">
+                                <div className="flex flex-col">
+                                  <span className="font-black text-slate-800 tracking-tight leading-none break-keep">{w.payee}</span>
+                                  <span className="text-[8px] font-black text-blue-500 uppercase tracking-tighter mt-1 whitespace-nowrap">★ 내부 자금 이체 (입금 반영)</span>
                                 </div>
-                            </td>
-                            <td className="px-3 py-2 text-slate-400 text-[10px] italic truncate max-w-[120px]">{w.memo}</td>
-                        </tr>
-                      );
-                    }
-                    
-                    return rows;
-                  }) : (
-                    <tr><td colSpan={8} className="px-4 py-8 text-center italic text-slate-300">데이터가 없습니다.</td></tr>
-                  )}
-                </tbody>
-              </table>
+                              </td>
+                              <td className="px-3 py-2.5 text-slate-400 text-[10px] italic truncate max-w-[120px]">{w.memo}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-slate-50 font-black">
+                           <tr>
+                             <td colSpan={4} className="px-4 py-2 text-right text-slate-400 uppercase text-[9px] tracking-widest">SUBTOTAL ({section})</td>
+                             <td className="px-4 py-2 text-right text-slate-900 font-black border-l border-slate-200">
+                                <div className="text-red-500">-{formatKRW(totalOut)}</div>
+                                <div className="text-blue-600 text-[9px]">+{formatKRW(totalIn)}</div>
+                             </td>
+                             <td colSpan={2} className="px-4 py-2 bg-slate-100/50">
+                                <div className="text-[9px] text-slate-400">최종 순지출 합계 (내부이체 제외)</div>
+                                <div className="text-slate-900 font-black">{formatKRW(totalOut - totalIn)}</div>
+                             </td>
+                           </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+              {dailyWithdrawals.length === 0 && (
+                <div className="px-4 py-12 text-center italic text-slate-300">데이터가 없습니다.</div>
+              )}
             </div>
           )}
         </section>
+
       </div>
 
     </div>

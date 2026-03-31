@@ -306,71 +306,113 @@ const PrintReport = ({
             </div>
           </div>
 
-          <div className="print-table-section">
-            <div className="print-table-header" style={{ background: '#1e293b' }}>
-              ■ 금일 출금 요청 전체 내역
-            </div>
-            <table className="print-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '70px' }}>지급일</th>
-                  <th style={{ width: '70px' }}>법인</th>
-                  <th>출금 계좌</th>
-                  <th>입금은행</th>
-                  <th>입금 계좌번호</th>
-                  <th style={{ textAlign: 'right', width: '130px' }}>금액</th>
-                  <th>예금주 (지급대상)</th>
-                  <th>메모</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dailyWithdrawals.map((w, idx) => (
-                  <tr key={w.id || idx} style={{
-                    background: idx % 2 === 0 ? '#ffffff' : '#f8fafc',
-                    borderLeft: w.isInternal ? '3px solid #818cf8' : '3px solid transparent'
-                  }}>
-                    <td style={{ color: '#64748b', fontSize: '10px' }}>{w.paymentDate}</td>
-                    <td>
-                      <span style={{
-                        fontSize: '9px', fontWeight: 700, padding: '1px 5px', borderRadius: '3px',
-                        background: w.section === '컴포즈커피' ? '#eef2ff' : '#ecfdf5',
-                        color: w.section === '컴포즈커피' ? '#4338ca' : '#065f46'
-                      }}>
-                        {w.section === '컴포즈커피' ? '컴포즈' : '스마트'}
-                      </span>
-                    </td>
-                    <td style={{ fontFamily: 'monospace', fontSize: '10px', color: '#475569' }}>
-                      {w.fromAccount}
-                    </td>
-                    <td style={{ fontWeight: 700, fontSize: '10px' }}>{w.bank}</td>
-                    <td style={{ fontFamily: 'monospace', fontSize: '10px', color: '#64748b' }}>
-                      {w.account}
-                    </td>
-                    <td style={{
-                      textAlign: 'right', fontWeight: 900, color: '#dc2626',
-                      fontFamily: 'monospace', whiteSpace: 'nowrap'
-                    }}>
-                      {w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}
-                    </td>
-                    <td style={{ fontWeight: 700, fontSize: '11px' }}>
-                      {w.payee}
-                      {w.isInternal && (
-                        <span style={{ fontSize: '8px', color: '#6366f1', fontWeight: 900, marginLeft: 4 }}>
-                          ★ 내부
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ fontSize: '10px', color: '#94a3b8', fontStyle: 'italic' }}>
-                      {w.memo || w.withdrawLabel || '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {/* 법인별 그룹화된 출금 내역 */}
+          {['컴포즈커피', '스마트팩토리'].map((section) => {
+            const sectionWithdrawals = dailyWithdrawals.filter(w => w.section === section);
+            // 내부 입금 (이 법인 계좌로 들어온 돈) 필터링
+            const internalDeposits = dailyWithdrawals.filter(w => {
+              const toAcc = String(w.account || '').replace(/[^0-9]/g, '');
+              const accs = section === '컴포즈커피' ? composeAccounts : smartAccounts;
+              const isOurAcc = accs.some(a => String(a.no).replace(/[^0-9]/g, '') === toAcc);
+              
+              // 예금주 패턴 확인 (내부 이체인지)
+              const cleanPayee = String(w.payee || '').replace(/[\s()주식회사]/g, '');
+              const patterns = ['컴포즈커피', '스마트팩토리', '제이엠씨에프티', '컴포즈커피스마트', '컴포즈커피스마트팩토리'];
+              const isInternalPayee = patterns.some(p => p.replace(/[\s()주식회사]/g, '') === cleanPayee);
+              
+              return isOurAcc && isInternalPayee;
+            });
+
+            if (sectionWithdrawals.length === 0 && internalDeposits.length === 0) return null;
+
+            const totalOut = sectionWithdrawals.reduce((sum, w) => sum + (w.isUSD ? 0 : w.amount), 0);
+            const totalIn = internalDeposits.reduce((sum, w) => sum + (w.isUSD ? 0 : w.amount), 0);
+
+            return (
+              <div key={section} style={{ marginBottom: '30px' }}>
+                <div style={{
+                  padding: '5px 12px',
+                  background: '#f1f5f9',
+                  borderBottom: '2px solid #334155',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '10px'
+                }}>
+                  <span style={{ fontWeight: 900, fontSize: '11px' }}>■ {section} 출금 및 입금 반영 내역</span>
+                  <div style={{ fontSize: '10px', fontWeight: 800 }}>
+                    <span style={{ color: '#dc2626', marginRight: '15px' }}>지출계: -{formatKRW(totalOut)}</span>
+                    <span style={{ color: '#2563eb' }}>내부입금계: +{formatKRW(totalIn)}</span>
+                  </div>
+                </div>
+
+                <div className="print-table-section" style={{ marginBottom: 15 }}>
+                  <table className="print-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '75px' }}>지급일</th>
+                        <th>출금계좌</th>
+                        <th style={{ width: '60px' }}>입금은행</th>
+                        <th>입금계좌번호</th>
+                        <th style={{ textAlign: 'right', width: '120px' }}>금액</th>
+                        <th>예금주(구분)</th>
+                        <th>메모</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sectionWithdrawals.map((w, idx) => {
+                        const isInternal = String(w.payee || '').includes('컴포즈') || String(w.payee || '').includes('스마트');
+                        return (
+                          <tr key={w.id || idx}>
+                            <td style={{ color: '#94a3b8', fontSize: '9px' }}>{w.paymentDate}</td>
+                            <td style={{ fontSize: '9px', color: '#475569' }}>{w.fromAccount}</td>
+                            <td style={{ fontWeight: 700, textAlign: 'center' }}>{w.bank}</td>
+                            <td style={{ fontFamily: 'monospace', fontSize: '9px', color: '#64748b' }}>{w.account}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 900, color: '#dc2626' }}>
+                              -{w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}
+                            </td>
+                            <td style={{ fontWeight: 700 }}>
+                              {w.payee}
+                              {isInternal && <span style={{ fontSize: '8px', color: '#6366f1', marginLeft: 4 }}>(내부)</span>}
+                            </td>
+                            <td style={{ fontSize: '9px', color: '#94a3b8', fontStyle: 'italic' }}>{w.memo || '-'}</td>
+                          </tr>
+                        );
+                      })}
+                      {internalDeposits.map((w, idx) => (
+                        <tr key={`dep_${idx}`} style={{ background: '#f0f9ff' }}>
+                          <td style={{ color: '#94a3b8', fontSize: '9px' }}>{w.paymentDate}</td>
+                          <td style={{ fontSize: '9px', fontWeight: 700, color: '#0369a1' }}>TO: {w.account}</td>
+                          <td style={{ textAlign: 'center', fontSize: '8px', color: '#94a3b8', fontWeight: 900 }}>INTERNAL</td>
+                          <td style={{ fontFamily: 'monospace', fontSize: '8px', fontStyle: 'italic', color: '#64748b' }}>From: {w.fromAccount}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 900, color: '#0369a1' }}>
+                            +{w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}
+                          </td>
+                          <td style={{ fontWeight: 700 }}>{w.payee} <span style={{ fontSize: '8px', color: '#0ea5e9' }}>(내부입금반영)</span></td>
+                          <td style={{ fontSize: '9px', color: '#94a3b8' }}>{w.memo || '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ background: '#f8fafc', fontWeight: 900 }}>
+                        <td colSpan={4} style={{ textAlign: 'right', fontSize: '9px', color: '#64748b', padding: '8px' }}>
+                          {section} 순지출 합계 (내부이체 제외 실 지출)
+                        </td>
+                        <td style={{ textAlign: 'right', borderLeft: '1px solid #e2e8f0', color: '#1e293b' }}>
+                          {formatKRW(totalOut - totalIn)}
+                        </td>
+                        <td colSpan={2} style={{ background: '#fff' }}></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
           {renderFooter()}
         </div>
       )}
+
     </div>,
     document.body
   );
