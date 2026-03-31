@@ -499,11 +499,13 @@ const App = () => {
         <AccountMappingPage 
           withdrawals={withdrawals}
           selectedDate={selectedDate}
-          onUpdateWithdrawal={async (id, subject) => {
-            const item = withdrawals.find(w => w.id === id);
-            if (item) {
-              await saveWithdrawals([{ ...item, accountSubject: subject }]);
-            }
+          onUpdateWithdrawals={async (updates) => {
+            // updates = [{ id, subject }, ...]
+            const itemsToSave = updates.map(u => {
+              const item = withdrawals.find(w => w.id === u.id);
+              return { ...item, accountSubject: u.subject };
+            }).filter(i => i.id);
+            await saveWithdrawals(itemsToSave);
           }}
         />
       )}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, CheckCircle2, Search, Filter } from 'lucide-react';
+import { FileText, CheckCircle2, Search, Filter, CheckSquare } from 'lucide-react';
 import { formatKRW, formatUSD } from '../utils/formatters';
 
 const COMPOSE_SUBJECTS = {
@@ -12,10 +12,12 @@ const SMART_SUBJECTS = {
   '매입': ['복리후생비(원가)', '여비교통비(원가)', '접대비(원가)', '통신비(원가)', '가스수도료(원가)', '전력비(원가)', '세금과공과금(원가)', '감가상각비(원가)', '보험료(원가)', '차량유지비(원가)', '운반비(원가)', '교육훈련비(원가)', '소모품비(원가)', '지급수수료(원가)', '복리후생비', '지급수수료', '이자수익', '외환차익', '잡이익', '이자비용', '외환차손', '법인세등']
 };
 
-const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawal }) => {
+const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawals }) => {
   const [selectedSection, setSelectedSection] = useState('컴포즈커피');
   const [filterMode, setFilterMode] = useState('all'); // 'all', 'unmapped', 'mapped'
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkSubject, setBulkSubject] = useState('');
 
   // Filter withdrawals
   const targetWithdrawals = withdrawals.filter(w => {
@@ -34,7 +36,31 @@ const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawal }) =
   });
 
   const handleSubjectChange = async (id, subject) => {
-    await onUpdateWithdrawal(id, subject);
+    await onUpdateWithdrawals([{ id, subject }]);
+  };
+
+  const handleBulkApply = async () => {
+    if (!bulkSubject) {
+      alert('일괄 적용할 계정과목을 선택해주세요.');
+      return;
+    }
+    if (selectedIds.length === 0) {
+      alert('적용할 항목을 선택해주세요.');
+      return;
+    }
+    
+    const updates = selectedIds.map(id => ({ id, subject: bulkSubject }));
+    await onUpdateWithdrawals(updates);
+    setSelectedIds([]); // 초기화
+    setBulkSubject('');
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(targetWithdrawals.map(w => w.id));
+    } else {
+      setSelectedIds([]);
+    }
   };
 
   const getSubjects = (section) => {
@@ -50,20 +76,47 @@ const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawal }) =
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[600px]">
         {/* 상단 컨트롤러 */}
-        <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50">
-          <div className="flex bg-slate-100 rounded-xl p-1 border border-slate-200">
-            <button 
-              onClick={() => setSelectedSection('컴포즈커피')}
-              className={`px-6 py-2 rounded-lg text-sm font-bold transition-colors ${selectedSection === '컴포즈커피' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              컴포즈커피
-            </button>
-            <button 
-              onClick={() => setSelectedSection('스마트팩토리')}
-              className={`px-6 py-2 rounded-lg text-sm font-bold transition-colors ${selectedSection === '스마트팩토리' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              스마트팩토리
-            </button>
+        <div className="p-5 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-slate-50/50">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full xl:w-auto">
+            <div className="flex bg-slate-100 rounded-xl p-1 border border-slate-200">
+              <button 
+                onClick={() => { setSelectedSection('컴포즈커피'); setSelectedIds([]); setBulkSubject(''); }}
+                className={`px-6 py-2 rounded-lg text-sm font-bold transition-colors ${selectedSection === '컴포즈커피' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                컴포즈커피
+              </button>
+              <button 
+                onClick={() => { setSelectedSection('스마트팩토리'); setSelectedIds([]); setBulkSubject(''); }}
+                className={`px-6 py-2 rounded-lg text-sm font-bold transition-colors ${selectedSection === '스마트팩토리' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                스마트팩토리
+              </button>
+            </div>
+            
+            {/* 일괄 적용 UI */}
+            <div className="flex items-center gap-2 bg-indigo-50/50 p-1.5 rounded-xl border border-indigo-100">
+              <span className="text-[10px] font-bold text-indigo-800 ml-2 whitespace-nowrap"><CheckSquare className="w-3 h-3 inline mr-1" />일괄 지정</span>
+              <select 
+                value={bulkSubject}
+                onChange={(e) => setBulkSubject(e.target.value)}
+                className="bg-white border border-indigo-200 rounded-lg px-2 py-1.5 text-xs font-bold outline-none text-indigo-600 w-36"
+              >
+                <option value="">설정할 과목...</option>
+                <optgroup label="■ 매출">
+                  {getSubjects(selectedSection)['매출'].map(s => <option key={s} value={s}>{s}</option>)}
+                </optgroup>
+                <optgroup label="■ 매입">
+                  {getSubjects(selectedSection)['매입'].map(s => <option key={s} value={s}>{s}</option>)}
+                </optgroup>
+              </select>
+              <button 
+                onClick={handleBulkApply}
+                disabled={selectedIds.length === 0}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${selectedIds.length > 0 ? 'bg-indigo-600 text-white shadow-sm hover:bg-indigo-700' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+              >
+                적용 ({selectedIds.length})
+              </button>
+            </div>
           </div>
 
           <div className="flex gap-3 w-full sm:w-auto">
@@ -94,6 +147,14 @@ const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawal }) =
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-[#f8fafc] text-slate-500 font-bold border-b border-slate-200 sticky top-0 z-10">
               <tr>
+                <th className="px-5 py-3.5 border-r border-slate-100 font-bold w-12 text-center">
+                  <input 
+                    type="checkbox" 
+                    checked={targetWithdrawals.length > 0 && selectedIds.length === targetWithdrawals.length}
+                    onChange={handleSelectAll}
+                    className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500"
+                  />
+                </th>
                 <th className="px-5 py-3.5 border-r border-slate-100 font-bold">은행/계좌</th>
                 <th className="px-5 py-3.5 border-r border-slate-100 font-bold">예금주 (지급처)</th>
                 <th className="px-5 py-3.5 border-r border-slate-100 font-bold text-right w-32">출금액</th>
@@ -104,7 +165,7 @@ const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawal }) =
             <tbody className="divide-y divide-slate-100">
               {targetWithdrawals.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-20 text-center">
+                  <td colSpan={6} className="py-20 text-center">
                     <div className="inline-flex flex-col items-center justify-center text-slate-400">
                       <FileText className="w-10 h-10 mb-3 text-slate-200" />
                       <p className="font-bold">조건에 맞는 출금 내역이 없습니다.</p>
@@ -115,7 +176,18 @@ const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawal }) =
               ) : targetWithdrawals.map(w => {
                  const subjects = getSubjects(w.section);
                  return (
-                  <tr key={w.id} className={`hover:bg-slate-50 transition-colors ${w.accountSubject ? '' : 'bg-rose-50/20'}`}>
+                  <tr key={w.id} className={`hover:bg-slate-50 transition-colors ${selectedIds.includes(w.id) ? 'bg-indigo-50/20' : ''} ${!w.accountSubject ? 'bg-rose-50/10' : ''}`}>
+                    <td className="px-5 py-3 border-r border-slate-100/50 text-center">
+                      <input 
+                        type="checkbox"
+                        checked={selectedIds.includes(w.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) setSelectedIds(prev => [...prev, w.id]);
+                          else setSelectedIds(prev => prev.filter(id => id !== w.id));
+                        }}
+                        className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500"
+                      />
+                    </td>
                     <td className="px-5 py-3 border-r border-slate-100/50">
                       <div className="font-bold text-slate-700">{w.bank}</div>
                       <div className="text-[10px] text-slate-400 font-mono mt-0.5">{w.fromAccount || '-'}</div>
