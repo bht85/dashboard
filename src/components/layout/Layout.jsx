@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
-const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, onExport, children }) => {
+const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, onExport, user, children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
 
   return (
@@ -37,6 +37,7 @@ const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, on
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
           onExport={onExport}
+          user={user}
         />
 
         <main className="flex-1 p-4 lg:p-12 overflow-y-auto max-w-full overflow-x-hidden">

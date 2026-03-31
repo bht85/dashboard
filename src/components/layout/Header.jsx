@@ -10,7 +10,8 @@ const Header = ({
   currentView, 
   selectedDate, 
   setSelectedDate,
-  onExport
+  onExport,
+  user
 }) => {
   const handleLogout = async () => {
     try {
