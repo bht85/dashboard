@@ -95,7 +95,7 @@ const PrintReport = ({
             <th>구분</th>
             <th style={{ textAlign: 'right' }}>전일 잔액</th>
             <th style={{ textAlign: 'right' }}>출금액</th>
-            <th style={{ textAlign: 'right' }}>내부 입금</th>
+            <th style={{ textAlign: 'right' }}>입금액</th>
             <th style={{ textAlign: 'right', color: '#3730a3' }}>출금 후 잔액</th>
             <th>별칭</th>
           </tr>

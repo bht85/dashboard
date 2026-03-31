@@ -24,7 +24,7 @@ const FinancialTable = ({ title, accounts, totals, icon: Icon }) => (
             <th className="px-4 py-3 font-bold border-r border-slate-100 whitespace-nowrap">구분</th>
             <th className="px-4 py-3 font-bold border-r border-slate-100 text-right whitespace-nowrap">현재 잔액</th>
             <th className="px-4 py-3 font-bold border-r border-slate-100 text-right whitespace-nowrap">출금액</th>
-            <th className="px-4 py-3 font-bold border-r border-slate-100 text-right whitespace-nowrap">내부 입금</th>
+            <th className="px-4 py-3 font-bold border-r border-slate-100 text-right whitespace-nowrap">입금액</th>
             <th className="px-4 py-3 font-bold border-r border-slate-100 text-right text-indigo-600 whitespace-nowrap">출금 후 잔액</th>
             <th className="px-4 py-3 font-bold whitespace-nowrap">별칭</th>
           </tr>
