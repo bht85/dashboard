@@ -607,7 +607,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                       </div>
                       <div className="flex gap-4 text-[10px] font-black italic">
                         <span className="text-red-600">지출계: -{formatKRW(totalOut)}</span>
-                        <span className="text-blue-600">내부입금계: +{formatKRW(totalIn)}</span>
+                        <span className="text-blue-600">입금액계: +{formatKRW(totalIn)}</span>
                       </div>
                     </div>
                     <div className="overflow-x-auto">
@@ -672,7 +672,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                                 <div className="text-blue-600 text-[9px]">+{formatKRW(totalIn)}</div>
                              </td>
                              <td colSpan={2} className="px-4 py-2 bg-slate-100/50">
-                                <div className="text-[9px] text-slate-400">최종 순지출 합계 (내부이체 제외)</div>
+                                <div className="text-[9px] text-slate-400">최종 순지출 합계 (입금액 제외)</div>
                                 <div className="text-slate-900 font-black">{formatKRW(totalOut - totalIn)}</div>
                              </td>
                            </tr>

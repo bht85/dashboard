@@ -353,10 +353,10 @@ const PrintReport = ({
                   alignItems: 'center',
                   marginBottom: '10px'
                 }}>
-                  <span style={{ fontWeight: 900, fontSize: '11px' }}>■ {section} 출금 및 입금 반영 내역</span>
+                  <span style={{ fontWeight: 900, fontSize: '11px' }}>■ {section} 출금 및 입금액 반영 내역</span>
                   <div style={{ fontSize: '10px', fontWeight: 800 }}>
                     <span style={{ color: '#dc2626', marginRight: '15px' }}>지출계: -{formatKRW(totalOut)}</span>
-                    <span style={{ color: '#2563eb' }}>내부입금계: +{formatKRW(totalIn)}</span>
+                    <span style={{ color: '#2563eb' }}>입금액계: +{formatKRW(totalIn)}</span>
                   </div>
                 </div>
 
@@ -387,7 +387,7 @@ const PrintReport = ({
                             </td>
                             <td style={{ fontWeight: 700 }}>
                               {w.payee}
-                              {isInternal && <span style={{ fontSize: '8px', color: '#6366f1', marginLeft: 4 }}>(내부)</span>}
+                              {isInternal && <span style={{ fontSize: '8px', color: '#6366f1', marginLeft: 4 }}>(입금액)</span>}
                             </td>
                             <td style={{ fontSize: '9px', color: '#94a3b8', fontStyle: 'italic' }}>{w.memo || '-'}</td>
                           </tr>
@@ -402,7 +402,7 @@ const PrintReport = ({
                           <td style={{ textAlign: 'right', fontWeight: 900, color: '#0369a1' }}>
                             +{w.isUSD ? formatUSD(w.amount) : formatKRW(w.amount)}
                           </td>
-                          <td style={{ fontWeight: 700 }}>{w.payee} <span style={{ fontSize: '8px', color: '#0ea5e9' }}>(내부입금반영)</span></td>
+                          <td style={{ fontWeight: 700 }}>{w.payee} <span style={{ fontSize: '8px', color: '#0ea5e9' }}>(입금액반영)</span></td>
                           <td style={{ fontSize: '9px', color: '#94a3b8' }}>{w.memo || '-'}</td>
                         </tr>
                       ))}
@@ -410,7 +410,7 @@ const PrintReport = ({
                     <tfoot>
                       <tr style={{ background: '#f8fafc', fontWeight: 900 }}>
                         <td colSpan={4} style={{ textAlign: 'right', fontSize: '9px', color: '#64748b', padding: '8px' }}>
-                          {section} 순지출 합계 (내부이체 제외 실 지출)
+                          {section} 순지출 합계 (입금액 제외 실 지출)
                         </td>
                         <td style={{ textAlign: 'right', borderLeft: '1px solid #e2e8f0', color: '#1e293b' }}>
                           {formatKRW(totalOut - totalIn)}
