@@ -231,8 +231,10 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
             onClick={() => {
               const prev = document.title;
               document.title = `compose_${selectedDate}`;
-              window.print();
-              document.title = prev;
+              setTimeout(() => {
+                window.print();
+                document.title = prev;
+              }, 100);
             }}
             className="flex items-center gap-2 bg-slate-900 text-white text-xs font-bold px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-slate-200 active:scale-95"
           >
