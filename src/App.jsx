@@ -14,6 +14,7 @@ import FinancialChartPage from './pages/FinancialChartPage';
 import CashFlowPage from './pages/CashFlowPage';
 import CashEventPage from './pages/CashEventPage';
 import AccountMappingPage from './pages/AccountMappingPage';
+import CashPLPage from './pages/CashPLPage';
 import AuthPage from './pages/AuthPage';
 import * as XLSX from 'xlsx';
 import { isExcludedAccount } from './utils/formatters';
@@ -549,6 +550,13 @@ const App = () => {
           exchangeRate={exchangeRate}
         />
       ) : <div className="p-20 text-center font-black text-slate-400">접근 권한이 없습니다. (Test Period)</div>)}
+
+      {currentView === 'cashPL' && (
+        <CashPLPage
+          withdrawals={withdrawals}
+          recordDate={selectedDate}
+        />
+      )}
     </Layout>
   );
 };

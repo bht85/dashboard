@@ -1,6 +1,7 @@
 import React from 'react';
 import { 
   BarChart3,
+  BarChart2,
   TrendingUp,
   LayoutDashboard, 
   ArrowLeftRight, 
@@ -19,6 +20,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView,
   const baseNavItems = [
     { id: 'dashboard', label: '일일 자금 일보', icon: LayoutDashboard },
     { id: 'analytics', label: '추이 분석', icon: BarChart3 },
+    { id: 'cashPL', label: '캐시 손익계산서', icon: BarChart2 },
     { id: 'monthly', label: '월간 자금 일보', icon: TrendingUp },
     { id: 'transactions', label: '출금 대상', icon: ArrowLeftRight },
     { id: 'foreign', label: '외화 송금', icon: Globe },
