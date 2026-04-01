@@ -558,6 +558,7 @@ const App = () => {
           recordDate={selectedDate}
           composeAccounts={composeAccounts}
           smartAccounts={smartAccounts}
+          exchangeRate={exchangeRate}
         />
       ) : <div className="p-20 text-center font-black text-slate-400">접근 권한이 없습니다. (Test Period)</div>)}
 

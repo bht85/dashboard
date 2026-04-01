@@ -160,20 +160,20 @@ const SMART_COST_STRUCTURE = [
 ];
 
 // ─── 데이터 집계 함수 ────────────────────────────────────────────────────
-function aggregateBySubject(withdrawals, section, month, checkIsInternal) {
+function aggregateBySubject(withdrawals, section, month, exchangeRate) {
   const result = {};
   withdrawals.forEach(w => {
     if (w.section !== section) return;
     const wMonth = (w.paymentDate || '').substring(0, 7);
     if (wMonth !== month) return;
     if (!w.accountSubject) return;
-    
-    // 내부 자금 이체(환전 등)는 손익계산서 지출에서 제외
-    if (checkIsInternal(w)) return;
 
     const subject = w.accountSubject;
     if (!result[subject]) result[subject] = 0;
-    result[subject] += w.amount || 0;
+    
+    // 외화 금액이면 현재 환율로 환산하여 집계 (손익계산서 통합용)
+    const amount = (w.isUSD || w.currency === 'USD') ? (w.amount * exchangeRate) : (w.amount || 0);
+    result[subject] += amount;
   });
   return result;
 }
@@ -294,7 +294,7 @@ const SectionHeader = ({ label, total, type, isOpen, onToggle }) => {
 };
 
 // ─── 메인 컴포넌트 ──────────────────────────────────────────────────────
-const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeAccounts: masterCompose = [], smartAccounts: masterSmart = [] }) => {
+const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeAccounts: masterCompose = [], smartAccounts: masterSmart = [], exchangeRate = 1500 }) => {
   const [selectedMonth, setSelectedMonth] = useState(recordDate.substring(0, 7));
   const [openSections, setOpenSections] = useState({});
 
@@ -307,22 +307,6 @@ const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeA
     ...masterCompose.map(a => String(a.no || '').replace(/[^0-9]/g, '')),
     ...masterSmart.map(a => String(a.no || '').replace(/[^0-9]/g, ''))
   ]), [masterCompose, masterSmart]);
-
-  // 내부 이체 판별 로직 (DashboardPage와 동기화)
-  const checkIsInternal = (w) => {
-    if (w.isInternal) return true;
-    const toAccount = String(w.account || w.toAccount || '').replace(/[^0-9]/g, '');
-    if (!toAccount) return false;
-    if (allCompanyAccounts.has(toAccount)) return true;
-    
-    const internalPayeePatterns = [
-      '컴포즈커피', '스마트팩토리', '제이엠씨에프티', '컴포즈커피스마트', '컴포즈커피스마트팩토리',
-      '주식회사컴포즈커피', '주식회사스마트팩토리', '주식회사제이엠씨에프티', '주식회사컴포즈커피스마트', '주식회사컴포즈커피스마트팩토리',
-      '컴포즈커피(주)', '스마트팩토리(주)', '제이엠씨에프티(주)', '컴포즈커피스마트(주)', '컴포즈커피스마트팩토리(주)'
-    ];
-    const cleanPayee = String(w.payee || '').replace(/[\s()주식회사]/g, ''); 
-    return internalPayeePatterns.some(p => p.replace(/[\s()주식회사]/g, '') === cleanPayee);
-  };
 
   const availableMonths = useMemo(() => {
     const months = new Set();
@@ -338,105 +322,98 @@ const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeA
     setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // ─── 실질 매출액 계산 로직 ──────────────────────────────────────────
-  const getNetRevenueForMonth = (section) => {
-    let totalDeposits = 0;
-    
-    // 1. 해당 월의 모든 확정 데이터에서 입금액 합산
+  // ─── 실계산 엔진 (입금/출금 기반) ──────────────────────────────────
+  const calculateCashStats = useMemo(() => {
+    const stats = {
+      컴포즈커피: { excelIn: 0, excelOut: 0, manualIn: 0, manualOut: 0 },
+      스마트팩토리: { excelIn: 0, excelOut: 0, manualIn: 0, manualOut: 0 }
+    };
+
+    // 1. 엑셀 데이터 합산 (통화 환산 적용)
     Object.entries(dailyStatuses).forEach(([date, status]) => {
       if (!date.startsWith(selectedMonth) || !status.details) return;
       status.details.forEach(d => {
-        if (!d.entity.includes(section === '컴포즈커피' ? '컴포즈' : '스마트')) return;
+        const entity = d.entity.includes('컴포즈') ? '컴포즈커피' : '스마트팩토리';
         if (isExcludedAccount(d)) return;
-        totalDeposits += (d.deposits || 0);
+        
+        const rate = (d.isUSD || d.currency === 'USD') ? exchangeRate : 1;
+        stats[entity].excelIn += (d.deposits || 0) * rate;
+        stats[entity].excelOut += (d.withdrawals || 0) * rate;
       });
     });
 
-    // 2. 내부 이체 입금액 차감 (현재 법인 내 계좌 간 이체만 제외)
-    // 법인 A -> 법인 B 이체는 법인 B 입장에서는 매출(외부 유입)로 간주함
-    const internalInflow = withdrawals.reduce((sum, w) => {
-      if (!w.paymentDate || !w.paymentDate.startsWith(selectedMonth)) return sum;
-      
-      // 받는 계좌 번호 추출
-      const targetNo = String(w.account || w.toAccount || '').replace(/[^0-9]/g, '');
-      if (!targetNo) return sum;
+    // 2. 수기 기록 데이터 합산
+    withdrawals.forEach(w => {
+      if (!w.paymentDate || !w.paymentDate.startsWith(selectedMonth)) return;
+      const entity = w.section;
+      if (!stats[entity]) return;
 
-      // 현재 법인(section)의 계좌로 들어온 입금인지 확인
-      const isTargetMine = section === '컴포즈커피' 
+      const rate = (w.isUSD || w.currency === 'USD') ? exchangeRate : 1;
+      const amount = (w.amount || 0) * rate;
+
+      // 출금 합계 (모든 지출/이체 포함)
+      stats[entity].manualOut += amount;
+
+      // 내부 이체 입금액 합산 (현재 법인 내 계좌 간 이체만 제외 대상)
+      const targetNo = String(w.account || w.toAccount || '').replace(/[^0-9]/g, '');
+      const sourceNo = String(w.fromAccount || '').replace(/[^0-9]/g, '');
+      if (!targetNo || !sourceNo) return;
+
+      const isTargetMine = entity === '컴포즈커피' 
         ? masterCompose.some(a => String(a.no).replace(/[^0-9]/g, '') === targetNo)
         : masterSmart.some(a => String(a.no).replace(/[^0-9]/g, '') === targetNo);
-
-      if (!isTargetMine) return sum;
-
-      // 출처 계좌(fromAccount)도 현재 법인(section)의 계좌인지 확인
-      const sourceNo = String(w.fromAccount || '').replace(/[^0-9]/g, '');
-      const isSourceMine = section === '컴포즈커피' 
+      
+      const isSourceMine = entity === '컴포즈커피' 
         ? masterCompose.some(a => String(a.no).replace(/[^0-9]/g, '') === sourceNo)
         : masterSmart.some(a => String(a.no).replace(/[^0-9]/g, '') === sourceNo);
 
-      // '진짜 내부 이체'는 같은 법인 내의 계좌 이동뿐임
-      // 법인 간 이동은 각 법인 입장에서는 외부 거래로 취급
-      const isInternalToEntity = isSourceMine && isTargetMine;
-
-      return sum + (isInternalToEntity ? (w.amount || 0) : 0);
-    }, 0);
-
-    return totalDeposits - internalInflow;
-  };
-
-  // ─── 미기록 출금액(자동이체 등) 계산 ──────────────────────────────────
-  const getUnrecordedWithdrawals = (section) => {
-    let excelOutflow = 0;
-    
-    // 1. 시재 확정 데이터(엑셀) 상의 총 출금액 합산
-    Object.entries(dailyStatuses).forEach(([date, status]) => {
-      if (!date.startsWith(selectedMonth) || !status.details) return;
-      status.details.forEach(d => {
-        if (!d.entity.includes(section === '컴포즈커피' ? '컴포즈' : '스마트')) return;
-        if (isExcludedAccount(d)) return;
-        excelOutflow += (d.withdrawals || 0);
-      });
+      if (isTargetMine && isSourceMine) {
+        stats[entity].manualIn += amount;
+      }
     });
 
-    // 2. 현재까지 등록된 모든 수기 출금 내역 합산 (내부이체 포함)
-    const manualOutflowTotal = withdrawals.reduce((sum, w) => {
-      if (w.section !== section) return sum;
-      if (!w.paymentDate || !w.paymentDate.startsWith(selectedMonth)) return sum;
-      return sum + (w.amount || 0);
-    }, 0);
+    // 3. 최종 조정값 도출 (Heuristic: 미기록 입금과 미기록 출금이 동시에 나면 환전 등 내부거래로 간주)
+    const results = {};
+    ['컴포즈커피', '스마트팩토리'].forEach(entity => {
+      const s = stats[entity];
+      const unrecordedIn = Math.max(0, s.excelIn - s.manualIn);
+      const unrecordedOut = Math.max(0, s.excelOut - s.manualOut);
+      
+      // 환전 등 미기록 내부거래 추정치 (입/출금 양쪽에 걸친 미기록분을 상쇄)
+      const estimatedInternal = Math.min(unrecordedIn, unrecordedOut);
+      
+      results[entity] = {
+        netRevenue: unrecordedIn - estimatedInternal, // 미기록 입금 중 상쇄 안 된 것이 진짜 매출
+        automaticWithdrawal: unrecordedOut - estimatedInternal // 미기록 출금 중 상쇄 안 된 것이 진짜 자동이체
+      };
+    });
 
-    // 엑셀 상의 출금이 더 많다면, 그 차액을 '자동이체' 등으로 간주
-    const diff = excelOutflow - manualOutflowTotal;
-    return diff > 50 ? diff : 0; // 50원 미만 오차는 무시
-  };
+    return results;
+  }, [selectedMonth, dailyStatuses, withdrawals, exchangeRate, masterCompose, masterSmart]);
 
   // ─── 컴포즈 집계 ─────────────────────────────────────────────
   const composeMap = useMemo(() => {
-    const map = aggregateBySubject(withdrawals, '컴포즈커피', selectedMonth, checkIsInternal);
-    // 입금액 기반 매출 자동 계산 추가
-    const netRevenue = getNetRevenueForMonth('컴포즈커피');
-    map['실질입금매출'] = netRevenue;
+    const map = aggregateBySubject(withdrawals, '컴포즈커피', selectedMonth, exchangeRate);
     
-    // 미기록 자동이체분 계산 추가
-    const unrecorded = getUnrecordedWithdrawals('컴포즈커피');
-    map['자동이체'] = (map['자동이체'] || 0) + unrecorded;
+    // 자동화된 실질 매출 및 자동이체 계산 반영
+    const stats = calculateCashStats['컴포즈커피'];
+    map['실질입금매출'] = stats.netRevenue;
+    map['자동이체'] = (map['자동이체'] || 0) + stats.automaticWithdrawal;
     
     return map;
-  }, [withdrawals, selectedMonth, dailyStatuses, masterCompose, masterSmart, checkIsInternal]);
+  }, [withdrawals, selectedMonth, dailyStatuses, masterCompose, masterSmart, calculateCashStats, exchangeRate]);
 
   // ─── 스마트팩토리 집계 ────────────────────────────────────────────
   const smartMap = useMemo(() => {
-    const map = aggregateBySubject(withdrawals, '스마트팩토리', selectedMonth, checkIsInternal);
-    // 입금액 기반 매출 자동 계산 추가
-    const netRevenue = getNetRevenueForMonth('스마트팩토리');
-    map['실질입금매출'] = netRevenue;
-
-    // 미기록 자동이체분 계산 추가
-    const unrecorded = getUnrecordedWithdrawals('스마트팩토리');
-    map['자동이체'] = (map['자동이체'] || 0) + unrecorded;
+    const map = aggregateBySubject(withdrawals, '스마트팩토리', selectedMonth, exchangeRate);
+    
+    // 자동화된 실질 매출 및 자동이체 계산 반영
+    const stats = calculateCashStats['스마트팩토리'];
+    map['실질입금매출'] = stats.netRevenue;
+    map['자동이체'] = (map['자동이체'] || 0) + stats.automaticWithdrawal;
     
     return map;
-  }, [withdrawals, selectedMonth, dailyStatuses, masterCompose, masterSmart, checkIsInternal]);
+  }, [withdrawals, selectedMonth, dailyStatuses, masterCompose, masterSmart, calculateCashStats, exchangeRate]);
 
   // 각 섹션 합계 계산 헬퍼
   const calcSums = (map, structure) => {
