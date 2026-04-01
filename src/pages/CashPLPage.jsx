@@ -271,10 +271,7 @@ const CashPLPage = ({ withdrawals = [], recordDate }) => {
     return sums;
   };
 
-  const composeSums = useMemo(() => calcSums(composeMap, COMPOSE_PL_STRUCTURE), [composeMap]);
-  const smartSums = useMemo(() => calcSums(smartMap, SMART_PL_STRUCTURE), [smartMap]);
-
-  // 원가명세서 집계
+  // 원가명세서 집계 (smartSums보다 먼저 계산 필요)
   const smartCostSums = useMemo(() => {
     const result = {};
     SMART_COST_STRUCTURE.forEach(sec => {
@@ -284,7 +281,20 @@ const CashPLPage = ({ withdrawals = [], recordDate }) => {
     return result;
   }, [smartMap]);
 
-  const renderPL = (structure, subjectMap, sums, entityKey) => {
+  const composeSums = useMemo(() => calcSums(composeMap, COMPOSE_PL_STRUCTURE), [composeMap]);
+  const smartSums = useMemo(() => {
+    const baseSums = calcSums(smartMap, SMART_PL_STRUCTURE);
+    // Sync COGM to COGS for Smart Factory
+    baseSums.cogs = smartCostSums.totalCOGM;
+    // Re-calculate subtotals that depend on cogs
+    baseSums.grossProfit = baseSums.revenue - baseSums.cogs;
+    baseSums.operatingProfit = baseSums.grossProfit - baseSums.sga;
+    baseSums.pretaxProfit = baseSums.operatingProfit + baseSums.nonOpIncome - baseSums.nonOpExpense;
+    baseSums.netProfit = baseSums.pretaxProfit - baseSums.tax;
+    return baseSums;
+  }, [smartMap, smartCostSums]);
+
+  const renderPL = (structure, subjectMap, sums, entityKey, overrides = {}) => {
     return structure.sections.map(sec => {
       if (sec.type === 'subtotal') {
         const val = sums[sec.id] ?? sec.formula(sums);
@@ -293,7 +303,7 @@ const CashPLPage = ({ withdrawals = [], recordDate }) => {
       }
 
       const secKey = `${entityKey}_${sec.id}`;
-      const total = getSectionTotal(subjectMap, sec.subjects);
+      const total = overrides[sec.id] !== undefined ? overrides[sec.id] : getSectionTotal(subjectMap, sec.subjects);
       const isOpen = openSections[secKey] !== false; // default open
 
       return (
@@ -306,7 +316,9 @@ const CashPLPage = ({ withdrawals = [], recordDate }) => {
             onToggle={() => toggleSection(secKey)}
           />
           {isOpen && sec.subjects.map(subject => {
-            const val = subjectMap[subject] || 0;
+            const val = (overrides[sec.id] !== undefined && sec.subjects.length === 1) 
+              ? overrides[sec.id] 
+              : (subjectMap[subject] || 0);
             if (val === 0) return null;
             return <DetailRow key={subject} label={subject} value={val} isIndented />;
           })}
@@ -315,7 +327,7 @@ const CashPLPage = ({ withdrawals = [], recordDate }) => {
     });
   };
 
-  const PLTable = ({ title, icon: Icon, structure, subjectMap, sums, entityKey, color }) => (
+  const PLTable = ({ title, icon: Icon, structure, subjectMap, sums, entityKey, color, overrides }) => (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
       <div className={`px-8 py-5 flex items-center gap-3 border-b border-slate-100 ${color === 'indigo' ? 'bg-indigo-600' : 'bg-emerald-700'}`}>
         <Icon className="w-5 h-5 text-white" />
@@ -334,7 +346,7 @@ const CashPLPage = ({ withdrawals = [], recordDate }) => {
             </tr>
           </thead>
           <tbody>
-            {renderPL(structure, subjectMap, sums, entityKey)}
+            {renderPL(structure, subjectMap, sums, entityKey, overrides)}
           </tbody>
           <tfoot>
             <tr className="bg-slate-50">
@@ -418,6 +430,7 @@ const CashPLPage = ({ withdrawals = [], recordDate }) => {
           sums={smartSums}
           entityKey="smart"
           color="emerald"
+          overrides={{ cogs: smartCostSums.totalCOGM }}
         />
       </div>
 
