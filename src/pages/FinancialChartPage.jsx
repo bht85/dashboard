@@ -97,14 +97,48 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
       });
   }, [dailyStatuses, selectedMonth, selectedEntity, currencyMode, exchangeRate, excludeInternal]);
 
+  // Calculate Beginning Balance (Opening balance of the month)
+  const beginningBalance = useMemo(() => {
+    // 1. Find the last recorded date before the selected month
+    const previousDates = Object.keys(dailyStatuses)
+      .filter(date => date < selectedMonth)
+      .sort();
+    
+    if (previousDates.length > 0) {
+      const lastDate = previousDates[previousDates.length - 1];
+      const status = dailyStatuses[lastDate];
+      const details = status.details || [];
+      
+      const filteredDetails = selectedEntity === 'ALL' 
+          ? details 
+          : details.filter(d => d.entity.includes(selectedEntity));
+      
+      const isUSDMode = currencyMode === 'USD';
+      return filteredDetails.reduce((s, i) => {
+          const isUSD = i.currency === 'USD' || i.isUSD;
+          const balance = Number(i.totalBalance || 0);
+          if (isUSDMode) {
+             return s + (isUSD ? balance : balance / exchangeRate);
+          } else {
+             return s + (isUSD ? balance * exchangeRate : balance);
+          }
+      }, 0);
+    }
+    
+    // 2. Fallback: if no previous data, use opening balance of first day in chartData
+    if (chartData.length > 0) {
+      return chartData[0].balance - chartData[0].net;
+    }
+    
+    return 0;
+  }, [dailyStatuses, selectedMonth, selectedEntity, currencyMode, exchangeRate, chartData]);
+
   // Summary Metrics for the selected period
   const metrics = useMemo(() => {
-    if (chartData.length === 0) return { inflow: 0, outflow: 0, net: 0, growth: 0, beginning: 0, current: 0 };
-    
     const totalInflow = chartData.reduce((s, d) => s + d.inflow, 0);
     const totalOutflow = chartData.reduce((s, d) => s + d.outflow, 0);
-    const startBalance = chartData[0].balance;
-    const endBalance = chartData[chartData.length - 1].balance;
+    const startBalance = beginningBalance;
+    const endBalance = chartData.length > 0 ? chartData[chartData.length - 1].balance : startBalance;
     const growth = startBalance !== 0 ? ((endBalance - startBalance) / startBalance) * 100 : 0;
 
     return {
@@ -115,7 +149,7 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
       beginning: startBalance,
       current: endBalance
     };
-  }, [chartData]);
+  }, [chartData, beginningBalance]);
 
   const formatValue = (val) => currencyMode === 'KRW' ? formatKRW(val) : formatUSD(val);
 
