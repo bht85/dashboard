@@ -160,13 +160,16 @@ const SMART_COST_STRUCTURE = [
 ];
 
 // ─── 데이터 집계 함수 ────────────────────────────────────────────────────
-function aggregateBySubject(withdrawals, section, month) {
+function aggregateBySubject(withdrawals, section, month, checkIsInternal) {
   const result = {};
   withdrawals.forEach(w => {
     if (w.section !== section) return;
     const wMonth = (w.paymentDate || '').substring(0, 7);
     if (wMonth !== month) return;
     if (!w.accountSubject) return;
+    
+    // 내부 자금 이체(환전 등)는 손익계산서 지출에서 제외
+    if (checkIsInternal(w)) return;
 
     const subject = w.accountSubject;
     if (!result[subject]) result[subject] = 0;
@@ -305,6 +308,22 @@ const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeA
     ...masterSmart.map(a => String(a.no || '').replace(/[^0-9]/g, ''))
   ]), [masterCompose, masterSmart]);
 
+  // 내부 이체 판별 로직 (DashboardPage와 동기화)
+  const checkIsInternal = (w) => {
+    if (w.isInternal) return true;
+    const toAccount = String(w.account || w.toAccount || '').replace(/[^0-9]/g, '');
+    if (!toAccount) return false;
+    if (allCompanyAccounts.has(toAccount)) return true;
+    
+    const internalPayeePatterns = [
+      '컴포즈커피', '스마트팩토리', '제이엠씨에프티', '컴포즈커피스마트', '컴포즈커피스마트팩토리',
+      '주식회사컴포즈커피', '주식회사스마트팩토리', '주식회사제이엠씨에프티', '주식회사컴포즈커피스마트', '주식회사컴포즈커피스마트팩토리',
+      '컴포즈커피(주)', '스마트팩토리(주)', '제이엠씨에프티(주)', '컴포즈커피스마트(주)', '컴포즈커피스마트팩토리(주)'
+    ];
+    const cleanPayee = String(w.payee || '').replace(/[\s()주식회사]/g, ''); 
+    return internalPayeePatterns.some(p => p.replace(/[\s()주식회사]/g, '') === cleanPayee);
+  };
+
   const availableMonths = useMemo(() => {
     const months = new Set();
     withdrawals.forEach(w => {
@@ -393,7 +412,7 @@ const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeA
 
   // ─── 컴포즈 집계 ─────────────────────────────────────────────
   const composeMap = useMemo(() => {
-    const map = aggregateBySubject(withdrawals, '컴포즈커피', selectedMonth);
+    const map = aggregateBySubject(withdrawals, '컴포즈커피', selectedMonth, checkIsInternal);
     // 입금액 기반 매출 자동 계산 추가
     const netRevenue = getNetRevenueForMonth('컴포즈커피');
     map['실질입금매출'] = netRevenue;
@@ -403,11 +422,11 @@ const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeA
     map['자동이체'] = (map['자동이체'] || 0) + unrecorded;
     
     return map;
-  }, [withdrawals, selectedMonth, dailyStatuses, masterCompose, masterSmart]);
+  }, [withdrawals, selectedMonth, dailyStatuses, masterCompose, masterSmart, checkIsInternal]);
 
   // ─── 스마트팩토리 집계 ────────────────────────────────────────────
   const smartMap = useMemo(() => {
-    const map = aggregateBySubject(withdrawals, '스마트팩토리', selectedMonth);
+    const map = aggregateBySubject(withdrawals, '스마트팩토리', selectedMonth, checkIsInternal);
     // 입금액 기반 매출 자동 계산 추가
     const netRevenue = getNetRevenueForMonth('스마트팩토리');
     map['실질입금매출'] = netRevenue;
@@ -417,7 +436,7 @@ const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeA
     map['자동이체'] = (map['자동이체'] || 0) + unrecorded;
     
     return map;
-  }, [withdrawals, selectedMonth, dailyStatuses, masterCompose, masterSmart]);
+  }, [withdrawals, selectedMonth, dailyStatuses, masterCompose, masterSmart, checkIsInternal]);
 
   // 각 섹션 합계 계산 헬퍼
   const calcSums = (map, structure) => {
