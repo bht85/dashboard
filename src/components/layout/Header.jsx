@@ -78,7 +78,7 @@ const Header = ({
               type="date" 
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-2 sm:pl-8 sm:pr-3 py-2 lg:py-2.5 bg-transparent text-xs lg:text-sm font-black text-slate-700 focus:bg-white outline-none transition-all w-[110px] sm:w-[145px] tracking-tight"
+              className="px-2 sm:pl-8 sm:pr-8 py-2 lg:py-2.5 bg-transparent text-xs lg:text-sm font-black text-slate-700 focus:bg-white outline-none transition-all w-[135px] sm:w-[175px] tracking-tight"
             />
           </div>
           
