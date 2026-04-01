@@ -20,7 +20,6 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView,
   const baseNavItems = [
     { id: 'dashboard', label: '일일 자금 일보', icon: LayoutDashboard },
     { id: 'analytics', label: '추이 분석', icon: BarChart3 },
-    { id: 'cashPL', label: '캐시 손익계산서', icon: BarChart2 },
     { id: 'monthly', label: '월간 자금 일보', icon: TrendingUp },
     { id: 'transactions', label: '출금 대상', icon: ArrowLeftRight },
     { id: 'foreign', label: '외화 송금', icon: Globe },
@@ -35,6 +34,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView,
   const cashFlowItems = [
     { id: 'cashFlow', label: '자금 흐름 추정', icon: Calendar },
     { id: 'cashEvent', label: '자금 이벤트 등록', icon: CalendarPlus },
+    { id: 'cashPL', label: '캐시 손익계산서', icon: BarChart2 },
   ];
 
   return (
