@@ -28,7 +28,7 @@ const COMPOSE_PL_STRUCTURE = {
       id: 'sga',
       label: 'IV. 판매비와 관리비',
       type: 'expense',
-      subjects: ['임원급여', '직원급여', '상여금', '퇴직급여', '복리후생비', '여비교통비', '접대비', '통신비', '수도광열비', '전력비', '세금과공과금', '감가상각비', '지급임차료', '보험료', '차량유지비', '운반비', '교육훈련비', '도서인쇄비', '사무용품비', '소모품비', '지급수수료', '광고선전비', '판매촉진비', '대손상각비', '건물관리비', '무형고정자산상각', '리스료'],
+      subjects: ['임원급여', '직원급여', '상여금', '퇴직급여', '복리후생비', '여비교통비', '접대비', '통신비', '수도광열비', '전력비', '세금과공과금', '감가상각비', '지급임차료', '보험료', '차량유지비', '운반비', '교육훈련비', '도서인쇄비', '사무용품비', '소모품비', '지급수수료', '광고선전비', '판매촉진비', '대손상각비', '건물관리비', '무형고정자산상각', '리스료', '자동이체'],
     },
     {
       id: 'operatingProfit',
@@ -94,7 +94,7 @@ const SMART_PL_STRUCTURE = {
       id: 'sga',
       label: 'IV. 판매비와 관리비',
       type: 'expense',
-      subjects: ['복리후생비', '지급수수료'],
+      subjects: ['복리후생비', '지급수수료', '자동이체'],
     },
     {
       id: 'operatingProfit',
@@ -296,12 +296,43 @@ const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeA
     return totalDeposits - internalInflow;
   };
 
+  // ─── 미기록 출금액(자동이체 등) 계산 ──────────────────────────────────
+  const getUnrecordedWithdrawals = (section) => {
+    let excelOutflow = 0;
+    
+    // 1. 시재 확정 데이터(엑셀) 상의 총 출금액 합산
+    Object.entries(dailyStatuses).forEach(([date, status]) => {
+      if (!date.startsWith(selectedMonth) || !status.details) return;
+      status.details.forEach(d => {
+        if (!d.entity.includes(section === '컴포즈커피' ? '컴포즈' : '스마트')) return;
+        if (isExcludedAccount(d)) return;
+        excelOutflow += (d.withdrawals || 0);
+      });
+    });
+
+    // 2. 현재까지 등록된 모든 수기 출금 내역 합산 (내부이체 포함)
+    const manualOutflowTotal = withdrawals.reduce((sum, w) => {
+      if (w.section !== section) return sum;
+      if (!w.paymentDate || !w.paymentDate.startsWith(selectedMonth)) return sum;
+      return sum + (w.amount || 0);
+    }, 0);
+
+    // 엑셀 상의 출금이 더 많다면, 그 차액을 '자동이체' 등으로 간주
+    const diff = excelOutflow - manualOutflowTotal;
+    return diff > 50 ? diff : 0; // 50원 미만 오차는 무시
+  };
+
   // ─── 컴포즈 집계 ─────────────────────────────────────────────
   const composeMap = useMemo(() => {
     const map = aggregateBySubject(withdrawals, '컴포즈커피', selectedMonth);
     // 입금액 기반 매출 자동 계산 추가
     const netRevenue = getNetRevenueForMonth('컴포즈커피');
     map['실질입금매출'] = netRevenue;
+    
+    // 미기록 자동이체분 계산 추가
+    const unrecorded = getUnrecordedWithdrawals('컴포즈커피');
+    map['자동이체'] = (map['자동이체'] || 0) + unrecorded;
+    
     return map;
   }, [withdrawals, selectedMonth, dailyStatuses, masterCompose, masterSmart]);
 
@@ -311,6 +342,11 @@ const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeA
     // 입금액 기반 매출 자동 계산 추가
     const netRevenue = getNetRevenueForMonth('스마트팩토리');
     map['실질입금매출'] = netRevenue;
+
+    // 미기록 자동이체분 계산 추가
+    const unrecorded = getUnrecordedWithdrawals('스마트팩토리');
+    map['자동이체'] = (map['자동이체'] || 0) + unrecorded;
+    
     return map;
   }, [withdrawals, selectedMonth, dailyStatuses, masterCompose, masterSmart]);
 
