@@ -16,7 +16,7 @@ const COMPOSE_PL_STRUCTURE = {
       id: 'cogs',
       label: 'II. 매출원가',
       type: 'expense',
-      subjects: ['상품매출원가', '원재료(도급)', '복리후생비(도급)', '여비교통비(도급)', '접대비(도급)', '감가상각비(도급)', '보험료(도급)', '차량유지비(도급)', '운반비(도급)', '사무용품비(도급)', '소모품비(도급)', '지급수수료(도급)', '외주공사비(도급)'],
+      subjects: ['상품매출원가'], // 당기공사원가는 원가명세서에서 합계로 가져옴
     },
     {
       id: 'grossProfit',
@@ -68,6 +68,17 @@ const COMPOSE_PL_STRUCTURE = {
     },
   ],
 };
+
+// 컴포즈커피 공사원가명세서
+const COMPOSE_COST_STRUCTURE = [
+  { id: 'rawMaterial', label: 'I. 공사원재료비', subjects: ['원재료(도급)'] },
+  { id: 'labor', label: 'II. 노 무 비', subjects: [] },
+  { id: 'outsourcing', label: 'III. 외 주 비', subjects: [] },
+  {
+    id: 'overhead', label: 'IV. 경 비',
+    subjects: ['복리후생비(도급)', '여비교통비(도급)', '접대비(도급)', '감가상각비(도급)', '보험료(도급)', '차량유지비(도급)', '운반비(도급)', '사무용품비(도급)', '소모품비(도급)', '지급수수료(도급)', '외주공사비(도급)'],
+  },
+];
 
 // 스마트팩토리 P&L 구조
 const SMART_PL_STRUCTURE = {
@@ -183,6 +194,64 @@ const SubtotalRow = ({ label, value, highlight = false, isProfit }) => {
         {isNegative ? `(${formatKRW(Math.abs(value))})` : formatKRW(value)}
       </td>
     </tr>
+  );
+};
+
+// ─── 원가명세서 테이블 컴포넌트 ──────────────────────────────────────────
+const CostStatementTable = ({ title, structure, subjectMap, sums, totalLabel, color, openSections, toggleSection }) => {
+  const monthLabel = sums?.month ? sums.month : ''; // Month info if needed
+  
+  return (
+    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden h-full flex flex-col">
+      <div className={`px-8 py-5 flex items-center gap-3 border-b border-slate-100 ${color === 'indigo' ? 'bg-indigo-700' : 'bg-slate-800'}`}>
+        <Factory className={`w-5 h-5 ${color === 'indigo' ? 'text-indigo-200' : 'text-emerald-400'}`} />
+        <div>
+          <h3 className="font-black text-white text-lg tracking-tight">{title}</h3>
+          <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mt-0.5">기간별 원가명세서 (Cash Basis)</p>
+        </div>
+      </div>
+      <div className="overflow-x-auto flex-1">
+        <table className="w-full text-sm border-collapse">
+          <thead className="bg-[#002060] text-white">
+            <tr>
+              <th className="px-4 py-2 text-center w-8 text-[10px] font-bold"></th>
+              <th className="px-4 py-2 text-left text-[11px] font-bold tracking-widest uppercase">과 목</th>
+              <th className="px-4 py-2 text-right text-[11px] font-bold w-40 tracking-widest uppercase">금 액</th>
+            </tr>
+          </thead>
+          <tbody>
+            {structure.map(sec => {
+              const secKey = `cost_${title}_${sec.id}`;
+              const total = sums[sec.id] || 0;
+              const isOpen = openSections[secKey] !== false;
+
+              return (
+                <React.Fragment key={sec.id}>
+                  <SectionHeader
+                    label={sec.label}
+                    total={total}
+                    type="expense"
+                    isOpen={isOpen}
+                    onToggle={() => toggleSection(secKey)}
+                  />
+                  {isOpen && sec.subjects.map(subject => {
+                    const val = subjectMap[subject] || 0;
+                    if (val === 0) return null;
+                    return <DetailRow key={subject} label={subject} value={val} isIndented />;
+                  })}
+                </React.Fragment>
+              );
+            })}
+            <SubtotalRow label={totalLabel} value={sums.totalCOGM} highlight />
+          </tbody>
+          <tfoot>
+            <tr className="bg-slate-50">
+              <td colSpan={3} className="px-4 py-2 text-right text-[9px] text-slate-400 font-bold uppercase tracking-widest">(단위: 원) · 캐시플로우 기준</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
   );
 };
 
@@ -373,6 +442,17 @@ const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeA
   };
 
   // 원가명세서 집계 (smartSums보다 먼저 계산 필요)
+  // 컴포즈 원가명세서 집계
+  const composeCostSums = useMemo(() => {
+    const result = {};
+    COMPOSE_COST_STRUCTURE.forEach(sec => {
+      result[sec.id] = getSectionTotal(composeMap, sec.subjects);
+    });
+    result.totalCOGM = Object.values(result).reduce((a, b) => a + b, 0);
+    return result;
+  }, [composeMap]);
+
+  // 스마트팩토리 원가명세서 집계 (smartSums보다 먼저 계산 필요)
   const smartCostSums = useMemo(() => {
     const result = {};
     SMART_COST_STRUCTURE.forEach(sec => {
@@ -382,7 +462,18 @@ const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeA
     return result;
   }, [smartMap]);
 
-  const composeSums = useMemo(() => calcSums(composeMap, COMPOSE_PL_STRUCTURE), [composeMap]);
+  const composeSums = useMemo(() => {
+    const baseSums = calcSums(composeMap, COMPOSE_PL_STRUCTURE);
+    // Sync COGM to COGS for Compose Coffee (Construction costs)
+    baseSums.cogs = (baseSums.cogs || 0) + composeCostSums.totalCOGM;
+    // Re-calculate subtotals
+    baseSums.grossProfit = baseSums.revenue - baseSums.cogs;
+    baseSums.operatingProfit = baseSums.grossProfit - baseSums.sga;
+    baseSums.pretaxProfit = baseSums.operatingProfit + baseSums.nonOpIncome - baseSums.nonOpExpense;
+    baseSums.netProfit = baseSums.pretaxProfit - baseSums.tax;
+    return baseSums;
+  }, [composeMap, composeCostSums]);
+
   const smartSums = useMemo(() => {
     const baseSums = calcSums(smartMap, SMART_PL_STRUCTURE);
     // Sync COGM to COGS for Smart Factory
@@ -521,7 +612,7 @@ const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeA
       </div>
 
       {/* P&L 테이블 2단 */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-8">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-16">
         <PLTable
           title="컴포즈커피 손익계산서"
           icon={Building2}
@@ -539,59 +630,35 @@ const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeA
           sums={smartSums}
           entityKey="smart"
           color="emerald"
-          overrides={{ cogs: smartCostSums.totalCOGM }}
         />
       </div>
 
-      {/* 스마트팩토리 원가명세서 */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="px-8 py-5 flex items-center gap-3 border-b border-slate-100 bg-slate-800">
-          <Factory className="w-5 h-5 text-emerald-400" />
-          <div>
-            <h3 className="font-black text-white text-lg tracking-tight">스마트팩토리 원가명세서</h3>
-            <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest mt-0.5">{monthLabel} · 기간별원가명세서 (Cash Basis)</p>
-          </div>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead className="bg-[#002060] text-white">
-              <tr>
-                <th className="px-4 py-2 text-center w-8 text-[10px] font-bold"></th>
-                <th className="px-4 py-2 text-left text-[11px] font-bold tracking-widest uppercase">과 목</th>
-                <th className="px-4 py-2 text-right text-[11px] font-bold w-40 tracking-widest uppercase">금 액</th>
-              </tr>
-            </thead>
-            <tbody>
-              {SMART_COST_STRUCTURE.map(sec => {
-                const secKey = `cost_${sec.id}`;
-                const total = smartCostSums[sec.id] || 0;
-                const isOpen = openSections[secKey] !== false;
-
-                return (
-                  <React.Fragment key={sec.id}>
-                    <SectionHeader
-                      label={sec.label}
-                      total={total}
-                      type="expense"
-                      isOpen={isOpen}
-                      onToggle={() => toggleSection(secKey)}
-                    />
-                    {isOpen && sec.subjects.map(subject => {
-                      const val = smartMap[subject] || 0;
-                      if (val === 0) return null;
-                      return <DetailRow key={subject} label={subject} value={val} isIndented />;
-                    })}
-                  </React.Fragment>
-                );
-              })}
-              <SubtotalRow label="당기제품제조원가" value={smartCostSums.totalCOGM} highlight />
-            </tbody>
-            <tfoot>
-              <tr className="bg-slate-50">
-                <td colSpan={3} className="px-4 py-2 text-right text-[9px] text-slate-400 font-bold uppercase tracking-widest">(단위: 원) · 캐시플로우 기준</td>
-              </tr>
-            </tfoot>
-          </table>
+      {/* 원가명세서 섹션 (페이지 하단) */}
+      <div className="pt-10 border-t border-slate-200">
+        <h2 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-2">
+          <Factory className="w-6 h-6 text-indigo-600" /> 세부 원가보고서 (Period Cost Statements)
+        </h2>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
+          <CostStatementTable
+            title="컴포즈 공사원가명세서"
+            structure={COMPOSE_COST_STRUCTURE}
+            subjectMap={composeMap}
+            sums={composeCostSums}
+            totalLabel="당 기 공 사 원 가"
+            color="indigo"
+            openSections={openSections}
+            toggleSection={toggleSection}
+          />
+          <CostStatementTable
+            title="스마트팩토리 제조원가명세서"
+            structure={SMART_COST_STRUCTURE}
+            subjectMap={smartMap}
+            sums={smartCostSums}
+            totalLabel="당 기 제 품 제 조 원 가"
+            color="emerald"
+            openSections={openSections}
+            toggleSection={toggleSection}
+          />
         </div>
       </div>
     </div>
