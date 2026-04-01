@@ -18,8 +18,10 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
   // Available months from data
   const availableMonths = useMemo(() => {
     const months = new Set(Object.keys(dailyStatuses).map(d => d.substring(0, 7)));
+    // Ensure the current selection date's month is always available
+    months.add(recordDate.substring(0, 7));
     return Array.from(months).sort().reverse();
-  }, [dailyStatuses]);
+  }, [dailyStatuses, recordDate]);
 
   // Data Transformation for Recharts
   const chartData = useMemo(() => {
