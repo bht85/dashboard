@@ -554,7 +554,10 @@ const App = () => {
       {currentView === 'cashPL' && (
         <CashPLPage
           withdrawals={withdrawals}
+          dailyStatuses={dailyStatuses}
           recordDate={selectedDate}
+          composeAccounts={composeAccounts}
+          smartAccounts={smartAccounts}
         />
       )}
     </Layout>

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { formatKRW } from '../utils/formatters';
+import React, { useState, useMemo, useEffect } from 'react';
+import { formatKRW, isExcludedAccount } from '../utils/formatters';
 import { TrendingUp, Factory, Building2, ChevronDown, ChevronRight, Printer } from 'lucide-react';
 
 // ─── 손익계산서 계정 분류 구조 ───────────────────────────────────────────
@@ -222,44 +222,104 @@ const SectionHeader = ({ label, total, type, isOpen, onToggle }) => {
 };
 
 // ─── 메인 컴포넌트 ──────────────────────────────────────────────────────
-const CashPLPage = ({ withdrawals = [], recordDate }) => {
-  const currentMonth = recordDate.substring(0, 7);
-  const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeAccounts: masterCompose = [], smartAccounts: masterSmart = [] }) => {
+  const [selectedMonth, setSelectedMonth] = useState(recordDate.substring(0, 7));
   const [openSections, setOpenSections] = useState({});
 
-  // 사용 가능한 월 목록
-  const availableMonths = useMemo(() => {
-    const months = new Set(
-      withdrawals
-        .filter(w => w.paymentDate)
-        .map(w => w.paymentDate.substring(0, 7))
-    );
-    months.add(currentMonth);
-    return Array.from(months).sort().reverse();
-  }, [withdrawals, currentMonth]);
+  useEffect(() => {
+    if (recordDate) setSelectedMonth(recordDate.substring(0, 7));
+  }, [recordDate]);
 
-  const toggleSection = (key) => {
-    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  // 모든 자사 계좌번호 Set (내부 이체 판별용)
+  const allCompanyAccounts = useMemo(() => new Set([
+    ...masterCompose.map(a => String(a.no || '').replace(/[^0-9]/g, '')),
+    ...masterSmart.map(a => String(a.no || '').replace(/[^0-9]/g, ''))
+  ]), [masterCompose, masterSmart]);
+
+  const availableMonths = useMemo(() => {
+    const months = new Set();
+    withdrawals.forEach(w => {
+      if (w.paymentDate) months.add(w.paymentDate.substring(0, 7));
+    });
+    // dailyStatuses에서도 달 추출 (매출액 계산용)
+    Object.keys(dailyStatuses).forEach(d => months.add(d.substring(0, 7)));
+    return Array.from(months).sort().reverse();
+  }, [withdrawals, dailyStatuses]);
+
+  const toggleSection = (id) => {
+    setOpenSections(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
-  // ─── 컴포즈커피 집계 ──────────────────────────────────────────────
-  const composeMap = useMemo(() =>
-    aggregateBySubject(withdrawals, '컴포즈커피', selectedMonth),
-    [withdrawals, selectedMonth]
-  );
+  // ─── 실질 매출액 계산 로직 ──────────────────────────────────────────
+  const getNetRevenueForMonth = (section) => {
+    let totalDeposits = 0;
+    
+    // 1. 해당 월의 모든 확정 데이터에서 입금액 합산
+    Object.entries(dailyStatuses).forEach(([date, status]) => {
+      if (!date.startsWith(selectedMonth) || !status.details) return;
+      status.details.forEach(d => {
+        if (!d.entity.includes(section === '컴포즈커피' ? '컴포즈' : '스마트')) return;
+        if (isExcludedAccount(d)) return;
+        totalDeposits += (d.deposits || 0);
+      });
+    });
+
+    // 2. 내부 이체 입금액 차감
+    const internalInflow = withdrawals.reduce((sum, w) => {
+      if (!w.paymentDate || !w.paymentDate.startsWith(selectedMonth)) return sum;
+      
+      // 내부 이체 판별
+      const isInternal = w.isInternal || (() => {
+        const toAcc = String(w.account || w.toAccount || '').replace(/[^0-9]/g, '');
+        if (!toAcc || !allCompanyAccounts.has(toAcc)) return false;
+        const cleanPayee = String(w.payee || '').replace(/[\s()주식회사]/g, '');
+        const internalPatterns = ['컴포즈커피', '스마트팩토리', '제이엠씨에프티', '컴포즈커피스마트', '컴포즈커피스마트팩토리'];
+        return internalPatterns.some(p => p.replace(/[\s()주식회사]/g, '') === cleanPayee);
+      })();
+
+      if (!isInternal) return sum;
+
+      // 받는 법인 확인
+      const targetNo = String(w.account || w.toAccount || '').replace(/[^0-9]/g, '');
+      const isTarget = section === '컴포즈커피' 
+        ? masterCompose.some(a => String(a.no).replace(/[^0-9]/g, '') === targetNo)
+        : masterSmart.some(a => String(a.no).replace(/[^0-9]/g, '') === targetNo);
+
+      return sum + (isTarget ? (w.amount || 0) : 0);
+    }, 0);
+
+    return totalDeposits - internalInflow;
+  };
+
+  // ─── 컴포즈 집계 ─────────────────────────────────────────────
+  const composeMap = useMemo(() => {
+    const map = aggregateBySubject(withdrawals, '컴포즈커피', selectedMonth);
+    // 입금액 기반 매출 자동 계산 추가
+    const netRevenue = getNetRevenueForMonth('컴포즈커피');
+    map['실질입금매출'] = netRevenue;
+    return map;
+  }, [withdrawals, selectedMonth, dailyStatuses, masterCompose, masterSmart]);
 
   // ─── 스마트팩토리 집계 ────────────────────────────────────────────
-  const smartMap = useMemo(() =>
-    aggregateBySubject(withdrawals, '스마트팩토리', selectedMonth),
-    [withdrawals, selectedMonth]
-  );
+  const smartMap = useMemo(() => {
+    const map = aggregateBySubject(withdrawals, '스마트팩토리', selectedMonth);
+    // 입금액 기반 매출 자동 계산 추가
+    const netRevenue = getNetRevenueForMonth('스마트팩토리');
+    map['실질입금매출'] = netRevenue;
+    return map;
+  }, [withdrawals, selectedMonth, dailyStatuses, masterCompose, masterSmart]);
 
   // 각 섹션 합계 계산 헬퍼
   const calcSums = (map, structure) => {
     const sums = {};
     structure.sections.forEach(sec => {
       if (sec.subjects) {
-        sums[sec.id] = getSectionTotal(map, sec.subjects);
+        let total = getSectionTotal(map, sec.subjects);
+        // 매출액(revenue) 섹션이고, '실질입금매출'이 있으면 강제 반영
+        if (sec.id === 'revenue' && map['실질입금매출'] > 0) {
+          total = map['실질입금매출'];
+        }
+        sums[sec.id] = total;
       }
     });
     // formula 기반 소계 계산
@@ -303,7 +363,7 @@ const CashPLPage = ({ withdrawals = [], recordDate }) => {
       }
 
       const secKey = `${entityKey}_${sec.id}`;
-      const total = overrides[sec.id] !== undefined ? overrides[sec.id] : getSectionTotal(subjectMap, sec.subjects);
+      const total = overrides[sec.id] !== undefined ? overrides[sec.id] : (sums[sec.id] ?? getSectionTotal(subjectMap, sec.subjects));
       const isOpen = openSections[secKey] !== false; // default open
 
       return (
@@ -315,13 +375,21 @@ const CashPLPage = ({ withdrawals = [], recordDate }) => {
             isOpen={isOpen}
             onToggle={() => toggleSection(secKey)}
           />
-          {isOpen && sec.subjects.map(subject => {
-            const val = (overrides[sec.id] !== undefined && sec.subjects.length === 1) 
-              ? overrides[sec.id] 
-              : (subjectMap[subject] || 0);
-            if (val === 0) return null;
-            return <DetailRow key={subject} label={subject} value={val} isIndented />;
-          })}
+          {isOpen && (
+            <>
+              {/* 특수 항목 (매출액 입금 기반 표시: 기존 매칭 데이터가 없을 때만 표시) */}
+              {sec.id === 'revenue' && subjectMap['실질입금매출'] > 0 && getSectionTotal(subjectMap, sec.subjects) === 0 && (
+                <DetailRow key="net_revenue_calc" label="입금 기반 매출액 (내부이체 제외)" value={subjectMap['실질입금매출']} isIndented />
+              )}
+              {sec.subjects.map(subject => {
+                const val = (overrides[sec.id] !== undefined && sec.subjects.length === 1) 
+                  ? overrides[sec.id] 
+                  : (subjectMap[subject] || 0);
+                if (val === 0) return null;
+                return <DetailRow key={subject} label={subject} value={val} isIndented />;
+              })}
+            </>
+          )}
         </React.Fragment>
       );
     });
