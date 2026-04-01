@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FileText, CheckCircle2, Search, Filter, CheckSquare } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { FileText, CheckCircle2, Search, CheckSquare, Sparkles, Zap } from 'lucide-react';
 import { formatKRW, formatUSD } from '../utils/formatters';
 
 const COMPOSE_SUBJECTS = {
@@ -11,7 +11,7 @@ const COMPOSE_SUBJECTS = {
 const SMART_SUBJECTS = {
   '공통': ['내부이체'],
   '매출': ['제품매출'],
-  '매입': ['복리후생비(원가)', '여비교통비(원가)', '접대비(원가)', '통신비(원가)', '가스수도료(원가)', '전력비(원가)', '세금과공과금(원가)', '감가상각비(원가)', '보험료(원가)', '차량유지비(원가)', '운반비(원가)', '교육훈련비(원가)', '소모품비(원가)', '지급수수료(원가)', '복리후생비', '지급수수료', '이자수익', '외환차익', '잡이익', '이자비용', '외환차손', '법인세등']
+  '매입': ['복리후생비(원가)', '여비교통비(원가)', '접대비(원가)', '통신비(원가)', '가스수도료(원가)', '전력비(원가)', '세금과공과금(원가)', '감가상각비(원가)', '보험료(원가)', '차량유지비(원가)', '운반비(원가)', '교육훈련비(원가)', '소모품비(원가)', '지급수수료(원가)', '외주가공비(원가)', '제품매출원가', '복리후생비', '지급수수료', '이자수익', '외환차익', '잡이익', '이자비용', '외환차손', '법인세등']
 };
 
 const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawals }) => {
@@ -20,25 +20,74 @@ const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawals }) 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkSubject, setBulkSubject] = useState('');
+  const [applyingAutoAll, setApplyingAutoAll] = useState(false);
 
-  // Filter withdrawals
+  // ─── 예금주 기준 이전 매칭 이력 맵 생성 ───────────────────────────────
+  // 전체 withdrawals에서 accountSubject가 있는 건 중 가장 최신 날짜 기준으로
+  // payee → accountSubject 매핑 추출
+  const payeeHistoryMap = useMemo(() => {
+    const map = {};
+    // 날짜 내림차순으로 정렬 후, 예금주별 첫 번째(가장 최신) 매칭 이력만 저장
+    const sorted = [...withdrawals]
+      .filter(w => w.payee && w.accountSubject)
+      // 현재 선택일 제외(어제 이전 이력만 추천)
+      .filter(w => w.paymentDate !== selectedDate)
+      .sort((a, b) => (b.paymentDate || '').localeCompare(a.paymentDate || ''));
+
+    sorted.forEach(w => {
+      if (!map[w.payee]) {
+        map[w.payee] = {
+          subject: w.accountSubject,
+          date: w.paymentDate,
+        };
+      }
+    });
+    return map;
+  }, [withdrawals, selectedDate]);
+
+  // Filter withdrawals (현재 날짜)
   const targetWithdrawals = withdrawals.filter(w => {
-    // 1. 사업부 필터
     if (w.section !== selectedSection) return false;
-    // 2. 날짜 필터 (현재 선택된 날짜 기준이 좋지만, 매칭 안된건 다 보여줄까? -> 일단 해당 날짜만 보여주거나 전체를 보여주는게 좋음. 날짜 필터 적용)
     if (w.paymentDate !== selectedDate) return false;
-    // 3. 매칭 상태 필터
     const isMapped = !!w.accountSubject;
     if (filterMode === 'unmapped' && isMapped) return false;
     if (filterMode === 'mapped' && !isMapped) return false;
-    // 4. 검색 필터
     if (searchTerm && !(w.payee || '').includes(searchTerm) && !(w.memo || '').includes(searchTerm)) return false;
-    
     return true;
   });
 
+  // 자동 추천 가능한 미매칭 건 수
+  const autoSuggestCount = targetWithdrawals.filter(
+    w => !w.accountSubject && payeeHistoryMap[w.payee]
+  ).length;
+
   const handleSubjectChange = async (id, subject) => {
     await onUpdateWithdrawals([{ id, subject }]);
+  };
+
+  // 개별 자동매칭 적용
+  const handleAutoApply = async (w) => {
+    const suggestion = payeeHistoryMap[w.payee];
+    if (!suggestion) return;
+    await onUpdateWithdrawals([{ id: w.id, subject: suggestion.subject }]);
+  };
+
+  // 전체 자동매칭 적용 (추천 가능한 미매칭 건 모두)
+  const handleAutoApplyAll = async () => {
+    const toApply = targetWithdrawals.filter(
+      w => !w.accountSubject && payeeHistoryMap[w.payee]
+    );
+    if (toApply.length === 0) return;
+    setApplyingAutoAll(true);
+    try {
+      const updates = toApply.map(w => ({
+        id: w.id,
+        subject: payeeHistoryMap[w.payee].subject,
+      }));
+      await onUpdateWithdrawals(updates);
+    } finally {
+      setApplyingAutoAll(false);
+    }
   };
 
   const handleBulkApply = async () => {
@@ -50,10 +99,9 @@ const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawals }) 
       alert('적용할 항목을 선택해주세요.');
       return;
     }
-    
     const updates = selectedIds.map(id => ({ id, subject: bulkSubject }));
     await onUpdateWithdrawals(updates);
-    setSelectedIds([]); // 초기화
+    setSelectedIds([]);
     setBulkSubject('');
   };
 
@@ -75,6 +123,31 @@ const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawals }) 
         <h2 className="text-2xl font-black text-slate-900 tracking-tighter uppercase mb-1">계정과목 매칭</h2>
         <p className="text-sm text-slate-500">지급 예정된 출금 내역({selectedDate})에 대해 각각 올바른 계정과목을 지정합니다.</p>
       </div>
+
+      {/* 자동 매칭 추천 배너 */}
+      {autoSuggestCount > 0 && (
+        <div className="mb-4 flex items-center gap-4 bg-gradient-to-r from-violet-50 to-indigo-50 border border-violet-200 rounded-2xl px-5 py-4 shadow-sm">
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-violet-100 shrink-0">
+            <Sparkles className="w-5 h-5 text-violet-600" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-black text-violet-900">
+              자동 매칭 추천 {autoSuggestCount}건
+            </p>
+            <p className="text-xs text-violet-600 mt-0.5">
+              예금주(지급처) 이전 매칭 이력 기반으로 계정과목을 자동 추천할 수 있습니다.
+            </p>
+          </div>
+          <button
+            onClick={handleAutoApplyAll}
+            disabled={applyingAutoAll}
+            className="flex items-center gap-2 px-5 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-xs font-black rounded-xl shadow-md shadow-violet-200 transition-all active:scale-95 disabled:opacity-60 whitespace-nowrap"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            {applyingAutoAll ? '적용 중...' : `전체 자동 적용 (${autoSuggestCount}건)`}
+          </button>
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[600px]">
         {/* 상단 컨트롤러 */}
@@ -164,7 +237,7 @@ const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawals }) 
                 <th className="px-5 py-3.5 border-r border-slate-100 font-bold">예금주 (지급처)</th>
                 <th className="px-5 py-3.5 border-r border-slate-100 font-bold text-right w-32">출금액</th>
                 <th className="px-5 py-3.5 border-r border-slate-100 font-bold w-1/3">메모</th>
-                <th className="px-5 py-3.5 font-bold w-64 text-center">계정과목 매칭</th>
+                <th className="px-5 py-3.5 font-bold w-72 text-center">계정과목 매칭</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -180,6 +253,8 @@ const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawals }) 
                 </tr>
               ) : targetWithdrawals.map(w => {
                  const subjects = getSubjects(w.section);
+                 const suggestion = !w.accountSubject ? payeeHistoryMap[w.payee] : null;
+
                  return (
                   <tr key={w.id} className={`hover:bg-slate-50 transition-colors ${selectedIds.includes(w.id) ? 'bg-indigo-50/20' : ''} ${!w.accountSubject ? 'bg-rose-50/10' : ''}`}>
                     <td className="px-5 py-3 border-r border-slate-100/50 text-center">
@@ -209,26 +284,42 @@ const AccountMappingPage = ({ withdrawals, selectedDate, onUpdateWithdrawals }) 
                       <p className="text-xs text-slate-500 truncate max-w-[200px]" title={w.memo}>{w.memo || '-'}</p>
                     </td>
                     <td className="px-5 py-3">
-                      <div className="flex items-center gap-2">
-                        <select 
-                          value={w.accountSubject || ''}
-                          onChange={(e) => handleSubjectChange(w.id, e.target.value)}
-                          className={`flex-1 w-full bg-white border ${w.accountSubject ? 'border-indigo-300 text-indigo-700 shadow-sm' : 'border-rose-200 text-rose-600 bg-rose-50/50'} rounded-lg px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all`}
-                        >
-                          <option value="">-- 과목 미지정 --</option>
-                          <optgroup label="■ 공통">
-                            {subjects['공통'].map(s => <option key={s} value={s}>{s}</option>)}
-                          </optgroup>
-                          <optgroup label="■ 매출">
-                            {subjects['매출'].map(s => <option key={s} value={s}>{s}</option>)}
-                          </optgroup>
-                          <optgroup label="■ 매입">
-                            {subjects['매입'].map(s => <option key={s} value={s}>{s}</option>)}
-                          </optgroup>
-                        </select>
-                        {w.accountSubject && (
-                          <CheckCircle2 className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                      <div className="flex flex-col gap-1.5">
+                        {/* 자동 추천 배지 (미매칭 + 이력 있을 때) */}
+                        {suggestion && (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => handleAutoApply(w)}
+                              title={`이전 매칭(${suggestion.date}) 기반 자동 적용`}
+                              className="flex items-center gap-1 px-2 py-1 bg-violet-100 hover:bg-violet-200 text-violet-700 rounded-lg text-[10px] font-black transition-all active:scale-95 whitespace-nowrap border border-violet-200"
+                            >
+                              <Sparkles className="w-3 h-3" />
+                              {suggestion.subject}
+                            </button>
+                            <span className="text-[9px] text-slate-400 whitespace-nowrap">← 추천</span>
+                          </div>
                         )}
+                        <div className="flex items-center gap-2">
+                          <select 
+                            value={w.accountSubject || ''}
+                            onChange={(e) => handleSubjectChange(w.id, e.target.value)}
+                            className={`flex-1 w-full bg-white border ${w.accountSubject ? 'border-indigo-300 text-indigo-700 shadow-sm' : 'border-rose-200 text-rose-600 bg-rose-50/50'} rounded-lg px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all`}
+                          >
+                            <option value="">-- 과목 미지정 --</option>
+                            <optgroup label="■ 공통">
+                              {subjects['공통'].map(s => <option key={s} value={s}>{s}</option>)}
+                            </optgroup>
+                            <optgroup label="■ 매출">
+                              {subjects['매출'].map(s => <option key={s} value={s}>{s}</option>)}
+                            </optgroup>
+                            <optgroup label="■ 매입">
+                              {subjects['매입'].map(s => <option key={s} value={s}>{s}</option>)}
+                            </optgroup>
+                          </select>
+                          {w.accountSubject && (
+                            <CheckCircle2 className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                          )}
+                        </div>
                       </div>
                     </td>
                   </tr>

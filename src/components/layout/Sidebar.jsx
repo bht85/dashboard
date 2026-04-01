@@ -14,7 +14,9 @@ import {
 
 const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView, user }) => {
   const isAuthorized = ['jiin0723@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email);
-  const navItems = [
+  const isAuthorizedMapping = ['jiin0723@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email);
+
+  const baseNavItems = [
     { id: 'dashboard', label: '일일 자금 일보', icon: LayoutDashboard },
     { id: 'analytics', label: '추이 분석', icon: BarChart3 },
     { id: 'monthly', label: '월간 자금 일보', icon: TrendingUp },
@@ -22,8 +24,11 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView,
     { id: 'foreign', label: '외화 송금', icon: Globe },
     { id: 'accounts', label: '계좌 관리', icon: Settings },
     { id: 'cashStatus', label: '일일 자금 업로드', icon: Receipt },
-    { id: 'accountMapping', label: '계정과목 매칭', icon: ListFilter },
   ];
+
+  const navItems = isAuthorizedMapping
+    ? [...baseNavItems, { id: 'accountMapping', label: '계정과목 매칭', icon: ListFilter }]
+    : baseNavItems;
 
   const cashFlowItems = [
     { id: 'cashFlow', label: '자금 흐름 추정', icon: Calendar },

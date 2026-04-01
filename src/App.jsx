@@ -495,7 +495,7 @@ const App = () => {
           exchangeRate={exchangeRate}
         />
       )}
-      {currentView === 'accountMapping' && (
+      {currentView === 'accountMapping' && (['jiin0723@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email) ? (
         <AccountMappingPage 
           withdrawals={withdrawals}
           selectedDate={selectedDate}
@@ -508,7 +508,7 @@ const App = () => {
             await saveWithdrawals(itemsToSave);
           }}
         />
-      )}
+      ) : <div className="p-20 text-center font-black text-slate-400">접근 권한이 없습니다. (Test Period)</div>)}
       {currentView === 'foreign' && (
         <ForeignSchedulePage 
           fxSchedule={fxSchedule} 
