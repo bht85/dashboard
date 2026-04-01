@@ -203,6 +203,11 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
     .filter(item => item.date >= selectedDate && item.date <= endOfWeekDate)
     .reduce((sum, item) => sum + item.amount, 0);
   const krwThisWeekEquivalent = usdThisWeek * exchangeRate;
+  
+  // ─── 환전 필요액 계산 (금주 필요액 - 현재 보유 외화) ─────────────────────
+  const currentUsdBalance = composeTotal.usd.final + smartTotal.usd.final;
+  const exchangeDeficitUsd = Math.max(0, usdThisWeek - currentUsdBalance);
+  const krwDeficitEquivalent = exchangeDeficitUsd * exchangeRate;
 
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-700">
@@ -298,10 +303,16 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
             <div className="absolute top-0 right-0 p-8 opacity-10"><Globe className="w-24 h-24 text-white" /></div>
             <div className="z-10">
               <p className="text-[10px] text-slate-500 font-bold uppercase mb-2 tracking-widest">외화 송금 대기 (USD)</p>
-              <div>
-                <p className="text-[10px] text-slate-400 mb-0.5">금주 필요액</p>
-                <h4 className="text-xl font-bold text-emerald-400 font-mono tracking-tight">{formatUSD(usdThisWeek)}</h4>
-              </div>
+                <div>
+                  <p className="text-[10px] text-slate-400 mb-0.5">금주 필요액</p>
+                  <h4 className="text-xl font-bold text-emerald-400 font-mono tracking-tight">{formatUSD(usdThisWeek)}</h4>
+                </div>
+                <div className="mt-2 border-l-2 border-amber-500 pl-3">
+                  <p className="text-[10px] text-amber-500 font-black mb-0.5 uppercase tracking-tighter">환전 필요액 (Deficit)</p>
+                  <h4 className="text-lg font-black text-white font-mono tracking-tight">
+                    {exchangeDeficitUsd > 0 ? formatUSD(exchangeDeficitUsd) : '$0.00'}
+                  </h4>
+                </div>
               <div className="mt-2 text-slate-400">
                 <span className="text-[10px] mr-2">총 필요액</span>
                 <span className="text-sm font-bold font-mono text-emerald-600 border-b border-slate-700/50 pb-0.5">{formatUSD(usdTotal)}</span>
@@ -313,12 +324,16 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">환전 필요 예상액</p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-slate-400 mb-0.5">금주 예상액</p>
-                <h4 className="text-xl font-bold text-amber-400 font-mono tracking-tighter">약 {(krwThisWeekEquivalent / 100000000).toFixed(1)} 억원</h4>
+                <p className="text-[10px] text-slate-400 mb-0.5">금주 예상액 (Full)</p>
+                <h4 className="text-xl font-bold text-slate-500 font-mono tracking-tighter">약 {(krwThisWeekEquivalent / 100000000).toFixed(1)} 억원</h4>
               </div>
               <div className="mt-2 text-right">
-                <span className="text-[10px] text-slate-400 mr-2">총 예상액</span>
-                <span className="text-sm font-bold font-mono text-amber-600 border-b border-slate-700/50 pb-0.5">약 {(krwEquivalent / 100000000).toFixed(1)} 억원</span>
+                <p className="text-[10px] text-amber-500 font-black mb-0.5">실질 환전 필요액</p>
+                <h4 className="text-xl font-bold text-amber-400 font-mono tracking-tighter">약 {(krwDeficitEquivalent / 100000000).toFixed(2)} 억원</h4>
+              </div>
+              <div className="mt-2 text-right opacity-50">
+                <span className="text-[9px] text-slate-400 mr-2">총 필요액 한화</span>
+                <span className="text-xs font-bold font-mono text-slate-500 border-b border-slate-700/50 pb-0.5">약 {(krwEquivalent / 100000000).toFixed(1)} 억원</span>
               </div>
             </div>
           </div>
