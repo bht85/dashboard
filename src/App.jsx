@@ -551,7 +551,7 @@ const App = () => {
         />
       ) : <div className="p-20 text-center font-black text-slate-400">접근 권한이 없습니다. (Test Period)</div>)}
 
-      {currentView === 'cashPL' && (
+      {currentView === 'cashPL' && (['jiin0723@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email) ? (
         <CashPLPage
           withdrawals={withdrawals}
           dailyStatuses={dailyStatuses}
@@ -559,7 +559,8 @@ const App = () => {
           composeAccounts={composeAccounts}
           smartAccounts={smartAccounts}
         />
-      )}
+      ) : <div className="p-20 text-center font-black text-slate-400">접근 권한이 없습니다. (Test Period)</div>)}
+
     </Layout>
   );
 };
