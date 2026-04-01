@@ -264,28 +264,33 @@ const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeA
       });
     });
 
-    // 2. 내부 이체 입금액 차감
+    // 2. 내부 이체 입금액 차감 (현재 법인 내 계좌 간 이체만 제외)
+    // 법인 A -> 법인 B 이체는 법인 B 입장에서는 매출(외부 유입)로 간주함
     const internalInflow = withdrawals.reduce((sum, w) => {
       if (!w.paymentDate || !w.paymentDate.startsWith(selectedMonth)) return sum;
       
-      // 내부 이체 판별
-      const isInternal = w.isInternal || (() => {
-        const toAcc = String(w.account || w.toAccount || '').replace(/[^0-9]/g, '');
-        if (!toAcc || !allCompanyAccounts.has(toAcc)) return false;
-        const cleanPayee = String(w.payee || '').replace(/[\s()주식회사]/g, '');
-        const internalPatterns = ['컴포즈커피', '스마트팩토리', '제이엠씨에프티', '컴포즈커피스마트', '컴포즈커피스마트팩토리'];
-        return internalPatterns.some(p => p.replace(/[\s()주식회사]/g, '') === cleanPayee);
-      })();
-
-      if (!isInternal) return sum;
-
-      // 받는 법인 확인
+      // 받는 계좌 번호 추출
       const targetNo = String(w.account || w.toAccount || '').replace(/[^0-9]/g, '');
-      const isTarget = section === '컴포즈커피' 
+      if (!targetNo) return sum;
+
+      // 현재 법인(section)의 계좌로 들어온 입금인지 확인
+      const isTargetMine = section === '컴포즈커피' 
         ? masterCompose.some(a => String(a.no).replace(/[^0-9]/g, '') === targetNo)
         : masterSmart.some(a => String(a.no).replace(/[^0-9]/g, '') === targetNo);
 
-      return sum + (isTarget ? (w.amount || 0) : 0);
+      if (!isTargetMine) return sum;
+
+      // 출처 계좌(fromAccount)도 현재 법인(section)의 계좌인지 확인
+      const sourceNo = String(w.fromAccount || '').replace(/[^0-9]/g, '');
+      const isSourceMine = section === '컴포즈커피' 
+        ? masterCompose.some(a => String(a.no).replace(/[^0-9]/g, '') === sourceNo)
+        : masterSmart.some(a => String(a.no).replace(/[^0-9]/g, '') === sourceNo);
+
+      // '진짜 내부 이체'는 같은 법인 내의 계좌 이동뿐임
+      // 법인 간 이동은 각 법인 입장에서는 외부 거래로 취급
+      const isInternalToEntity = isSourceMine && isTargetMine;
+
+      return sum + (isInternalToEntity ? (w.amount || 0) : 0);
     }, 0);
 
     return totalDeposits - internalInflow;
