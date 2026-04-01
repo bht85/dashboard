@@ -14,8 +14,8 @@ import {
 } from 'lucide-react';
 
 const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView, user }) => {
-  const isAuthorized = ['jiin0723@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email);
-  const isAuthorizedMapping = ['jiin0723@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email);
+  const isAuthorized = ['jiin0723@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email?.toLowerCase());
+  const isAuthorizedMapping = ['jiin0723@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email?.toLowerCase());
 
   const baseNavItems = [
     { id: 'dashboard', label: '일일 자금 일보', icon: LayoutDashboard },
