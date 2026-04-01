@@ -153,6 +153,73 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
     };
   }, [chartData, beginningBalance]);
 
+  // Aggregate data by month for the long-term trend
+  const monthlyTrendData = useMemo(() => {
+    const monthlyStats = {};
+    
+    Object.keys(dailyStatuses).sort().forEach(date => {
+      const monthStr = date.substring(0, 7);
+      const status = dailyStatuses[date];
+      const details = status.details || [];
+      
+      const filteredDetails = selectedEntity === 'ALL' 
+        ? details 
+        : details.filter(d => d.entity.includes(selectedEntity));
+      
+      const isUSDMode = currencyMode === 'USD';
+      const dayBalance = filteredDetails.reduce((s, i) => {
+        const isUSD = i.currency === 'USD' || i.isUSD;
+        if (isUSDMode) {
+           return s + (isUSD ? Number(i.totalBalance || 0) : Number(i.totalBalance || 0) / exchangeRate);
+        } else {
+           return s + (isUSD ? Number(i.totalBalance || 0) * exchangeRate : Number(i.totalBalance || 0));
+        }
+      }, 0);
+
+      const dayInflow = filteredDetails.reduce((s, i) => {
+        if (excludeInternal) {
+          if (selectedEntity === 'ALL') {
+            if (i.entity.includes('스마트') || i.group === '내부' || i.nickname.includes('내부')) return s;
+          } else {
+            if (i.group === '내부' || (i.nickname && i.nickname.includes('내부') && !i.nickname.includes('환전'))) return s;
+          }
+        }
+        const isUSD = i.currency === 'USD' || i.isUSD;
+        if (isUSDMode) return s + (isUSD ? Number(i.deposits || 0) : Number(i.deposits || 0) / exchangeRate);
+        else return s + (isUSD ? Number(i.deposits || 0) * exchangeRate : Number(i.deposits || 0));
+      }, 0);
+
+      const dayOutflow = filteredDetails.reduce((s, i) => {
+        if (excludeInternal) {
+          if (selectedEntity === 'ALL') {
+            if (i.group === '내부' || i.nickname.includes('내부')) return s;
+          } else {
+            if (i.group === '내부' || (i.nickname && i.nickname.includes('내부') && !i.nickname.includes('환전'))) return s;
+          }
+        }
+        const isUSD = i.currency === 'USD' || i.isUSD;
+        if (isUSDMode) return s + (isUSD ? Number(i.withdrawals || 0) : Number(i.withdrawals || 0) / exchangeRate);
+        else return s + (isUSD ? Number(i.withdrawals || 0) * exchangeRate : Number(i.withdrawals || 0));
+      }, 0);
+
+      if (!monthlyStats[monthStr]) {
+        monthlyStats[monthStr] = { month: monthStr, balance: 0, inflow: 0, outflow: 0 };
+      }
+      
+      // Update with the latest balance of the month
+      monthlyStats[monthStr].balance = Math.floor(dayBalance);
+      // Accumulate inflow/outflow
+      monthlyStats[monthStr].inflow += Math.floor(dayInflow);
+      monthlyStats[monthStr].outflow += Math.floor(dayOutflow);
+    });
+
+    return Object.values(monthlyStats).map(d => ({
+        ...d,
+        name: `${d.month.split('-')[0].substring(2)}.${d.month.split('-')[1]}`,
+        fullName: `${d.month.split('-')[0]}년 ${d.month.split('-')[1]}월`
+    }));
+  }, [dailyStatuses, selectedEntity, currencyMode, exchangeRate, excludeInternal]);
+
   const formatValue = (val) => currencyMode === 'KRW' ? formatKRW(val) : formatUSD(val);
 
   return (
@@ -247,15 +314,15 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* Main Balance Trend Chart */}
         <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                <Landmark className="w-4 h-4 text-indigo-500" /> 자산 규모 추이 (Daily Balance)
+                <Landmark className="w-4 h-4 text-indigo-500" /> 일별 자산 규모 추이 ({selectedMonth.replace('-', '년 ')})
               </h3>
-              <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Total combined assets trendline</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Daily balance trend for selected period</p>
             </div>
           </div>
           <div className="h-[350px] w-full">
@@ -282,7 +349,7 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
           <div className="flex justify-between items-center mb-8">
             <div>
               <h3 className="font-bold text-slate-800 flex items-center gap-2">
-                <Activity className="w-4 h-4 text-emerald-500" /> 입금 vs 출금 현황
+                <Activity className="w-4 h-4 text-emerald-500" /> 일별 입출금 현황 ({selectedMonth.replace('-', '년 ')})
               </h3>
               <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Daily inflow and outflow comparison</p>
             </div>
@@ -300,6 +367,56 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
               </BarChart>
             </ResponsiveContainer>
           </div>
+        </div>
+      </div>
+
+      {/* NEW: Monthly Long-term Trend Chart */}
+      <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-indigo-600" /> 월별 자산 규모 추이 (Monthly Overview)
+            </h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase mt-1">Long-term monthly balance and cashflow aggregated trend</p>
+          </div>
+        </div>
+        <div className="h-[400px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={monthlyTrendData}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 800, fill: '#475569'}} dy={10} />
+              <YAxis hide domain={['auto', 'auto']} />
+              <Tooltip 
+                content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                        const data = payload[0].payload;
+                        return (
+                            <div className="bg-slate-900 rounded-2xl p-4 shadow-2xl border-none">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase mb-3 border-b border-white/10 pb-2">{data.fullName}</p>
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center gap-8">
+                                        <span className="text-[10px] font-bold text-slate-400">마감 잔액:</span>
+                                        <span className="text-xs font-black text-white">{formatValue(data.balance)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center gap-8">
+                                        <span className="text-[10px] font-bold text-slate-400">월 입금액:</span>
+                                        <span className="text-xs font-black text-emerald-400">{formatValue(data.inflow)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center gap-8">
+                                        <span className="text-[10px] font-bold text-slate-400">월 출금액:</span>
+                                        <span className="text-xs font-black text-rose-400">{formatValue(data.outflow)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    }
+                    return null;
+                }} 
+              />
+              <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{paddingBottom: 30, fontSize: 10, fontWeight: 800, textTransform: 'uppercase'}} />
+              <Bar dataKey="balance" name="마감 잔액" fill="#4f46e5" radius={[6, 6, 0, 0]} barSize={40} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>
