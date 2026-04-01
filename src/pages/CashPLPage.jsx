@@ -137,7 +137,7 @@ const SMART_PL_STRUCTURE = {
 
 // 스마트팩토리 원가명세서
 const SMART_COST_STRUCTURE = [
-  { id: 'rawMaterial', label: 'I. 재 료 비', subjects: ['원재료비'] },
+  { id: 'rawMaterial', label: 'I. 재 료 비', subjects: ['원재료매입액(원가)', '원재료비'] },
   {
     id: 'labor', label: 'II. 노 무 비',
     subjects: ['급여(원가)', '퇴직급여(원가)', '상여금(원가)'],
