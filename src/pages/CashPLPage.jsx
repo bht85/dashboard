@@ -426,18 +426,15 @@ const CashPLPage = ({
     const monthTotal = { deposits: 0, withdrawals: 0, balance: 0 };
     
     // 2. 기초 잔액 (전월 말 잔액) 찾기
-    const [year, month] = selectedMonth.split('-').map(Number);
-    const prevMonthDate = new Date(year, month - 2, 1); // JS Date month is 0-indexed
-    const prevMonthStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
-    
-    // 전월의 모든 날짜 중 가장 마지막 날짜를 찾아서 그날의 합산 잔액을 가져옴
+    // 단순히 지난달(M-1)만 뒤지는 것이 아니라, 현재 월(selectedMonth) 이전의 모든 날짜 중 가장 최신 날짜의 기말 잔액을 가져옵니다.
+    const firstDayOfCurrentMonth = `${selectedMonth}-01`;
     const allDates = Object.keys(dailyStatuses).sort();
-    const prevMonthDates = allDates.filter(d => d.startsWith(prevMonthStr));
-    const lastDatePrevMonth = prevMonthDates[prevMonthDates.length - 1];
+    const pastDates = allDates.filter(d => d < firstDayOfCurrentMonth);
+    const lastAvailableDateBefore = pastDates[pastDates.length - 1];
     
     let beginningBalance = 0;
-    if (lastDatePrevMonth && dailyStatuses[lastDatePrevMonth]?.details) {
-      dailyStatuses[lastDatePrevMonth].details.forEach(d => {
+    if (lastAvailableDateBefore && dailyStatuses[lastAvailableDateBefore]?.details) {
+      dailyStatuses[lastAvailableDateBefore].details.forEach(d => {
         if (isExcludedAccount(d)) return;
         const rate = (d.isUSD || d.currency === 'USD') ? exchangeRate : 1;
         beginningBalance += (d.balance || 0) * rate;
