@@ -34,33 +34,47 @@ const FinancialTable = ({ title, accounts, totals, icon: Icon }) => (
             <td colSpan={2} className="px-4 py-3.5 text-center border-r border-indigo-100/50 whitespace-nowrap">합 계</td>
             <td className="px-4 py-3.5 text-right border-r border-indigo-100/50 tabular-nums whitespace-nowrap">
               <div>{formatKRW(totals.krw.balance)}</div>
-              {totals.usd.balance > 0 && <div className="text-[10px] text-blue-600 font-mono mt-1 font-black">{formatUSD(totals.usd.balance)}</div>}
+              {totals.usd?.balance > 0 && <div className="text-[10px] text-blue-600 font-mono mt-1 font-black">{formatUSD(totals.usd.balance)}</div>}
+              {totals.eur?.balance > 0 && <div className="text-[10px] text-emerald-600 font-mono mt-1 font-black">{formatEUR(totals.eur.balance)}</div>}
+              {totals.jpy?.balance > 0 && <div className="text-[10px] text-rose-600 font-mono mt-1 font-black">{formatJPY(totals.jpy.balance)}</div>}
             </td>
             <td className="px-4 py-3.5 text-right border-r border-indigo-100/50 text-red-600 tabular-nums whitespace-nowrap">
               <div>{formatKRW(totals.krw.withdraw)}</div>
-              {totals.usd.withdraw > 0 && <div className="text-[10px] text-red-400 font-mono mt-1 font-black">{formatUSD(totals.usd.withdraw)}</div>}
+              {totals.usd?.withdraw > 0 && <div className="text-[10px] text-red-400 font-mono mt-1 font-black">{formatUSD(totals.usd.withdraw)}</div>}
+              {totals.eur?.withdraw > 0 && <div className="text-[10px] text-red-400 font-mono mt-1 font-black">{formatEUR(totals.eur.withdraw)}</div>}
+              {totals.jpy?.withdraw > 0 && <div className="text-[10px] text-red-400 font-mono mt-1 font-black">{formatJPY(totals.jpy.withdraw)}</div>}
             </td>
             <td className="px-4 py-3.5 text-right border-r border-indigo-100/50 text-emerald-600 tabular-nums whitespace-nowrap">
               <div>{totals.krw.internal > 0 ? formatKRW(totals.krw.internal) : '-'}</div>
-              {totals.usd.internal > 0 && <div className="text-[10px] text-emerald-400 font-mono mt-1 font-black">{formatUSD(totals.usd.internal)}</div>}
+              {totals.usd?.internal > 0 && <div className="text-[10px] text-emerald-400 font-mono mt-1 font-black">{formatUSD(totals.usd.internal)}</div>}
+              {totals.eur?.internal > 0 && <div className="text-[10px] text-emerald-400 font-mono mt-1 font-black">{formatEUR(totals.eur.internal)}</div>}
+              {totals.jpy?.internal > 0 && <div className="text-[10px] text-emerald-400 font-mono mt-1 font-black">{formatJPY(totals.jpy.internal)}</div>}
             </td>
             <td className="px-4 py-3.5 text-right border-r border-indigo-100/50 text-indigo-700 font-extrabold tabular-nums whitespace-nowrap">
               <div>{formatKRW(totals.krw.final)}</div>
-              {totals.usd.final > 0 && <div className="text-[10px] text-blue-800 font-mono mt-1 font-black">{formatUSD(totals.usd.final)}</div>}
+              {totals.usd?.final > 0 && <div className="text-[10px] text-blue-800 font-mono mt-1 font-black">{formatUSD(totals.usd.final)}</div>}
+              {totals.eur?.final > 0 && <div className="text-[10px] text-emerald-800 font-mono mt-1 font-black">{formatEUR(totals.eur.final)}</div>}
+              {totals.jpy?.final > 0 && <div className="text-[10px] text-rose-800 font-mono mt-1 font-black">{formatJPY(totals.jpy.final)}</div>}
             </td>
             <td className="px-4 py-3.5 whitespace-nowrap"></td>
           </tr>
-          {accounts.map((acc) => (
-            <tr key={acc.id} className="hover:bg-slate-50 transition-colors duration-150">
-              <td className="px-4 py-3 border-r border-slate-100 font-mono text-slate-400 text-xs whitespace-nowrap">{acc.no}</td>
-              <td className="px-4 py-3 border-r border-slate-100 font-medium text-slate-600 whitespace-nowrap">{acc.type}</td>
-              <td className="px-4 py-3 border-r border-slate-100 text-right font-mono font-semibold tabular-nums tracking-tight whitespace-nowrap">{acc.isUSD ? formatUSD(acc.balance) : formatKRW(acc.balance)}</td>
-              <td className="px-4 py-3 border-r border-slate-100 text-right text-red-500 font-mono font-semibold tabular-nums tracking-tight whitespace-nowrap">{acc.withdraw > 0 ? (acc.isUSD ? formatUSD(acc.withdraw) : formatKRW(acc.withdraw)) : '-'}</td>
-              <td className="px-4 py-3 border-r border-slate-100 text-right text-emerald-600 font-mono font-semibold tabular-nums tracking-tight whitespace-nowrap">{acc.internal > 0 ? (acc.isUSD ? formatUSD(acc.internal) : formatKRW(acc.internal)) : '-'}</td>
-              <td className="px-4 py-3 border-r border-slate-100 text-right font-bold font-mono text-indigo-900 tabular-nums tracking-tighter whitespace-nowrap">{acc.isUSD ? formatUSD(acc.final) : formatKRW(acc.final)}</td>
-              <td className="px-4 py-3 text-[11px] text-slate-400 font-medium leading-tight whitespace-nowrap">{acc.note || acc.bank}</td>
-            </tr>
-          ))}
+          {accounts.map((acc) => {
+            const currency = acc.currency || (acc.isUSD ? 'USD' : 'KRW');
+            const isKRW = currency === 'KRW';
+            const formatter = isKRW ? formatKRW : (val) => formatForeign(val, currency);
+
+            return (
+              <tr key={acc.id} className="hover:bg-slate-50 transition-colors duration-150">
+                <td className="px-4 py-3 border-r border-slate-100 font-mono text-slate-400 text-xs whitespace-nowrap">{acc.no}</td>
+                <td className="px-4 py-3 border-r border-slate-100 font-medium text-slate-600 whitespace-nowrap">{acc.type}</td>
+                <td className="px-4 py-3 border-r border-slate-100 text-right font-mono font-semibold tabular-nums tracking-tight whitespace-nowrap">{formatter(acc.balance)}</td>
+                <td className="px-4 py-3 border-r border-slate-100 text-right text-red-500 font-mono font-semibold tabular-nums tracking-tight whitespace-nowrap">{acc.withdraw > 0 ? formatter(acc.withdraw) : '-'}</td>
+                <td className="px-4 py-3 border-r border-slate-100 text-right text-emerald-600 font-mono font-semibold tabular-nums tracking-tight whitespace-nowrap">{acc.internal > 0 ? formatter(acc.internal) : '-'}</td>
+                <td className="px-4 py-3 border-r border-slate-100 text-right font-bold font-mono text-indigo-900 tabular-nums tracking-tighter whitespace-nowrap">{formatter(acc.final)}</td>
+                <td className="px-4 py-3 text-[11px] text-slate-400 font-medium leading-tight whitespace-nowrap">{acc.note || acc.bank}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
