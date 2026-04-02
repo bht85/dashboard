@@ -431,83 +431,58 @@ const ForeignSchedulePage = ({
               <table className="w-full text-left text-[11px] border-collapse table-fixed">
                 <thead className="bg-slate-50 text-slate-500 font-bold border-b sticky top-0 z-10">
                   <tr>
-                    <th className="w-[12%] px-4 py-3 border-r">환전 일자</th>
-                    <th className="w-[15%] px-4 py-3 border-r text-center">통화</th>
-                    <th className="w-[20%] px-4 py-3 border-r text-right">매입 금액 (KRW)</th>
+                    <th className="w-[10%] px-4 py-3 border-r">환전 일자</th>
+                    <th className="w-[10%] px-4 py-3 border-r text-center">통화</th>
+                    <th className="w-[18%] px-4 py-3 border-r text-right">매입 금액 (KRW)</th>
                     <th className="w-[18%] px-4 py-3 border-r text-right">환전 금액 (외화)</th>
-                    <th className="w-[12%] px-6 py-3 border-r text-center bg-emerald-50/30 text-emerald-600">적용 환율</th>
-                    <th className="w-[12%] px-4 py-3 border-r text-center">법인</th>
-                    <th className="px-4 py-3">내용</th>
+                    <th className="w-[10%] px-6 py-3 border-r text-center bg-emerald-50/30 text-emerald-600">적용 환율</th>
+                    <th className="w-[10%] px-4 py-3 border-r text-center">법인</th>
+                    <th className="px-4 py-3">내용 / 비고</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
-                  {filteredExchangeResults.map((e) => (
-                    <tr key={e.id} className={`hover:bg-slate-50 group transition-colors ${editingId === e.id ? 'bg-indigo-50/20' : ''}`}>
-                      {editingId === e.id ? (
-                        <>
-                          <td className="px-4 py-2 border-r">
-                            <input type="date" name="date" value={editData.date} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100" />
-                          </td>
-                          <td className="px-4 py-2 border-r">
-                            <select name="currency" value={editData.currency} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100">
-                              <option value="USD">USD</option>
-                              <option value="EUR">EUR</option>
-                              <option value="JPY">JPY</option>
-                            </select>
-                          </td>
-                          <td className="px-4 py-2 border-r text-right">
-                            <input type="number" name="krwAmount" value={editData.krwAmount} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none text-right ring-2 ring-indigo-100" />
-                          </td>
-                          <td className="px-4 py-2 border-r text-right">
-                            <input type="number" step="0.01" name="usdAmount" value={editData.usdAmount} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none text-right ring-2 ring-indigo-100" />
-                          </td>
-                          <td className="px-6 py-2 border-r text-center font-black text-emerald-600">
-                            {(parseFloat(editData.krwAmount) / parseFloat(editData.usdAmount)).toFixed(2)}
-                          </td>
-                          <td className="px-4 py-2 border-r">
-                            <input type="text" name="desc" value={editData.desc} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100" />
-                          </td>
-                          <td className="px-4 py-2 flex items-center justify-center gap-1.5">
-                            <button onClick={saveEdit} className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-all active:scale-95">
-                              <Check className="w-3.5 h-3.5" />
-                            </button>
-                            <button onClick={cancelEdit} className="p-1.5 bg-white text-slate-400 border border-slate-200 rounded-lg hover:text-red-500 hover:border-red-100 transition-all active:scale-95">
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="px-4 py-3 border-r font-bold">{e.date}</td>
-                          <td className="px-4 py-3 border-r text-center font-black text-indigo-500">{e.currency || 'USD'}</td>
-                          <td className="px-4 py-3 border-r text-right font-mono font-bold">
-                            <span className={(e.type || '').toUpperCase() === 'SELL' ? 'text-emerald-600' : 'text-slate-700'}>
-                              {(e.type || '').toUpperCase() === 'SELL' ? '+' : '-'} {formatKRW(Math.abs(e.krwAmount || 0))}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 border-r text-right font-mono font-bold">
-                            <span className={(e.type || '').toUpperCase() === 'BUY' ? 'text-blue-600' : 'text-rose-500'}>
-                              {(e.type || '').toUpperCase() === 'BUY' ? '+' : '-'} {(e.currency || 'USD') === 'USD' ? formatUSD(Math.abs(e.usdAmount || 0)) : `${Math.abs(e.usdAmount || 0).toLocaleString()} ${e.currency || 'USD'}`}
-                            </span>
-                          </td>
-                          <td className="px-6 py-3 border-r text-center font-mono font-black text-slate-900 bg-emerald-50/10">
-                            {e.exchangeRate?.toFixed(2)}
-                          </td>
-                          <td className="px-4 py-3 border-r text-center">
-                            <span className={`px-1.5 py-0.5 rounded-[4px] text-[9px] font-black ${e.section === '스마트팩토리' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                              {e.section || '스마트'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-[10px] text-slate-400 truncate hover:text-slate-600 cursor-default" title={e.desc}>{e.desc}</td>
-                          <td className="px-4 py-3 text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => onDeleteExchangeResult(e.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  ))}
+                  {filteredExchangeResults.map((e) => {
+                    const rawType = (e.type || '').toUpperCase();
+                    const isSell = rawType === 'SELL';
+                    const isBuy = rawType === 'BUY' || (!rawType && e.krwAmount < 0); 
+
+                    return (
+                      <tr key={e.id} className={`hover:bg-slate-50 group transition-colors ${editingId === e.id ? 'bg-indigo-50/20' : ''}`}>
+                        {editingId === e.id ? (
+                          <td className="px-4 py-2 border-r" colSpan={7}>편집 모드...</td>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3 border-r font-bold">{e.date}</td>
+                            <td className="px-4 py-3 border-r text-center font-black text-indigo-500">{e.currency || 'USD'}</td>
+                            <td className="px-4 py-3 border-r text-right font-mono font-bold">
+                              <span className={isSell ? 'text-emerald-600' : 'text-slate-700'}>
+                                {isSell ? '+' : '-'} {formatKRW(Math.abs(e.krwAmount || 0))}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 border-r text-right font-mono font-bold">
+                              <span className={isBuy ? 'text-blue-600' : 'text-rose-500'}>
+                                {isBuy ? '+' : '-'} {(e.currency || 'USD') === 'USD' ? formatUSD(Math.abs(e.usdAmount || 0)) : `${Math.abs(e.usdAmount || 0).toLocaleString()} ${e.currency || 'USD'}`}
+                              </span>
+                            </td>
+                            <td className="px-6 py-3 border-r text-center font-mono font-black text-slate-900 bg-emerald-50/10">
+                              {e.exchangeRate?.toFixed(2)}
+                            </td>
+                            <td className="px-4 py-3 border-r text-center">
+                              <span className={`px-1.5 py-0.5 rounded-[4px] text-[9px] font-black ${e.section === '스마트팩토리' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                                {e.section || '스마트'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-[10px] text-slate-400 break-words leading-relaxed" title={e.desc}>{e.desc}</td>
+                            <td className="px-4 py-3 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => onDeleteExchangeResult(e.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  })}
                   {filteredExchangeResults.length === 0 && (
                     <tr>
                       <td colSpan={7} className="text-center py-20 text-slate-300">
