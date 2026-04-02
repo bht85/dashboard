@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Globe, Plus, Trash2, ArrowRightLeft, Calendar } from 'lucide-react';
+import { Globe, Plus, Trash2, ArrowRightLeft, Calendar, Edit2, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatUSD, formatKRW } from '../utils/formatters';
 
 const ForeignSchedulePage = ({ 
@@ -12,6 +12,9 @@ const ForeignSchedulePage = ({
   exchangeRate = 1520 
 }) => {
   const [activeTab, setActiveTab] = useState('schedule'); // 'schedule' or 'exchange'
+  const [editingId, setEditingId] = useState(null);
+  const [editData, setEditData] = useState({});
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // YYYY-MM
 
   // Schedule Form State
   const [scheduleData, setScheduleData] = useState({
@@ -110,6 +113,43 @@ const ForeignSchedulePage = ({
     if (item) {
       await onUpdateSchedule({ ...item, date: newDate });
     }
+  };
+
+  // Edit logic
+  const startEdit = (item) => {
+    setEditingId(item.id);
+    setEditData({ ...item });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditData({});
+  };
+
+  const saveEdit = async () => {
+    const krw = parseFloat(editData.krwAmount);
+    const usd = parseFloat(editData.usdAmount);
+    const rate = krw / usd;
+
+    await onUpdateExchangeResult({
+      ...editData,
+      krwAmount: krw,
+      usdAmount: usd,
+      exchangeRate: rate
+    });
+    setEditingId(null);
+  };
+
+  const handleEditChange = (e) => {
+    setEditData({ ...editData, [e.target.name]: e.target.value });
+  };
+
+  const filteredExchangeResults = exchangeResults.filter(e => e.date.startsWith(selectedMonth));
+
+  const changeMonth = (delta) => {
+    const date = new Date(selectedMonth + '-01');
+    date.setMonth(date.getMonth() + delta);
+    setSelectedMonth(date.toISOString().substring(0, 7));
   };
 
   return (
@@ -320,66 +360,127 @@ const ForeignSchedulePage = ({
             </form>
           </div>
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden min-h-[400px] flex flex-col">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
               <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
                 <ArrowRightLeft className="w-4 h-4 text-emerald-500" />
                 환전 집계 리스트
               </h3>
+              
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
+                  <button onClick={() => changeMonth(-1)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded transition-colors">
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-xs font-black text-slate-700 px-2 min-w-[80px] text-center">
+                    {selectedMonth.split('-')[0]}년 {selectedMonth.split('-')[1]}월
+                  </span>
+                  <button onClick={() => changeMonth(1)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded transition-colors">
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="h-4 w-[1px] bg-slate-200 mx-1"></div>
+                <div className="text-[10px] font-bold text-slate-400 flex gap-2">
+                  <span>전체: {exchangeResults.length}건</span>
+                  <span className="text-indigo-400">당월: {filteredExchangeResults.length}건</span>
+                </div>
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-[11px] border-collapse">
-                <thead className="bg-slate-50 text-slate-500 font-bold border-b">
+
+            <div className="flex-1 overflow-x-auto">
+              <table className="w-full text-left text-[11px] border-collapse table-fixed">
+                <thead className="bg-slate-50 text-slate-500 font-bold border-b sticky top-0 z-10">
                   <tr>
-                    <th className="px-4 py-3 border-r">환전 일자</th>
-                    <th className="px-4 py-3 border-r text-right">매입 금액 (KRW)</th>
-                    <th className="px-4 py-3 border-r text-right">환전 금액 (USD)</th>
-                    <th className="px-6 py-3 border-r text-center bg-emerald-50/30 text-emerald-600">적용 환율</th>
-                    <th className="px-4 py-3 border-r text-center">은행명</th>
+                    <th className="w-[12%] px-4 py-3 border-r">환전 일자</th>
+                    <th className="w-[20%] px-4 py-3 border-r text-right">매입 금액 (KRW)</th>
+                    <th className="w-[18%] px-4 py-3 border-r text-right">환전 금액 (USD)</th>
+                    <th className="w-[12%] px-6 py-3 border-r text-center bg-emerald-50/30 text-emerald-600">적용 환율</th>
+                    <th className="w-[12%] px-4 py-3 border-r text-center">은행명</th>
                     <th className="px-4 py-3 border-r">내용</th>
-                    <th className="px-4 py-3 text-center">작업</th>
+                    <th className="w-[90px] px-4 py-3 text-center">작업</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
-                  {exchangeResults.map((e) => (
-                    <tr key={e.id} className="hover:bg-slate-50 group">
-                      <td className="px-4 py-3 border-r font-bold">{e.date}</td>
-                      <td className="px-4 py-3 border-r text-right font-mono font-bold">{formatKRW(e.krwAmount)}</td>
-                      <td className="px-4 py-3 border-r text-right font-mono font-bold text-blue-600">{formatUSD(e.usdAmount)}</td>
-                      <td className="px-6 py-3 border-r text-center font-mono font-black text-slate-900 bg-emerald-50/10">
-                        {e.exchangeRate?.toFixed(2)}
-                      </td>
-                      <td className="px-4 py-3 border-r text-center">{e.bank}</td>
-                      <td className="px-4 py-3 border-r text-[10px] text-slate-400">{e.desc}</td>
-                      <td className="px-4 py-3 text-center">
-                        <button onClick={() => onDeleteExchangeResult(e.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
+                  {filteredExchangeResults.map((e) => (
+                    <tr key={e.id} className={`hover:bg-slate-50 group transition-colors ${editingId === e.id ? 'bg-indigo-50/20' : ''}`}>
+                      {editingId === e.id ? (
+                        <>
+                          <td className="px-4 py-2 border-r">
+                            <input type="date" name="date" value={editData.date} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100" />
+                          </td>
+                          <td className="px-4 py-2 border-r text-right">
+                            <input type="number" name="krwAmount" value={editData.krwAmount} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none text-right ring-2 ring-indigo-100" />
+                          </td>
+                          <td className="px-4 py-2 border-r text-right">
+                            <input type="number" step="0.01" name="usdAmount" value={editData.usdAmount} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none text-right ring-2 ring-indigo-100" />
+                          </td>
+                          <td className="px-6 py-2 border-r text-center font-black text-emerald-600">
+                            {(parseFloat(editData.krwAmount) / parseFloat(editData.usdAmount)).toFixed(2)}
+                          </td>
+                          <td className="px-4 py-2 border-r">
+                            <input type="text" name="bank" value={editData.bank} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100" />
+                          </td>
+                          <td className="px-4 py-2 border-r">
+                            <input type="text" name="desc" value={editData.desc} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100" />
+                          </td>
+                          <td className="px-4 py-2 flex items-center justify-center gap-1.5">
+                            <button onClick={saveEdit} className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-all active:scale-95">
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={cancelEdit} className="p-1.5 bg-white text-slate-400 border border-slate-200 rounded-lg hover:text-red-500 hover:border-red-100 transition-all active:scale-95">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-4 py-3 border-r font-bold">{e.date}</td>
+                          <td className="px-4 py-3 border-r text-right font-mono font-bold">{formatKRW(e.krwAmount)}</td>
+                          <td className="px-4 py-3 border-r text-right font-mono font-bold text-blue-600">{formatUSD(e.usdAmount)}</td>
+                          <td className="px-6 py-3 border-r text-center font-mono font-black text-slate-900 bg-emerald-50/10">
+                            {e.exchangeRate?.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-3 border-r text-center">{e.bank}</td>
+                          <td className="px-4 py-3 border-r text-[10px] text-slate-400 truncate hover:text-slate-600 cursor-default" title={e.desc}>{e.desc}</td>
+                          <td className="px-4 py-3 text-center opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button onClick={() => startEdit(e)} className="text-slate-300 hover:text-indigo-500 transition-colors p-1">
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => onDeleteExchangeResult(e.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </>
+                      )}
                     </tr>
                   ))}
-                  {exchangeResults.length === 0 && (
+                  {filteredExchangeResults.length === 0 && (
                     <tr>
-                      <td colSpan={7} className="text-center py-8 text-slate-400 text-[11px] border-b">등록된 환전 결과가 없습니다.</td>
+                      <td colSpan={7} className="text-center py-20 text-slate-300">
+                        <div className="flex flex-col items-center gap-2">
+                          <ArrowRightLeft className="w-8 h-8 opacity-20" />
+                          <p className="text-[11px] font-bold">{selectedMonth.split('-')[1]}월에 등록된 환전 결과가 없습니다.</p>
+                        </div>
+                      </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
-            {exchangeResults.length > 0 && (
-              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-10">
+            {filteredExchangeResults.length > 0 && (
+              <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-end gap-12 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)]">
                 <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">총 매입액 (KRW)</span>
-                  <span className="text-sm font-black text-slate-900">{formatKRW(exchangeResults.reduce((sum, e) => sum + e.krwAmount, 0))}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">당월 매입 총액 (KRW)</span>
+                  <span className="text-lg font-black text-slate-900 tabular-nums">{formatKRW(filteredExchangeResults.reduce((sum, e) => sum + e.krwAmount, 0))}</span>
                 </div>
                 <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">총 환전액 (USD)</span>
-                  <span className="text-sm font-black text-blue-600">{formatUSD(exchangeResults.reduce((sum, e) => sum + e.usdAmount, 0))}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">당월 환전 총액 (USD)</span>
+                  <span className="text-lg font-black text-blue-600 tabular-nums">{formatUSD(filteredExchangeResults.reduce((sum, e) => sum + e.usdAmount, 0))}</span>
                 </div>
                 <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">평균 환율</span>
-                  <span className="text-sm font-black text-emerald-600">
-                    {(exchangeResults.reduce((sum, e) => sum + e.krwAmount, 0) / exchangeResults.reduce((sum, e) => sum + e.usdAmount, 0)).toFixed(2)}
+                  <span className="text-[10px] font-bold text-emerald-500/70 uppercase tracking-tighter mb-1">당월 평균 환율</span>
+                  <span className="text-lg font-black text-emerald-600 tabular-nums">
+                    {(filteredExchangeResults.reduce((sum, e) => sum + e.krwAmount, 0) / filteredExchangeResults.reduce((sum, e) => sum + e.usdAmount, 0)).toFixed(2)}
                   </span>
                 </div>
               </div>
