@@ -348,7 +348,7 @@ const CashPLPage = ({
     const totalFX_USD_KRW_Global = monthFX.reduce((sum, e) => sum + (e.usdAmount * exchangeRate), 0);
     
     // 외화 환전은 내부 자금 이동이므로 양쪽 모두 내부 거래로 기록
-    stats['스마트팩토리'].knownFX = (totalFX_KRW + totalFX_USD_KRW) / 2; // Heuristic: Avg of the two to match internal transfers logic
+    stats['스마트팩토리'].knownFX = (totalFX_KRW + totalFX_USD_KRW_Global) / 2; // Heuristic: Avg of the two to match internal transfers logic
 
     // 1. 엑셀 데이터 합산 (통화 환산 적용)
     Object.entries(dailyStatuses).forEach(([date, status]) => {
