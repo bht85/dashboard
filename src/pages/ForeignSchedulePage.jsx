@@ -382,10 +382,6 @@ const ForeignSchedulePage = ({
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">은행명</label>
-                <input type="text" name="bank" value={exchangeData.bank} onChange={handleExchangeChange} placeholder="ex) 기업은행" className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" />
-              </div>
-              <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">매입 법인</label>
                 <select name="section" value={exchangeData.section} onChange={handleExchangeChange} className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
                   <option value="컴포즈커피">컴포즈커피</option>
@@ -436,13 +432,12 @@ const ForeignSchedulePage = ({
                 <thead className="bg-slate-50 text-slate-500 font-bold border-b sticky top-0 z-10">
                   <tr>
                     <th className="w-[12%] px-4 py-3 border-r">환전 일자</th>
+                    <th className="w-[15%] px-4 py-3 border-r text-center">통화</th>
                     <th className="w-[20%] px-4 py-3 border-r text-right">매입 금액 (KRW)</th>
-                    <th className="w-[18%] px-4 py-3 border-r text-right">환전 금액 (USD)</th>
+                    <th className="w-[18%] px-4 py-3 border-r text-right">환전 금액 (외화)</th>
                     <th className="w-[12%] px-6 py-3 border-r text-center bg-emerald-50/30 text-emerald-600">적용 환율</th>
-                    <th className="w-[12%] px-4 py-3 border-r text-center">은행명</th>
-                    <th className="w-[10%] px-4 py-3 border-r text-center">법인</th>
-                    <th className="px-4 py-3 border-r">내용</th>
-                    <th className="w-[90px] px-4 py-3 text-center">작업</th>
+                    <th className="w-[12%] px-4 py-3 border-r text-center">법인</th>
+                    <th className="px-4 py-3">내용</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
@@ -453,6 +448,13 @@ const ForeignSchedulePage = ({
                           <td className="px-4 py-2 border-r">
                             <input type="date" name="date" value={editData.date} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100" />
                           </td>
+                          <td className="px-4 py-2 border-r">
+                            <select name="currency" value={editData.currency} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100">
+                              <option value="USD">USD</option>
+                              <option value="EUR">EUR</option>
+                              <option value="JPY">JPY</option>
+                            </select>
+                          </td>
                           <td className="px-4 py-2 border-r text-right">
                             <input type="number" name="krwAmount" value={editData.krwAmount} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none text-right ring-2 ring-indigo-100" />
                           </td>
@@ -461,9 +463,6 @@ const ForeignSchedulePage = ({
                           </td>
                           <td className="px-6 py-2 border-r text-center font-black text-emerald-600">
                             {(parseFloat(editData.krwAmount) / parseFloat(editData.usdAmount)).toFixed(2)}
-                          </td>
-                          <td className="px-4 py-2 border-r">
-                            <input type="text" name="bank" value={editData.bank} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100" />
                           </td>
                           <td className="px-4 py-2 border-r">
                             <input type="text" name="desc" value={editData.desc} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100" />
@@ -480,6 +479,7 @@ const ForeignSchedulePage = ({
                       ) : (
                         <>
                           <td className="px-4 py-3 border-r font-bold">{e.date}</td>
+                          <td className="px-4 py-3 border-r text-center font-black text-indigo-500">{e.currency || 'USD'}</td>
                           <td className="px-4 py-3 border-r text-right font-mono font-bold">
                             <span className={(e.type || '').toUpperCase() === 'SELL' ? 'text-emerald-600' : 'text-slate-700'}>
                               {(e.type || '').toUpperCase() === 'SELL' ? '+' : '-'} {formatKRW(Math.abs(e.krwAmount || 0))}
@@ -493,17 +493,13 @@ const ForeignSchedulePage = ({
                           <td className="px-6 py-3 border-r text-center font-mono font-black text-slate-900 bg-emerald-50/10">
                             {e.exchangeRate?.toFixed(2)}
                           </td>
-                          <td className="px-4 py-3 border-r text-center">{e.bank}</td>
                           <td className="px-4 py-3 border-r text-center">
                             <span className={`px-1.5 py-0.5 rounded-[4px] text-[9px] font-black ${e.section === '스마트팩토리' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
                               {e.section || '스마트'}
                             </span>
                           </td>
-                          <td className="px-4 py-3 border-r text-[10px] text-slate-400 truncate hover:text-slate-600 cursor-default" title={e.desc}>{e.desc}</td>
-                          <td className="px-4 py-3 text-center opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                            <button onClick={() => startEdit(e)} className="text-slate-300 hover:text-indigo-500 transition-colors p-1">
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </button>
+                          <td className="px-4 py-3 text-[10px] text-slate-400 truncate hover:text-slate-600 cursor-default" title={e.desc}>{e.desc}</td>
+                          <td className="px-4 py-3 text-center opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => onDeleteExchangeResult(e.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
