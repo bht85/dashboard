@@ -294,7 +294,15 @@ const SectionHeader = ({ label, total, type, isOpen, onToggle }) => {
 };
 
 // ─── 메인 컴포넌트 ──────────────────────────────────────────────────────
-const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeAccounts: masterCompose = [], smartAccounts: masterSmart = [], exchangeRate = 1500 }) => {
+const CashPLPage = ({ 
+  withdrawals = [], 
+  dailyStatuses = {}, 
+  recordDate, 
+  composeAccounts: masterCompose = [], 
+  smartAccounts: masterSmart = [], 
+  exchangeRate = 1500,
+  fxExchangeResults = [] 
+}) => {
   const [selectedMonth, setSelectedMonth] = useState(recordDate.substring(0, 7));
   const [openSections, setOpenSections] = useState({});
 
@@ -325,9 +333,22 @@ const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeA
   // ─── 실계산 엔진 (입금/출금 기반) ──────────────────────────────────
   const calculateCashStats = useMemo(() => {
     const stats = {
-      컴포즈커피: { excelIn: 0, excelOut: 0, manualIn: 0, manualOut: 0 },
-      스마트팩토리: { excelIn: 0, excelOut: 0, manualIn: 0, manualOut: 0 }
+      컴포즈커피: { excelIn: 0, excelOut: 0, manualIn: 0, manualOut: 0, knownFX: 0 },
+      스마트팩토리: { excelIn: 0, excelOut: 0, manualIn: 0, manualOut: 0, knownFX: 0 }
     };
+
+    // 0. 외화 환전 데이터 집계 (신규 반영)
+    // 외화 환전은 현재 스마트팩토리(생두 매입용)에서 주로 발생하므로 스마트팩토리에 우선 반영
+    const monthFX = fxExchangeResults.filter(e => e.date.startsWith(selectedMonth));
+    const totalFX_KRW = monthFX.reduce((sum, e) => sum + (e.krwAmount || 0), 0);
+    
+    // 이 현상은 '기록된 환율'과 '현재 대시보드 환율'의 차이로 인해 발생합니다.
+    // excelIn 집계 시 USD 금액에 글로벌 exchangeRate를 곱해 구하므로, 
+    // 상쇄용 입금액인 totalFX_USD_KRW도 글로벌 exchangeRate를 곱해야 Revenue가 0원으로 수렴합니다.
+    const totalFX_USD_KRW_Global = monthFX.reduce((sum, e) => sum + (e.usdAmount * exchangeRate), 0);
+    
+    // 외화 환전은 내부 자금 이동이므로 양쪽 모두 내부 거래로 기록
+    stats['스마트팩토리'].knownFX = (totalFX_KRW + totalFX_USD_KRW) / 2; // Heuristic: Avg of the two to match internal transfers logic
 
     // 1. 엑셀 데이터 합산 (통화 환산 적용)
     Object.entries(dailyStatuses).forEach(([date, status]) => {
@@ -357,39 +378,47 @@ const CashPLPage = ({ withdrawals = [], dailyStatuses = {}, recordDate, composeA
       // 내부 이체 입금액 합산 (현재 법인 내 계좌 간 이체만 제외 대상)
       const targetNo = String(w.account || w.toAccount || '').replace(/[^0-9]/g, '');
       const sourceNo = String(w.fromAccount || '').replace(/[^0-9]/g, '');
-      if (!targetNo || !sourceNo) return;
-
-      const isTargetMine = entity === '컴포즈커피' 
-        ? masterCompose.some(a => String(a.no).replace(/[^0-9]/g, '') === targetNo)
-        : masterSmart.some(a => String(a.no).replace(/[^0-9]/g, '') === targetNo);
       
-      const isSourceMine = entity === '컴포즈커피' 
-        ? masterCompose.some(a => String(a.no).replace(/[^0-9]/g, '') === sourceNo)
-        : masterSmart.some(a => String(a.no).replace(/[^0-9]/g, '') === sourceNo);
+      // If we have to/from account info, we can check for internal transfers
+      if (targetNo && sourceNo) {
+        const isTargetMine = entity === '컴포즈커피' 
+          ? masterCompose.some(a => String(a.no).replace(/[^0-9]/g, '') === targetNo)
+          : masterSmart.some(a => String(a.no).replace(/[^0-9]/g, '') === targetNo);
+        
+        const isSourceMine = entity === '컴포즈커피' 
+          ? masterCompose.some(a => String(a.no).replace(/[^0-9]/g, '') === sourceNo)
+          : masterSmart.some(a => String(a.no).replace(/[^0-9]/g, '') === sourceNo);
 
-      if (isTargetMine && isSourceMine) {
-        stats[entity].manualIn += amount;
+        if (isTargetMine && isSourceMine) {
+          stats[entity].manualIn += amount;
+        }
       }
     });
 
-    // 3. 최종 조정값 도출 (Heuristic: 미기록 입금과 미기록 출금이 동시에 나면 환전 등 내부거래로 간주)
+    // 3. 최종 조정값 도출 
     const results = {};
     ['컴포즈커피', '스마트팩토리'].forEach(entity => {
       const s = stats[entity];
-      const unrecordedIn = Math.max(0, s.excelIn - s.manualIn);
-      const unrecordedOut = Math.max(0, s.excelOut - s.manualOut);
       
-      // 환전 등 미기록 내부거래 추정치 (입/출금 양쪽에 걸친 미기록분을 상쇄)
+      // 해당 월의 외화 환전 집계액을 수기 입출금에 합산하여 내부거래 판별 정확도 향상
+      // USD 입금액 상쇄는 대시보드 기준 환율(totalFX_USD_KRW_Global)을 사용하여 환율차에 의한 매출 왜곡 방지
+      const effectiveManualIn = s.manualIn + (entity === '스마트팩토리' ? totalFX_USD_KRW_Global : 0);
+      const effectiveManualOut = s.manualOut + (entity === '스마트팩토리' ? totalFX_KRW : 0);
+
+      const unrecordedIn = Math.max(0, s.excelIn - effectiveManualIn);
+      const unrecordedOut = Math.max(0, s.excelOut - effectiveManualOut);
+      
+      // Heuristic: 입/출금이 동시에 나면 환전 등 기타 내부거래로 간주
       const estimatedInternal = Math.min(unrecordedIn, unrecordedOut);
       
       results[entity] = {
-        netRevenue: unrecordedIn - estimatedInternal, // 미기록 입금 중 상쇄 안 된 것이 진짜 매출
-        automaticWithdrawal: unrecordedOut - estimatedInternal // 미기록 출금 중 상쇄 안 된 것이 진짜 자동이체
+        netRevenue: unrecordedIn - estimatedInternal,
+        automaticWithdrawal: unrecordedOut - estimatedInternal
       };
     });
 
     return results;
-  }, [selectedMonth, dailyStatuses, withdrawals, exchangeRate, masterCompose, masterSmart]);
+  }, [selectedMonth, dailyStatuses, withdrawals, exchangeRate, masterCompose, masterSmart, fxExchangeResults]);
 
   // ─── 컴포즈 집계 ─────────────────────────────────────────────
   const composeMap = useMemo(() => {
