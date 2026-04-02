@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { formatKRW, formatUSD } from '../../utils/formatters';
+import { formatKRW, formatUSD, formatEUR, formatJPY } from '../../utils/formatters';
 
 const PrintReport = ({
   selectedDate,
@@ -14,6 +14,7 @@ const PrintReport = ({
   isFinal = false,
   usdPending = 0,
   usdThisWeek = 0,
+  fxThisWeek = {},
   dailyWithdrawals = [],
 }) => {
   const issueText = dailyIssues[selectedDate] || '';
@@ -201,14 +202,21 @@ const PrintReport = ({
             )}
           </div>
           <div className="print-summary-box">
-            <div className="print-summary-label">외화 송금 대기 (USD)</div>
-            <div className="print-summary-value" style={{ color: '#059669', fontSize: '13px', lineHeight: '1.2' }}>
-              <span style={{ fontSize: '9px', color: '#64748b', marginRight: '4px' }}>금주:</span>
-              {formatUSD(usdThisWeek)}
-            </div>
-            <div className="print-summary-sub" style={{ fontSize: '10px' }}>
-              <span style={{ fontSize: '8px', color: '#94a3b8', marginRight: '4px' }}>총액:</span>
-              {formatUSD(usdPending)}
+            <div className="print-summary-label">외화 송금 대기 (USD/EUR 등)</div>
+            <div className="print-summary-value" style={{ color: '#059669', fontSize: '11px', lineHeight: '1.2' }}>
+              {(usdThisWeek > 0 || (fxThisWeek?.EUR > 0)) && (
+                <div>
+                  <span style={{ fontSize: '8px', color: '#64748b' }}>금주:</span>
+                  {usdThisWeek > 0 && formatUSD(usdThisWeek)}
+                  {fxThisWeek?.EUR > 0 && ` / ${formatEUR(fxThisWeek.EUR)}`}
+                </div>
+              )}
+              {usdPending > 0 && (
+                <div style={{ marginTop: '2px' }}>
+                  <span style={{ fontSize: '8px', color: '#94a3b8' }}>USD 총액:</span>
+                  {formatUSD(usdPending)}
+                </div>
+              )}
             </div>
           </div>
         </div>

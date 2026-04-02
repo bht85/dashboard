@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ExpenseSummaryBox from '../components/dashboard/ExpenseSummaryBox';
 import FinancialTable from '../components/dashboard/FinancialTable';
 import PrintReport from '../components/dashboard/PrintReport';
-import { calculateTotal, formatKRW, formatUSD, isExcludedAccount } from '../utils/formatters';
+import { calculateTotal, formatKRW, formatUSD, formatEUR, formatJPY, isExcludedAccount } from '../utils/formatters';
 import { Wallet, TrendingUp, Building2, Factory, FileText, Globe, ChevronDown, ChevronUp, ListFilter, ArrowRight, Printer } from 'lucide-react';
 
 const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAccounts: masterSmart, fxSchedule, withdrawals = [], dailyStatuses = {}, dailyIssues = {}, onUpdateIssue, exchangeRate = 1520 }) => {
@@ -260,6 +260,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
         isFinal={isFinal}
         usdPending={fxTotals.USD || 0}
         usdThisWeek={fxThisWeek.USD || 0}
+        fxThisWeek={fxThisWeek}
         dailyWithdrawals={dailyWithdrawals}
       />
 
