@@ -338,17 +338,19 @@ const CashPLPage = ({
     };
 
     // 0. 외화 환전 데이터 집계 (신규 반영)
-    // 외화 환전은 현재 스마트팩토리(생두 매입용)에서 주로 발생하므로 스마트팩토리에 우선 반영
     const monthFX = fxExchangeResults.filter(e => e.date.startsWith(selectedMonth));
-    const totalFX_KRW = monthFX.reduce((sum, e) => sum + (e.krwAmount || 0), 0);
     
     // 이 현상은 '기록된 환율'과 '현재 대시보드 환율'의 차이로 인해 발생합니다.
-    // excelIn 집계 시 USD 금액에 글로벌 exchangeRate를 곱해 구하므로, 
-    // 상쇄용 입금액인 totalFX_USD_KRW도 글로벌 exchangeRate를 곱해야 Revenue가 0원으로 수렴합니다.
-    const totalFX_USD_KRW_Global = monthFX.reduce((sum, e) => sum + (e.usdAmount * exchangeRate), 0);
+    const getFXStats = (entityName) => {
+      const entityFX = monthFX.filter(e => e.section === entityName || (!e.section && entityName === '스마트팩토리'));
+      const krwOut = entityFX.reduce((sum, e) => sum + (e.krwAmount || 0), 0);
+      const usdIn_Global = entityFX.reduce((sum, e) => sum + (e.usdAmount * exchangeRate), 0);
+      return { krwOut, usdIn_Global };
+    };
     
-    // 외화 환전은 내부 자금 이동이므로 양쪽 모두 내부 거래로 기록
-    stats['스마트팩토리'].knownFX = (totalFX_KRW + totalFX_USD_KRW_Global) / 2; // Heuristic: Avg of the two to match internal transfers logic
+    // 외화 환전은 내부 자금 이동이므로 양쪽 모두 내부 거래로 기록 (필요 시 개별 entity에 할당)
+    stats['스마트팩토리'].knownFX = getFXStats('스마트팩토리').krwOut;
+    stats['컴포즈커피'].knownFX = getFXStats('컴포즈커피').krwOut;
 
     // 1. 엑셀 데이터 합산 (통화 환산 적용)
     Object.entries(dailyStatuses).forEach(([date, status]) => {
@@ -399,11 +401,12 @@ const CashPLPage = ({
     const results = {};
     ['컴포즈커피', '스마트팩토리'].forEach(entity => {
       const s = stats[entity];
+      const fx = getFXStats(entity);
       
       // 해당 월의 외화 환전 집계액을 수기 입출금에 합산하여 내부거래 판별 정확도 향상
       // USD 입금액 상쇄는 대시보드 기준 환율(totalFX_USD_KRW_Global)을 사용하여 환율차에 의한 매출 왜곡 방지
-      const effectiveManualIn = s.manualIn + (entity === '스마트팩토리' ? totalFX_USD_KRW_Global : 0);
-      const effectiveManualOut = s.manualOut + (entity === '스마트팩토리' ? totalFX_KRW : 0);
+      const effectiveManualIn = s.manualIn + fx.usdIn_Global;
+      const effectiveManualOut = s.manualOut + fx.krwOut;
 
       const unrecordedIn = Math.max(0, s.excelIn - effectiveManualIn);
       const unrecordedOut = Math.max(0, s.excelOut - effectiveManualOut);
@@ -437,7 +440,9 @@ const CashPLPage = ({
       dailyStatuses[lastAvailableDateBefore].details.forEach(d => {
         if (isExcludedAccount(d)) return;
         const rate = (d.isUSD || d.currency === 'USD') ? exchangeRate : 1;
-        beginningBalance += (d.balance || 0) * rate;
+        // 엑셀 파싱 시 totalBalance 또는 final로 저장됨 (데이터 필드명 보정)
+        const balance = d.totalBalance ?? d.final ?? d.balance ?? 0;
+        beginningBalance += balance * rate;
       });
     }
 

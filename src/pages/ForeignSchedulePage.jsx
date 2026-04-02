@@ -34,6 +34,7 @@ const ForeignSchedulePage = ({
     usdAmount: '',
     bank: '',
     desc: '',
+    section: '스마트팩토리', // Added entity field
   });
 
   const handleScheduleChange = (e) => {
@@ -88,6 +89,7 @@ const ForeignSchedulePage = ({
       exchangeRate: rate,
       bank: exchangeData.bank,
       desc: exchangeData.desc,
+      section: exchangeData.section, // Save section
     };
 
     await onUpdateExchangeResult(newExchange);
@@ -98,6 +100,7 @@ const ForeignSchedulePage = ({
       usdAmount: '',
       bank: '',
       desc: '',
+      section: '스마트팩토리',
     });
   };
 
@@ -348,7 +351,14 @@ const ForeignSchedulePage = ({
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">은행명</label>
                 <input type="text" name="bank" value={exchangeData.bank} onChange={handleExchangeChange} placeholder="ex) 기업은행" className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
-              <div className="md:col-span-5">
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">매입 법인</label>
+                <select name="section" value={exchangeData.section} onChange={handleExchangeChange} className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                  <option value="컴포즈커피">컴포즈커피</option>
+                  <option value="스마트팩토리">스마트팩토리</option>
+                </select>
+              </div>
+              <div className="md:col-span-4">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">내용 / 비고</label>
                 <input type="text" name="desc" value={exchangeData.desc} onChange={handleExchangeChange} placeholder="3월분 생두 매입 대금 환전..." className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
@@ -396,6 +406,7 @@ const ForeignSchedulePage = ({
                     <th className="w-[18%] px-4 py-3 border-r text-right">환전 금액 (USD)</th>
                     <th className="w-[12%] px-6 py-3 border-r text-center bg-emerald-50/30 text-emerald-600">적용 환율</th>
                     <th className="w-[12%] px-4 py-3 border-r text-center">은행명</th>
+                    <th className="w-[10%] px-4 py-3 border-r text-center">법인</th>
                     <th className="px-4 py-3 border-r">내용</th>
                     <th className="w-[90px] px-4 py-3 text-center">작업</th>
                   </tr>
@@ -441,6 +452,11 @@ const ForeignSchedulePage = ({
                             {e.exchangeRate?.toFixed(2)}
                           </td>
                           <td className="px-4 py-3 border-r text-center">{e.bank}</td>
+                          <td className="px-4 py-3 border-r text-center">
+                            <span className={`px-1.5 py-0.5 rounded-[4px] text-[9px] font-black ${e.section === '스마트팩토리' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                              {e.section || '스마트'}
+                            </span>
+                          </td>
                           <td className="px-4 py-3 border-r text-[10px] text-slate-400 truncate hover:text-slate-600 cursor-default" title={e.desc}>{e.desc}</td>
                           <td className="px-4 py-3 text-center opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                             <button onClick={() => startEdit(e)} className="text-slate-300 hover:text-indigo-500 transition-colors p-1">
