@@ -258,8 +258,8 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
         dailyIssues={dailyIssues}
         exchangeRate={exchangeRate}
         isFinal={isFinal}
-        usdPending={usdTotal}
-        usdThisWeek={usdThisWeek}
+        usdPending={fxTotals.USD || 0}
+        usdThisWeek={fxThisWeek.USD || 0}
         dailyWithdrawals={dailyWithdrawals}
       />
 
@@ -553,19 +553,23 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
             </div>
 
             <div className="lg:col-span-1 bg-[#0f172a] text-white rounded-lg p-5 flex flex-col justify-center">
-              <h4 className="text-xs font-bold text-emerald-400 mb-4 flex items-center gap-2">기타 외화 요약</h4>
-              <div className="space-y-3">
-                <div className="flex justify-between text-xs border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">금주 필요 송금액</span>
-                  <span className="font-mono font-bold text-emerald-400">{formatUSD(usdThisWeek)}</span>
+              <h4 className="text-xs font-bold text-emerald-400 mb-4 flex items-center gap-2">기타 외화 요약 (금주/전체)</h4>
+              <div className="space-y-2">
+                {Object.entries(fxThisWeek).sort().map(([cur, amt]) => (
+                  <div key={cur} className="flex justify-between text-[11px] border-b border-slate-800 pb-1.5 pt-0.5">
+                    <span className="text-slate-500 font-bold">{cur} 금주 예정</span>
+                    <span className={`font-mono font-black ${cur === 'USD' ? 'text-emerald-400' : (cur === 'EUR' ? 'text-blue-400' : 'text-purple-400')}`}>
+                      {cur === 'USD' ? formatUSD(amt) : (cur === 'EUR' ? formatEUR(amt) : formatJPY(amt))}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex justify-between text-xs pt-3 mt-1">
+                  <span className="font-bold text-slate-400">금주 예정 (한화환산)</span>
+                  <span className="font-mono font-black text-amber-500">{formatKRW(krwThisWeekEquivalent)}</span>
                 </div>
-                <div className="flex justify-between text-xs border-b border-slate-800 pb-2">
-                  <span className="text-slate-400">총 송금 대기 (잔액)</span>
-                  <span className="font-mono font-bold text-emerald-600">{formatUSD(usdTotal)}</span>
-                </div>
-                <div className="flex justify-between text-sm pt-1 mt-2">
-                  <span className="font-bold text-slate-300">금주 예상 한화</span>
-                  <span className="font-mono font-black text-amber-400">{formatKRW(krwThisWeekEquivalent)}</span>
+                <div className="flex justify-between text-[10px] pt-1 opacity-60">
+                   <span className="text-slate-500 italic">총 대기 (전체)</span>
+                   <span className="font-mono font-bold text-slate-400">약 {(krwTotalEquivalent / 100000000).toFixed(1)} 억원</span>
                 </div>
               </div>
             </div>
