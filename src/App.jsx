@@ -88,6 +88,7 @@ const App = () => {
   const [cashFlowSchedules, setCashFlowSchedules] = useState([]); // 신규: 자금 추정 스케줄
   const [dailyStatuses, setDailyStatuses] = useState({});
   const [dailyIssues, setDailyIssues] = useState({}); // { "2024-03-26": "이슈내용..." }
+  const [fxExchangeResults, setFxExchangeResults] = useState([]); // 신규: 외화 환전 결과 데이터
 
   // --- Real-time Firestore Sync ---
   useEffect(() => {
@@ -149,6 +150,12 @@ const App = () => {
         setCashFlowSchedules(data.sort((a,b) => (a.date > b.date ? 1 : -1)));
     }, logAndHandle("cashFlowSchedules"));
 
+    // 7. FX Exchange Results Sync (신규: 외화 환전 결과 연동)
+    const unsubFXExchange = onSnapshot(collection(db, "fxExchangeResults"), (snapshot) => {
+        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        setFxExchangeResults(data.sort((a,b) => (a.date > b.date ? 1 : -1)));
+    }, logAndHandle("fxExchangeResults"));
+
     // 4. Daily Status Sync
     const unsubStatus = onSnapshot(collection(db, "dailyStatuses"), (snapshot) => {
         const statuses = {};
@@ -180,7 +187,7 @@ const App = () => {
         setDailyStatuses(statuses);
     }, logAndHandle("dailyStatuses"));
 
-    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); unsubCashFlow(); };
+    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); unsubCashFlow(); unsubFXExchange(); };
   }, [user]);
 
   // --- Firestore Update Wrappers ---
@@ -268,6 +275,18 @@ const App = () => {
     if (!id) return;
     console.log(`Deleting Cash Flow Schedule: ${id}`);
     await deleteDoc(doc(collection(db, "cashFlowSchedules"), String(id)));
+  };
+
+  const updateFXExchangeResult = async (data) => {
+    const docId = data.id ? String(data.id) : Date.now().toString();
+    console.log(`Updating FX Exchange Result: ${docId}`);
+    await setDoc(doc(collection(db, "fxExchangeResults"), docId), data);
+  };
+
+  const deleteFXExchangeResult = async (id) => {
+    if (!id) return;
+    console.log(`Deleting FX Exchange Result: ${id}`);
+    await deleteDoc(doc(collection(db, "fxExchangeResults"), String(id)));
   };
 
   const updateDailyIssue = async (date, content) => {
@@ -515,6 +534,9 @@ const App = () => {
           fxSchedule={fxSchedule} 
           onUpdateSchedule={updateFXSchedule}
           onDeleteSchedule={deleteFXSchedule}
+          exchangeResults={fxExchangeResults}
+          onUpdateExchangeResult={updateFXExchangeResult}
+          onDeleteExchangeResult={deleteFXExchangeResult}
           exchangeRate={exchangeRate}
         />
       )}
