@@ -58,7 +58,7 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
               if (i.entity.includes('스마트') || i.group === '내부' || i.nickname.includes('내부')) return s;
             } else {
               // 진짜 '내부'라고 명시되거나 '환전' 내역인 경우 모두 제외 (자산의 총합에는 변동이 없는 내부 이동이므로)
-              if (i.group === '내부' || (i.nickname && (i.nickname.includes('내부') || i.nickname.includes('환전')))) return s;
+              if (i.group === '내부' || (i.nickname && (i.nickname.includes('내부') || i.nickname.includes('환전') || i.nickname.includes('자동이체')))) return s;
             }
           }
 
@@ -73,10 +73,10 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
         const dailyOutflow = filteredDetails.reduce((s, i) => {
           if (excludeInternal) {
             if (selectedEntity === 'ALL') {
-              if (i.group === '내부' || i.nickname.includes('내부')) return s;
+              if (i.group === '내부' || i.nickname.includes('내부') || i.nickname.includes('자동이체')) return s;
             } else {
               // '내부' 계좌이동 및 '환전' 내역 제외
-              if (i.group === '내부' || (i.nickname && (i.nickname.includes('내부') || i.nickname.includes('환전')))) return s;
+              if (i.group === '내부' || (i.nickname && (i.nickname.includes('내부') || i.nickname.includes('환전') || i.nickname.includes('자동이체')))) return s;
             }
           }
 

@@ -91,9 +91,9 @@ const ForeignSchedulePage = ({
     const newExchange = {
       id: Date.now(),
       date: exchangeData.date,
-      krwAmount: krw,
-      usdAmount: usd,
-      exchangeRate: rate,
+      krwAmount: (exchangeData.type || 'BUY').toUpperCase() === 'BUY' ? -Math.abs(krw) : Math.abs(krw),
+      usdAmount: (exchangeData.type || 'BUY').toUpperCase() === 'BUY' ? Math.abs(usd) : -Math.abs(usd),
+      exchangeRate: Math.abs(krw) / (Math.abs(usd) || 1),
       bank: exchangeData.bank,
       desc: exchangeData.desc,
       section: exchangeData.section,
@@ -442,10 +442,10 @@ const ForeignSchedulePage = ({
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
                   {filteredExchangeResults.map((e) => {
-                    const krw = Number(e.krwAmount || 0);
-                    // 원화가 마이너스(지출)면 외화 매입(+), 원화가 플러스(유입)면 외화 매표/매각(-)
-                    const isBuy = krw < 0;
-                    const isSell = krw > 0;
+                    const rawType = (e.type || '').toUpperCase();
+                    // 타입이 명시되어 있으면 그걸 따르고, 없으면 부호를 보고 판단
+                    const isBuy = rawType === 'BUY' || (!rawType && Number(e.krwAmount) < 0);
+                    const isSell = rawType === 'SELL' || (!rawType && Number(e.krwAmount) > 0);
                     const displayCurrency = e.currency || 'USD';
 
                     return (
