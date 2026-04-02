@@ -24,7 +24,9 @@ const App = () => {
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState('dashboard');
   const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString('en-CA'));
-  const [exchangeRate, setExchangeRate] = useState(1520); // 초기값 (폴백)
+  const [exchangeRate, setExchangeRate] = useState(1520); // USD/KRW
+  const [exchangeRateEUR, setExchangeRateEUR] = useState(1620); // EUR/KRW
+  const [exchangeRateJPY, setExchangeRateJPY] = useState(10); // JPY/KRW (per 1 JPY)
 
   // --- Auth State Sync ---
   useEffect(() => {
@@ -65,12 +67,18 @@ const App = () => {
   useEffect(() => {
     const fetchRate = async () => {
       try {
-        // Switching to a more CORS-friendly API
         const response = await fetch('https://open.er-api.com/v6/latest/USD');
         const data = await response.json();
-        if (data && data.rates && data.rates.KRW) {
-          setExchangeRate(data.rates.KRW);
-          console.log("Exchange Rate Updated (USD/KRW):", data.rates.KRW);
+        if (data && data.rates) {
+          const krw = data.rates.KRW;
+          const eur = krw / data.rates.EUR;
+          const jpy = krw / data.rates.JPY;
+
+          setExchangeRate(krw);
+          setExchangeRateEUR(eur);
+          setExchangeRateJPY(jpy);
+
+          console.log("Exchange Rates Updated:", { USD: krw, EUR: eur, JPY: jpy });
         }
       } catch (error) {
         console.error("Exchange rate fetch error:", error);
@@ -475,6 +483,8 @@ const App = () => {
           dailyIssues={dailyIssues}
           onUpdateIssue={updateDailyIssue}
           exchangeRate={exchangeRate}
+          exchangeRateEUR={exchangeRateEUR}
+          exchangeRateJPY={exchangeRateJPY}
         />
       )}
       {currentView === 'analytics' && (
@@ -482,6 +492,8 @@ const App = () => {
           dailyStatuses={dailyStatuses}
           recordDate={selectedDate}
           exchangeRate={exchangeRate}
+          exchangeRateEUR={exchangeRateEUR}
+          exchangeRateJPY={exchangeRateJPY}
         />
       )}
       {currentView === 'monthly' && (
@@ -513,6 +525,8 @@ const App = () => {
           onDeleteBatch={deleteWithdrawalBatch}
           onUpdateFXSchedule={updateFXSchedule}
           exchangeRate={exchangeRate}
+          exchangeRateEUR={exchangeRateEUR}
+          exchangeRateJPY={exchangeRateJPY}
         />
       )}
       {currentView === 'accountMapping' && (['jiin0723@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email?.toLowerCase()) ? (
@@ -538,6 +552,8 @@ const App = () => {
           onUpdateExchangeResult={updateFXExchangeResult}
           onDeleteExchangeResult={deleteFXExchangeResult}
           exchangeRate={exchangeRate}
+          exchangeRateEUR={exchangeRateEUR}
+          exchangeRateJPY={exchangeRateJPY}
         />
       )}
       {currentView === 'cashStatus' && (
@@ -581,6 +597,8 @@ const App = () => {
           composeAccounts={composeAccounts}
           smartAccounts={smartAccounts}
           exchangeRate={exchangeRate}
+          exchangeRateEUR={exchangeRateEUR}
+          exchangeRateJPY={exchangeRateJPY}
           fxExchangeResults={fxExchangeResults}
         />
       ) : <div className="p-20 text-center font-black text-slate-400">접근 권한이 없습니다. (Test Period)</div>)}

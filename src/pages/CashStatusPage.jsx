@@ -62,10 +62,10 @@ const CashStatusPage = ({
           if (!valAccount && !valBank) return;
           if (valEntity.includes('총계') || valEntity.includes('합계') || valGroup.includes('소계')) return;
 
-          // MASTER LIST LOOKUP: Use account number as the source of truth for currency
-          const existingMaster = masterList.find(a => String(a.no).replace(/[\s-]/g, '') === valAccount.replace(/[\s-]/g, ''));
-          const isUSD = existingMaster ? !!existingMaster.isUSD : (row[6] ? String(row[6]).trim().toUpperCase() === 'USD' : false);
-          const valCurrency = isUSD ? 'USD' : 'KRW';
+          // COLUMN 6: Currency (KRW, USD, EUR, JPY, etc.)
+          const valCurrency = row[6] ? String(row[6]).trim().toUpperCase() : 'KRW';
+          const isUSD = valCurrency === 'USD';
+          const isForeign = valCurrency !== 'KRW';
 
           const cleanNum = (v) => {
             if (v === undefined || v === null || v === '' || v === '-') return 0;

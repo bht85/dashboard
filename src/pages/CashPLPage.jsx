@@ -301,6 +301,8 @@ const CashPLPage = ({
   composeAccounts: masterCompose = [], 
   smartAccounts: masterSmart = [], 
   exchangeRate = 1500,
+  exchangeRateEUR = 1600,
+  exchangeRateJPY = 10,
   fxExchangeResults = [] 
 }) => {
   const [selectedMonth, setSelectedMonth] = useState(recordDate.substring(0, 7));
@@ -351,12 +353,14 @@ const CashPLPage = ({
 
       entityFX.forEach(e => {
         const isSell = e.type === 'SELL';
+        const rate = e.currency === 'EUR' ? exchangeRateEUR : e.currency === 'JPY' ? exchangeRateJPY : exchangeRate;
+        
         if (isSell) {
-          totalOut_KRW_Equivalent += (e.usdAmount || 0) * exchangeRate; // USD 지출 (글로벌 환율 적용)
-          totalIn_KRW_Equivalent += (e.krwAmount || 0);               // KRW 입금 (실제 금액)
+          totalOut_KRW_Equivalent += (e.usdAmount || 0) * rate; // Foreign out (converted)
+          totalIn_KRW_Equivalent += (e.krwAmount || 0);         // KRW in (actual)
         } else {
-          totalOut_KRW_Equivalent += (e.krwAmount || 0);               // KRW 지출 (실제 금액)
-          totalIn_KRW_Equivalent += (e.usdAmount || 0) * exchangeRate; // USD 입금 (글로벌 환율 적용)
+          totalOut_KRW_Equivalent += (e.krwAmount || 0);         // KRW out (actual)
+          totalIn_KRW_Equivalent += (e.usdAmount || 0) * rate;   // Foreign in (converted)
         }
       });
 
@@ -454,7 +458,8 @@ const CashPLPage = ({
     if (lastAvailableDateBefore && dailyStatuses[lastAvailableDateBefore]?.details) {
       dailyStatuses[lastAvailableDateBefore].details.forEach(d => {
         if (isExcludedAccount(d)) return;
-        const rate = (d.isUSD || d.currency === 'USD') ? exchangeRate : 1;
+        const currency = d.currency?.toUpperCase() || 'KRW';
+        const rate = currency === 'EUR' ? exchangeRateEUR : currency === 'JPY' ? exchangeRateJPY : currency === 'USD' ? exchangeRate : 1;
         // 엑셀 파싱 시 totalBalance 또는 final로 저장됨 (데이터 필드명 보정)
         const balance = d.totalBalance ?? d.final ?? d.balance ?? 0;
         beginningBalance += balance * rate;

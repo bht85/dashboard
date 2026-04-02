@@ -9,7 +9,9 @@ const ForeignSchedulePage = ({
   exchangeResults = [], 
   onUpdateExchangeResult, 
   onDeleteExchangeResult,
-  exchangeRate = 1520 
+  exchangeRate = 1520,
+  exchangeRateEUR = 1620,
+  exchangeRateJPY = 10,
 }) => {
   const [activeTab, setActiveTab] = useState('schedule'); // 'schedule' or 'exchange'
   const [editingId, setEditingId] = useState(null);
@@ -25,6 +27,7 @@ const ForeignSchedulePage = ({
     account: '',
     desc: '',
     status: '지출결의 미확인',
+    currency: 'USD', // Added currency field
   });
 
   // Exchange Form State
@@ -34,8 +37,9 @@ const ForeignSchedulePage = ({
     usdAmount: '',
     bank: '',
     desc: '',
-    section: '스마트팩토리', // Added entity field
-    type: 'BUY',           // BUY (KRW->USD), SELL (USD->KRW)
+    section: '스마트팩토리',
+    type: 'BUY',
+    currency: 'USD', // Added currency field
   });
 
   const handleScheduleChange = (e) => {
@@ -59,6 +63,7 @@ const ForeignSchedulePage = ({
       account: scheduleData.account,
       desc: scheduleData.desc,
       status: scheduleData.status,
+      currency: scheduleData.currency, // Save currency
     };
 
     await onUpdateSchedule(newSchedule);
@@ -71,6 +76,7 @@ const ForeignSchedulePage = ({
       account: '',
       desc: '',
       status: '지출결의 미확인',
+      currency: 'USD',
     });
   };
 
@@ -90,8 +96,9 @@ const ForeignSchedulePage = ({
       exchangeRate: rate,
       bank: exchangeData.bank,
       desc: exchangeData.desc,
-      section: exchangeData.section, // Save section
-      type: exchangeData.type,       // Save type
+      section: exchangeData.section,
+      type: exchangeData.type,
+      currency: exchangeData.currency, // Save currency
     };
 
     await onUpdateExchangeResult(newExchange);
@@ -104,6 +111,7 @@ const ForeignSchedulePage = ({
       desc: '',
       section: '스마트팩토리',
       type: 'BUY',
+      currency: 'USD',
     });
   };
 
@@ -212,7 +220,7 @@ const ForeignSchedulePage = ({
                 <input type="number" step="0.01" name="amount" value={scheduleData.amount} onChange={handleScheduleChange} placeholder="ex) 5000.00" className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500" required />
                 {scheduleData.amount && (
                   <div className="absolute -bottom-5 right-0 text-[9px] font-bold text-indigo-500 animate-in fade-in slide-in-from-top-1">
-                    ≈ {formatKRW(parseFloat(scheduleData.amount) * exchangeRate)}
+                    ≈ {formatKRW(parseFloat(scheduleData.amount) * (scheduleData.currency === 'EUR' ? exchangeRateEUR : scheduleData.currency === 'JPY' ? exchangeRateJPY : exchangeRate))}
                   </div>
                 )}
               </div>
@@ -222,6 +230,14 @@ const ForeignSchedulePage = ({
                   <option value="지출결의 확인">지출결의 확인</option>
                   <option value="지출결의 미확인">지출결의 미확인</option>
                   <option value="송금 완료(집행)">송금 완료(집행)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">통화</label>
+                <select name="currency" value={scheduleData.currency} onChange={handleScheduleChange} className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="JPY">JPY (¥)</option>
                 </select>
               </div>
               <div>
@@ -332,10 +348,18 @@ const ForeignSchedulePage = ({
                 <input type="date" name="date" value={exchangeData.date} onChange={handleExchangeChange} className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" required />
               </div>
               <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">거래 통화</label>
+                <select name="currency" value={exchangeData.currency} onChange={handleExchangeChange} className="w-full text-sm font-black bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                  <option value="USD">USD ($)</option>
+                  <option value="EUR">EUR (€)</option>
+                  <option value="JPY">JPY (¥)</option>
+                </select>
+              </div>
+              <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">거래 유형</label>
                 <select name="type" value={exchangeData.type} onChange={handleExchangeChange} className="w-full text-sm font-black bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
-                  <option value="BUY">KRW → USD (매입)</option>
-                  <option value="SELL">USD → KRW (매각)</option>
+                  <option value="BUY">KRW → {exchangeData.currency} (매입)</option>
+                  <option value="SELL">{exchangeData.currency} → KRW (매각)</option>
                 </select>
               </div>
               <div>
@@ -346,7 +370,7 @@ const ForeignSchedulePage = ({
                 {exchangeData.type === 'BUY' ? <ArrowRightLeft className="w-4 h-4 text-emerald-500" /> : <ArrowRightLeft className="w-4 h-4 text-rose-500 rotate-180" />}
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{exchangeData.type === 'BUY' ? '입금금액 (USD)' : '지출금액 (USD)'}</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{exchangeData.type === 'BUY' ? `입금금액 (${exchangeData.currency})` : `지출금액 (${exchangeData.currency})`}</label>
                 <input type="number" step="0.01" name="usdAmount" value={exchangeData.usdAmount} onChange={handleExchangeChange} placeholder="ex) 1000.00" className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" required />
               </div>
               <div>
@@ -463,7 +487,7 @@ const ForeignSchedulePage = ({
                           </td>
                           <td className="px-4 py-3 border-r text-right font-mono font-bold">
                             <span className={e.type === 'BUY' ? 'text-blue-600' : 'text-rose-500'}>
-                              {e.type === 'BUY' ? '+' : '-'} {formatUSD(e.usdAmount)}
+                              {e.type === 'BUY' ? '+' : '-'} {e.currency === 'USD' ? formatUSD(e.usdAmount) : `${(e.usdAmount || 0).toLocaleString()} ${e.currency}`}
                             </span>
                           </td>
                           <td className="px-6 py-3 border-r text-center font-mono font-black text-slate-900 bg-emerald-50/10">
