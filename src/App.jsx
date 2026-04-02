@@ -210,8 +210,12 @@ const App = () => {
           const section = entry.entity.includes('컴포즈') ? 'compose' : 'smart';
           const masterList = section === 'compose' ? composeAccounts : smartAccounts;
           
-          // 계좌 번호(account) 기준으로 기존 계좌 검색
-          const existingAccount = masterList.find(a => String(a.no) === String(entry.account));
+          // 계좌 번호(account) + 통화(currency) 기준으로 기존 계좌 검색
+          const entryCurrency = entry.currency || 'KRW';
+          const existingAccount = masterList.find(a => 
+            String(a.no) === String(entry.account) && 
+            (a.currency || (a.isUSD ? 'USD' : 'KRW')) === entryCurrency
+          );
           
           if (!existingAccount) {
             // 1. 신규 계좌 자동 등록
@@ -225,7 +229,8 @@ const App = () => {
               withdraw: 0,
               internal: 0,
               final: 0,
-              isUSD: entry.currency === 'USD'
+              currency: entryCurrency,
+              isUSD: entryCurrency === 'USD'
             });
           } else if (entry.nickname && existingAccount.type !== entry.nickname) {
             // 2. 기존 계좌 별칭(Type) 동기화 (엑셀 내용이 더 최신이라고 가정)

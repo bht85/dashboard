@@ -9,15 +9,11 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   const [isRawDataOpen, setIsRawDataOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
 
-  // --- 마스터 계좌 기반 통화 판별 로직 (데이터 정합성 보장) ---
-  const usdAccountSet = new Set([
-    ...masterCompose.filter(a => a.isUSD).map(a => String(a.no).replace(/[^0-9]/g, '')),
-    ...masterSmart.filter(a => a.isUSD).map(a => String(a.no).replace(/[^0-9]/g, ''))
-  ]);
-
-  const checkIsUSD = (accountNo) => {
-    if (!accountNo) return false;
-    return usdAccountSet.has(String(accountNo).replace(/[^0-9]/g, ''));
+  const getAccountCurrency = (accountNo, fallback = 'KRW') => {
+    if (!accountNo) return fallback;
+    const cleanNo = String(accountNo).replace(/[^0-9]/g, '');
+    const master = [...masterCompose, ...masterSmart].find(a => String(a.no).replace(/[^0-9]/g, '') === cleanNo);
+    return master?.currency || (master?.isUSD ? 'USD' : fallback);
   };
 
   // --- 모든 자사 계좌번호 Set 정규화 (보안 및 정합성 강화) ---
@@ -75,9 +71,12 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   const { status: baseStatus, isFinal, sourceDate } = getBaseStatus();
   const statusDetails = (baseStatus?.details || []).filter(d => !isExcludedAccount(d));
 
-  // --- 계좌 중복 제거 로직 (동일 계좌번호가 여러 행일 경우 합산) ---
+  // --- 계좌 중복 제거 로직 (동일 계좌번호 + 통화가 여러 행일 경우 합산) ---
   const deduplicatedStatusDetails = Object.values(statusDetails.reduce((acc, d) => {
-    const key = String(d.account).replace(/[^0-9]/g, '');
+    const accNo = String(d.account).replace(/[^0-9]/g, '');
+    const currency = d.currency || 'KRW';
+    const key = `${accNo}_${currency}`;
+    
     if (!acc[key]) {
       acc[key] = { ...d };
     } else {
@@ -95,7 +94,9 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
 
   // 엑셀 데이터를 테이블 형식으로 매핑하는 헬퍼
   const mapStatusToAccount = (d) => {
-    const isUSD = checkIsUSD(d.account);
+    const currency = d.currency || 'KRW';
+    const isUSD = currency === 'USD';
+
     if (isFinal) {
       // 확정 리포트 모드: 업로드된 수치 그대로 표시. 
       // 만약 엑셀 양식 문제로 입출금액이 0이지만 잔액이 변동되었다면 차액을 통해 입출금액을 역산하여 보정 (외화 계좌 대응)
@@ -117,6 +118,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
         withdraw: finalWithdrawals,
         internal: finalDeposits,
         final: d.totalBalance,
+        currency,
         isUSD,
         note: d.nickname || d.bank
       };
@@ -143,6 +145,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
         withdraw: todayWithdrawSum,
         internal: todayInflowSum,
         final: d.totalBalance - todayWithdrawSum + todayInflowSum,
+        currency,
         isUSD,
         note: d.nickname || d.bank
       };

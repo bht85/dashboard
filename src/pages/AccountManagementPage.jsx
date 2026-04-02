@@ -7,14 +7,13 @@ const AccountManagementPage = ({ composeAccounts, smartAccounts, onAddAccount, o
     section: 'compose',
     bank: '',
     no: '',
-    type: '일반',
-    isUSD: false,
+    type: '일괄',
+    currency: 'KRW',
   });
 
-
   const handleChange = (e) => {
-    const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
-    setFormData({ ...formData, [e.target.name]: value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleAdd = async (e) => {
@@ -30,7 +29,8 @@ const AccountManagementPage = ({ composeAccounts, smartAccounts, onAddAccount, o
       internal: 0,
       final: 0,
       bank: formData.bank,
-      isUSD: formData.isUSD,
+      currency: formData.currency,
+      isUSD: formData.currency === 'USD',
     };
 
     await onAddAccount(formData.section, newAccount);
@@ -40,7 +40,7 @@ const AccountManagementPage = ({ composeAccounts, smartAccounts, onAddAccount, o
       bank: '',
       no: '',
       type: '일반',
-      isUSD: false,
+      currency: 'KRW',
     });
   };
 
@@ -67,20 +67,29 @@ const AccountManagementPage = ({ composeAccounts, smartAccounts, onAddAccount, o
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {accounts.map((acc) => (
-              <tr key={acc.id} className="hover:bg-slate-50/50">
-                <td className="px-6 py-3 font-medium text-slate-700">{acc.bank}</td>
-                <td className="px-6 py-3 font-mono text-slate-500">{acc.no}</td>
-                <td className="px-6 py-3 text-slate-600">
-                  {acc.type} {acc.isUSD && <span className="ml-1 text-[10px] bg-emerald-100 text-emerald-700 font-bold px-1.5 py-0.5 rounded">USD</span>}
-                </td>
-                <td className="px-6 py-3 text-center">
-                  <button onClick={() => handleDelete(acc.id, section)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {accounts.map((acc) => {
+              const currency = acc.currency || (acc.isUSD ? 'USD' : 'KRW');
+              const currencyColor = 
+                currency === 'USD' ? 'bg-emerald-100 text-emerald-700' :
+                currency === 'EUR' ? 'bg-indigo-100 text-indigo-700' :
+                currency === 'JPY' ? 'bg-rose-100 text-rose-700' :
+                'bg-slate-100 text-slate-700';
+
+              return (
+                <tr key={acc.id} className="hover:bg-slate-50/50">
+                  <td className="px-6 py-3 font-medium text-slate-700">{acc.bank}</td>
+                  <td className="px-6 py-3 font-mono text-slate-500">{acc.no}</td>
+                  <td className="px-6 py-3 text-slate-600">
+                    {acc.type} <span className={`ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${currencyColor}`}>{currency}</span>
+                  </td>
+                  <td className="px-6 py-3 text-center">
+                    <button onClick={() => handleDelete(acc.id, section)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
             {accounts.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-6 py-8 text-center text-slate-400 text-xs">등록된 계좌가 없습니다.</td>
@@ -123,11 +132,14 @@ const AccountManagementPage = ({ composeAccounts, smartAccounts, onAddAccount, o
             <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">계좌번호</label>
             <input type="text" name="no" value={formData.no} onChange={handleChange} placeholder="ex) 102-910000-00000" className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500" required />
           </div>
-          <div className="md:col-span-3 flex items-center">
-            <label className="flex items-center gap-2 cursor-pointer text-sm font-bold text-slate-600 border border-slate-200 rounded-lg p-3 bg-slate-50 hover:bg-slate-100 transition-colors w-fit">
-              <input type="checkbox" name="isUSD" checked={formData.isUSD} onChange={handleChange} className="w-4 h-4 text-indigo-600 rounded bg-white border-slate-300 focus:ring-indigo-500" />
-              외화(USD) 계좌 여부
-            </label>
+          <div className="md:col-span-1">
+            <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">통화(Currency)</label>
+            <select name="currency" value={formData.currency} onChange={handleChange} className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="KRW">KRW (원화)</option>
+              <option value="USD">USD (달러)</option>
+              <option value="EUR">EUR (유로)</option>
+              <option value="JPY">JPY (엔화)</option>
+            </select>
           </div>
           <div className="md:col-span-1 flex items-end">
             <button type="submit" className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition shadow-md shadow-indigo-100 flex items-center justify-center gap-1.5 focus:scale-[0.98]">
