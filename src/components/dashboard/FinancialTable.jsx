@@ -1,5 +1,5 @@
 import React from 'react';
-import { formatKRW, formatUSD } from '../../utils/formatters';
+import { formatKRW, formatUSD, formatEUR, formatJPY, formatForeign } from '../../utils/formatters';
 
 const FinancialTable = ({ title, accounts, totals, icon: Icon }) => (
   <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm mb-8">
