@@ -57,8 +57,8 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
             if (selectedEntity === 'ALL') {
               if (i.entity.includes('스마트') || i.group === '내부' || i.nickname.includes('내부')) return s;
             } else {
-              // 특정 법인 보기일 때는 진짜 '내부'라고 명시된 경우만 제외 (다른 법인에서 들어온 돈은 유입으로 인정)
-              if (i.group === '내부' || (i.nickname && i.nickname.includes('내부') && !i.nickname.includes('환전'))) return s;
+              // 진짜 '내부'라고 명시되거나 '환전' 내역인 경우 모두 제외 (자산의 총합에는 변동이 없는 내부 이동이므로)
+              if (i.group === '내부' || (i.nickname && (i.nickname.includes('내부') || i.nickname.includes('환전')))) return s;
             }
           }
 
@@ -75,8 +75,8 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
             if (selectedEntity === 'ALL') {
               if (i.group === '내부' || i.nickname.includes('내부')) return s;
             } else {
-              // 특정 법인 보기일 때는 '내부' 계좌이동만 제외
-              if (i.group === '내부' || (i.nickname && i.nickname.includes('내부') && !i.nickname.includes('환전'))) return s;
+              // '내부' 계좌이동 및 '환전' 내역 제외
+              if (i.group === '내부' || (i.nickname && (i.nickname.includes('내부') || i.nickname.includes('환전')))) return s;
             }
           }
 
@@ -181,7 +181,7 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
           if (selectedEntity === 'ALL') {
             if (i.entity.includes('스마트') || i.group === '내부' || i.nickname.includes('내부')) return s;
           } else {
-            if (i.group === '내부' || (i.nickname && i.nickname.includes('내부') && !i.nickname.includes('환전'))) return s;
+            if (i.group === '내부' || (i.nickname && (i.nickname.includes('내부') || i.nickname.includes('환전')))) return s;
           }
         }
         const isUSD = i.currency === 'USD' || i.isUSD;
@@ -194,7 +194,7 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
           if (selectedEntity === 'ALL') {
             if (i.group === '내부' || i.nickname.includes('내부')) return s;
           } else {
-            if (i.group === '내부' || (i.nickname && i.nickname.includes('내부') && !i.nickname.includes('환전'))) return s;
+            if (i.group === '내부' || (i.nickname && (i.nickname.includes('내부') || i.nickname.includes('환전')))) return s;
           }
         }
         const isUSD = i.currency === 'USD' || i.isUSD;
