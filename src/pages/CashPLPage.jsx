@@ -343,14 +343,29 @@ const CashPLPage = ({
     // 이 현상은 '기록된 환율'과 '현재 대시보드 환율'의 차이로 인해 발생합니다.
     const getFXStats = (entityName) => {
       const entityFX = monthFX.filter(e => e.section === entityName || (!e.section && entityName === '스마트팩토리'));
-      const krwOut = entityFX.reduce((sum, e) => sum + (e.krwAmount || 0), 0);
-      const usdIn_Global = entityFX.reduce((sum, e) => sum + (e.usdAmount * exchangeRate), 0);
-      return { krwOut, usdIn_Global };
+      
+      // BUY: KRW Out, USD In (Global rate used for USD In)
+      // SELL: USD Out, KRW In (Global rate used for USD Out)
+      let totalOut_KRW_Equivalent = 0;
+      let totalIn_KRW_Equivalent = 0;
+
+      entityFX.forEach(e => {
+        const isSell = e.type === 'SELL';
+        if (isSell) {
+          totalOut_KRW_Equivalent += (e.usdAmount || 0) * exchangeRate; // USD 지출 (글로벌 환율 적용)
+          totalIn_KRW_Equivalent += (e.krwAmount || 0);               // KRW 입금 (실제 금액)
+        } else {
+          totalOut_KRW_Equivalent += (e.krwAmount || 0);               // KRW 지출 (실제 금액)
+          totalIn_KRW_Equivalent += (e.usdAmount || 0) * exchangeRate; // USD 입금 (글로벌 환율 적용)
+        }
+      });
+
+      return { totalOut_KRW_Equivalent, totalIn_KRW_Equivalent };
     };
     
     // 외화 환전은 내부 자금 이동이므로 양쪽 모두 내부 거래로 기록 (필요 시 개별 entity에 할당)
-    stats['스마트팩토리'].knownFX = getFXStats('스마트팩토리').krwOut;
-    stats['컴포즈커피'].knownFX = getFXStats('컴포즈커피').krwOut;
+    stats['스마트팩토리'].knownFX = getFXStats('스마트팩토리').totalOut_KRW_Equivalent;
+    stats['컴포즈커피'].knownFX = getFXStats('컴포즈커피').totalOut_KRW_Equivalent;
 
     // 1. 엑셀 데이터 합산 (통화 환산 적용)
     Object.entries(dailyStatuses).forEach(([date, status]) => {
@@ -404,9 +419,9 @@ const CashPLPage = ({
       const fx = getFXStats(entity);
       
       // 해당 월의 외화 환전 집계액을 수기 입출금에 합산하여 내부거래 판별 정확도 향상
-      // USD 입금액 상쇄는 대시보드 기준 환율(totalFX_USD_KRW_Global)을 사용하여 환율차에 의한 매출 왜곡 방지
-      const effectiveManualIn = s.manualIn + fx.usdIn_Global;
-      const effectiveManualOut = s.manualOut + fx.krwOut;
+      // USD가 포함된 입출금은 대시보드 기준 환율을 사용하여 환율차에 의한 매출 왜곡 방지
+      const effectiveManualIn = s.manualIn + fx.totalIn_KRW_Equivalent;
+      const effectiveManualOut = s.manualOut + fx.totalOut_KRW_Equivalent;
 
       const unrecordedIn = Math.max(0, s.excelIn - effectiveManualIn);
       const unrecordedOut = Math.max(0, s.excelOut - effectiveManualOut);

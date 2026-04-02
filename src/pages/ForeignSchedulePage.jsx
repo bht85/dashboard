@@ -35,6 +35,7 @@ const ForeignSchedulePage = ({
     bank: '',
     desc: '',
     section: '스마트팩토리', // Added entity field
+    type: 'BUY',           // BUY (KRW->USD), SELL (USD->KRW)
   });
 
   const handleScheduleChange = (e) => {
@@ -90,6 +91,7 @@ const ForeignSchedulePage = ({
       bank: exchangeData.bank,
       desc: exchangeData.desc,
       section: exchangeData.section, // Save section
+      type: exchangeData.type,       // Save type
     };
 
     await onUpdateExchangeResult(newExchange);
@@ -101,6 +103,7 @@ const ForeignSchedulePage = ({
       bank: '',
       desc: '',
       section: '스마트팩토리',
+      type: 'BUY',
     });
   };
 
@@ -328,15 +331,22 @@ const ForeignSchedulePage = ({
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">환전일자</label>
                 <input type="date" name="date" value={exchangeData.date} onChange={handleExchangeChange} className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" required />
               </div>
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">거래 유형</label>
+                <select name="type" value={exchangeData.type} onChange={handleExchangeChange} className="w-full text-sm font-black bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
+                  <option value="BUY">KRW → USD (매입)</option>
+                  <option value="SELL">USD → KRW (매각)</option>
+                </select>
+              </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">매입금액 (KRW)</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{exchangeData.type === 'BUY' ? '지출금액 (KRW)' : '입금금액 (KRW)'}</label>
                 <input type="number" name="krwAmount" value={exchangeData.krwAmount} onChange={handleExchangeChange} placeholder="ex) 1500000" className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" required />
               </div>
               <div className="flex items-center justify-center pt-5">
-                <ArrowRightLeft className="w-4 h-4 text-slate-300" />
+                {exchangeData.type === 'BUY' ? <ArrowRightLeft className="w-4 h-4 text-emerald-500" /> : <ArrowRightLeft className="w-4 h-4 text-rose-500 rotate-180" />}
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">환전금액 (USD)</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{exchangeData.type === 'BUY' ? '입금금액 (USD)' : '지출금액 (USD)'}</label>
                 <input type="number" step="0.01" name="usdAmount" value={exchangeData.usdAmount} onChange={handleExchangeChange} placeholder="ex) 1000.00" className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" required />
               </div>
               <div>
@@ -446,8 +456,16 @@ const ForeignSchedulePage = ({
                       ) : (
                         <>
                           <td className="px-4 py-3 border-r font-bold">{e.date}</td>
-                          <td className="px-4 py-3 border-r text-right font-mono font-bold">{formatKRW(e.krwAmount)}</td>
-                          <td className="px-4 py-3 border-r text-right font-mono font-bold text-blue-600">{formatUSD(e.usdAmount)}</td>
+                          <td className="px-4 py-3 border-r text-right font-mono font-bold">
+                            <span className={e.type === 'SELL' ? 'text-emerald-600' : 'text-slate-700'}>
+                              {e.type === 'SELL' ? '+' : '-'} {formatKRW(e.krwAmount)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 border-r text-right font-mono font-bold">
+                            <span className={e.type === 'BUY' ? 'text-blue-600' : 'text-rose-500'}>
+                              {e.type === 'BUY' ? '+' : '-'} {formatUSD(e.usdAmount)}
+                            </span>
+                          </td>
                           <td className="px-6 py-3 border-r text-center font-mono font-black text-slate-900 bg-emerald-50/10">
                             {e.exchangeRate?.toFixed(2)}
                           </td>
