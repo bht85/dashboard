@@ -370,7 +370,7 @@ const ForeignSchedulePage = ({
                 {exchangeData.type === 'BUY' ? <ArrowRightLeft className="w-4 h-4 text-emerald-500" /> : <ArrowRightLeft className="w-4 h-4 text-rose-500 rotate-180" />}
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{exchangeData.type === 'BUY' ? `입금금액 (${exchangeData.currency})` : `지출금액 (${exchangeData.currency})`}</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">{exchangeData.type === 'BUY' ? '입금금액 (외화)' : '지출금액 (외화)'}</label>
                 <input type="number" step="0.01" name="usdAmount" value={exchangeData.usdAmount} onChange={handleExchangeChange} placeholder="ex) 1000.00" className="w-full text-sm font-bold bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500" required />
               </div>
               <div>
