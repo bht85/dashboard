@@ -432,9 +432,10 @@ const ForeignSchedulePage = ({
                 <thead className="bg-slate-50 text-slate-500 font-bold border-b sticky top-0 z-10">
                   <tr>
                     <th className="w-[10%] px-4 py-3 border-r">환전 일자</th>
-                    <th className="w-[10%] px-4 py-3 border-r text-center">통화</th>
-                    <th className="w-[18%] px-4 py-3 border-r text-right">매입 금액 (KRW)</th>
-                    <th className="w-[18%] px-4 py-3 border-r text-right">환전 금액 (외화)</th>
+                    <th className="w-[8%] px-4 py-3 border-r text-center">유형</th>
+                    <th className="w-[8%] px-4 py-3 border-r text-center">통화</th>
+                    <th className="w-[17%] px-4 py-3 border-r text-right">매입 금액 (KRW)</th>
+                    <th className="w-[17%] px-4 py-3 border-r text-right">환전 금액 (외화)</th>
                     <th className="w-[10%] px-6 py-3 border-r text-center bg-emerald-50/30 text-emerald-600">적용 환율</th>
                     <th className="w-[10%] px-4 py-3 border-r text-center">법인</th>
                     <th className="px-4 py-3">내용 / 비고</th>
@@ -442,56 +443,63 @@ const ForeignSchedulePage = ({
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
                   {filteredExchangeResults.map((e) => {
-                    const rawType = (e.type || '').toUpperCase();
-                    // 타입이 명시되어 있으면 그걸 따르고, 없으면 부호를 보고 판단
-                    const isBuy = rawType === 'BUY' || (!rawType && Number(e.krwAmount) < 0);
-                    const isSell = rawType === 'SELL' || (!rawType && Number(e.krwAmount) > 0);
+                    const rawType = (e.type || 'BUY').toUpperCase();
+                    const isBuy = rawType === 'BUY';
+                    const isSell = rawType === 'SELL';
                     const displayCurrency = e.currency || 'USD';
+                    const krw = Number(e.krwAmount || 0);
 
                     return (
                       <tr key={e.id} className={`hover:bg-slate-50 group transition-colors ${editingId === e.id ? 'bg-indigo-50/20' : ''}`}>
                         {editingId === e.id ? (
                           <>
                             <td className="px-4 py-2 border-r">
-                              <input type="date" name="date" value={editData.date} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100" />
+                              <input type="date" name="date" value={editData.date} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1 py-1 outline-none ring-2 ring-indigo-100" />
                             </td>
                             <td className="px-4 py-2 border-r text-center">
-                              <select name="currency" value={editData.currency} onChange={handleEditChange} className="text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100">
+                              <select name="type" value={editData.type} onChange={handleEditChange} className="text-[10px] font-bold border border-indigo-200 rounded px-1 py-1 outline-none w-full">
+                                <option value="BUY">매입</option>
+                                <option value="SELL">매각</option>
+                              </select>
+                            </td>
+                            <td className="px-4 py-2 border-r text-center">
+                              <select name="currency" value={editData.currency} onChange={handleEditChange} className="text-[10px] font-bold border border-indigo-200 rounded px-1 py-1 outline-none w-full font-mono font-black">
                                 <option value="USD">USD</option>
                                 <option value="EUR">EUR</option>
                                 <option value="JPY">JPY</option>
                               </select>
                             </td>
                             <td className="px-4 py-2 border-r text-right">
-                              <input type="number" name="krwAmount" value={editData.krwAmount} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none text-right ring-2 ring-indigo-100" />
+                              <input type="number" name="krwAmount" value={editData.krwAmount} onChange={handleEditChange} className="w-full text-[10px] font-bold border border-indigo-200 rounded px-1 py-1 outline-none text-right ring-2 ring-indigo-100" />
                             </td>
                             <td className="px-4 py-2 border-r text-right">
-                              <input type="number" step="0.01" name="usdAmount" value={editData.usdAmount} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none text-right ring-2 ring-indigo-100" />
+                              <input type="number" step="0.01" name="usdAmount" value={editData.usdAmount} onChange={handleEditChange} className="w-full text-[10px] font-bold border border-indigo-200 rounded px-1 py-1 outline-none text-right ring-2 ring-indigo-100" />
                             </td>
                             <td className="px-6 py-2 border-r text-center font-black text-emerald-600">
                               {(Math.abs(Number(editData.krwAmount)) / (Math.abs(Number(editData.usdAmount)) || 1)).toFixed(2)}
                             </td>
                             <td className="px-4 py-2 border-r">
-                               <select name="section" value={editData.section} onChange={handleEditChange} className="text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100 w-full">
+                               <select name="section" value={editData.section} onChange={handleEditChange} className="text-[10px] font-bold border border-indigo-200 rounded px-1 py-1 outline-none w-full">
                                   <option value="컴포즈커피">컴포즈</option>
                                   <option value="스마트팩토리">스마트</option>
                                </select>
                             </td>
                             <td className="px-4 py-2 flex items-center justify-center gap-1.5 border-r">
-                               <input type="text" name="desc" value={editData.desc} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100" />
+                               <input type="text" name="desc" value={editData.desc} onChange={handleEditChange} className="w-full text-[10px] font-bold border border-indigo-200 rounded px-1 py-1 outline-none" />
                             </td>
                             <td className="px-4 py-2 text-center flex gap-1 justify-center">
-                              <button onClick={saveEdit} className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-all active:scale-95">
-                                <Check className="w-3.5 h-3.5" />
-                              </button>
-                              <button onClick={cancelEdit} className="p-1.5 bg-white text-slate-400 border border-slate-200 rounded-lg hover:text-red-500 hover:border-red-100 transition-all active:scale-95">
-                                <X className="w-3.5 h-3.5" />
-                              </button>
+                              <button onClick={saveEdit} className="p-1 px-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 shadow-sm transition-all active:scale-95 text-[9px] font-bold">저장</button>
+                              <button onClick={cancelEdit} className="p-1 px-1.5 bg-white text-slate-400 border border-slate-200 rounded hover:text-red-500 transition-all text-[9px]">취소</button>
                             </td>
                           </>
                         ) : (
                           <>
                             <td className="px-4 py-3 border-r font-bold">{e.date}</td>
+                            <td className="px-4 py-3 border-r text-center">
+                              <span className={`px-2 py-0.5 rounded-[4px] text-[9px] font-black ${isBuy ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+                                {isBuy ? '매입' : '매각'}
+                              </span>
+                            </td>
                             <td className="px-4 py-3 border-r text-center font-black text-indigo-500">{displayCurrency}</td>
                             <td className="px-4 py-3 border-r text-right font-mono font-bold">
                               <span className={isSell ? 'text-emerald-600' : 'text-slate-700'}>
