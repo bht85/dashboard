@@ -189,10 +189,15 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   const composeSums = calculateSeparatedSums(composeWithdrawals);
   const smartSums = calculateSeparatedSums(smartWithdrawals);
 
-  // 3. 외화 송금 합계 계산 (송금 완료(집행)되지 않은 모든 건 합산)
+  // 3. 외화 송금 합계 계산 (통화별 그룹화)
   const pendingFXSchedules = fxSchedule.filter(item => item.status !== '송금 완료(집행)');
-  const usdTotal = pendingFXSchedules.reduce((sum, item) => sum + item.amount, 0);
-  const krwEquivalent = usdTotal * exchangeRate;
+  
+  const fxTotals = pendingFXSchedules.reduce((acc, item) => {
+    const cur = (item.currency || 'USD').toUpperCase();
+    if (!acc[cur]) acc[cur] = 0;
+    acc[cur] += item.amount;
+    return acc;
+  }, {});
 
   const getEndOfWeek = (dateString) => {
     const d = new Date(dateString);
@@ -202,15 +207,42 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
     return d.toISOString().split('T')[0];
   };
   const endOfWeekDate = getEndOfWeek(selectedDate);
-  const usdThisWeek = pendingFXSchedules
-    .filter(item => item.date >= selectedDate && item.date <= endOfWeekDate)
-    .reduce((sum, item) => sum + item.amount, 0);
-  const krwThisWeekEquivalent = usdThisWeek * exchangeRate;
   
+  const fxThisWeek = pendingFXSchedules
+    .filter(item => item.date >= selectedDate && item.date <= endOfWeekDate)
+    .reduce((acc, item) => {
+      const cur = (item.currency || 'USD').toUpperCase();
+      if (!acc[cur]) acc[cur] = 0;
+      acc[cur] += item.amount;
+      return acc;
+    }, {});
+  
+  // 환산 총액 (원화) - 금주분
+  const krwThisWeekEquivalent = Object.entries(fxThisWeek).reduce((sum, [cur, amt]) => {
+     // 환율 정보가 USD 위주이므로, EUR/JPY는 임시 가중치 부여 (실제 데이터에 환율 필드 있으면 좋음)
+     const rate = cur === 'EUR' ? exchangeRate * 1.08 : (cur === 'JPY' ? exchangeRate / 9.5 : exchangeRate);
+     return sum + (amt * rate);
+  }, 0);
+
+  const krwTotalEquivalent = Object.entries(fxTotals).reduce((sum, [cur, amt]) => {
+     const rate = cur === 'EUR' ? exchangeRate * 1.08 : (cur === 'JPY' ? exchangeRate / 9.5 : exchangeRate);
+     return sum + (amt * rate);
+  }, 0);
+
   // ─── 환전 필요액 계산 (금주 필요액 - 현재 보유 외화) ─────────────────────
+  // USD 위주로 우선 계산 (가장 빈번하므로)
   const currentUsdBalance = composeTotal.usd.final + smartTotal.usd.final;
-  const exchangeDeficitUsd = Math.max(0, usdThisWeek - currentUsdBalance);
-  const krwDeficitEquivalent = exchangeDeficitUsd * exchangeRate;
+  const exchangeDeficitUsd = Math.max(0, (fxThisWeek.USD || 0) - currentUsdBalance);
+  const krwDeficitEquivalentUsd = exchangeDeficitUsd * exchangeRate;
+  
+  // EUR/JPY도 부족분 합산
+  const currentEurBalance = (composeTotal.eur?.final || 0) + (smartTotal.eur?.final || 0);
+  const deficitEur = Math.max(0, (fxThisWeek.EUR || 0) - currentEurBalance);
+  
+  const currentJpyBalance = (composeTotal.jpy?.final || 0) + (smartTotal.jpy?.final || 0);
+  const deficitJpy = Math.max(0, (fxThisWeek.JPY || 0) - currentJpyBalance);
+
+  const totalKrwDeficit = krwDeficitEquivalentUsd + (deficitEur * exchangeRate * 1.08) + (deficitJpy * exchangeRate / 9.5);
 
   return (
     <div className="space-y-8 pb-12 animate-in fade-in duration-700">
@@ -264,8 +296,18 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                 {formatKRW(composeTotal.krw.balance + smartTotal.krw.balance)}
               </h4>
               {(composeTotal.usd.balance + smartTotal.usd.balance) !== 0 && (
-                <p className="text-[11px] font-black text-blue-500 font-mono mt-0.5 tabular-nums">
+                <p className="text-[11px] font-black text-blue-500 font-mono mt-0.5 tabular-nums leading-none">
                   {formatUSD(composeTotal.usd.balance + smartTotal.usd.balance)} (USD)
+                </p>
+              )}
+              {(composeTotal.eur.balance + smartTotal.eur.balance) !== 0 && (
+                <p className="text-[11px] font-black text-emerald-500 font-mono mt-1 tabular-nums leading-none">
+                  {formatEUR(composeTotal.eur.balance + smartTotal.eur.balance)} (EUR)
+                </p>
+              )}
+              {(composeTotal.jpy.balance + smartTotal.jpy.balance) !== 0 && (
+                <p className="text-[11px] font-black text-purple-500 font-mono mt-1 tabular-nums leading-none">
+                  {formatJPY(composeTotal.jpy.balance + smartTotal.jpy.balance)} (JPY)
                 </p>
               )}
             </div>
@@ -279,10 +321,11 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                 {formatKRW((composeSums.krwTotal - composeSums.krwInternal) + (smartSums.krwTotal - smartSums.krwInternal))}
               </h4>
               {((composeSums.usdTotal - composeSums.usdInternal) + (smartSums.usdTotal - smartSums.usdInternal)) !== 0 && (
-                <p className="text-[11px] font-black text-blue-600 font-mono mt-0.5 tabular-nums">
+                <p className="text-[11px] font-black text-blue-600 font-mono mt-0.5 tabular-nums leading-none">
                    {formatUSD((composeSums.usdTotal - composeSums.usdInternal) + (smartSums.usdTotal - smartSums.usdInternal))} (USD)
                 </p>
               )}
+              {/* EUR/JPY 지출 건이 있다면 여기에 추가 (현재 calculateSeparatedSums는 USD만 지원하므로 우선 USD만 노출) */}
             </div>
             <div className="p-3 bg-red-50 rounded-xl text-red-600 ml-2"><TrendingUp className="w-5 h-5" /></div>
           </div>
@@ -294,8 +337,18 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
                 {formatKRW(composeTotal.krw.final + smartTotal.krw.final)}
               </h4>
               {(composeTotal.usd.final + smartTotal.usd.final) !== 0 && (
-                <p className="text-[11px] font-black text-emerald-300 font-mono mt-0.5 tabular-nums">
+                <p className="text-[11px] font-black text-blue-200 font-mono mt-0.5 tabular-nums leading-none">
                   {formatUSD(composeTotal.usd.final + smartTotal.usd.final)} (USD)
+                </p>
+              )}
+              {(composeTotal.eur.final + smartTotal.eur.final) !== 0 && (
+                <p className="text-[11px] font-black text-emerald-200 font-mono mt-1 tabular-nums leading-none">
+                  {formatEUR(composeTotal.eur.final + smartTotal.eur.final)} (EUR)
+                </p>
+              )}
+              {(composeTotal.jpy.final + smartTotal.jpy.final) !== 0 && (
+                <p className="text-[11px] font-black text-purple-200 font-mono mt-1 tabular-nums leading-none">
+                  {formatJPY(composeTotal.jpy.final + smartTotal.jpy.final)} (JPY)
                 </p>
               )}
             </div>
@@ -305,38 +358,44 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
           <div className="bg-slate-900 p-5 rounded-2xl shadow-xl flex items-center justify-between col-span-1 lg:col-span-2 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-8 opacity-10"><Globe className="w-24 h-24 text-white" /></div>
             <div className="z-10">
-              <p className="text-[10px] text-slate-500 font-bold uppercase mb-2 tracking-widest">외화 송금 대기 (USD)</p>
-                <div>
-                  <p className="text-[10px] text-slate-400 mb-0.5">금주 필요액</p>
-                  <h4 className="text-xl font-bold text-emerald-400 font-mono tracking-tight">{formatUSD(usdThisWeek)}</h4>
+              <p className="text-[10px] text-slate-500 font-bold uppercase mb-2 tracking-widest">외화 송금 대기 (Full)</p>
+                <div className="space-y-1">
+                  {Object.entries(fxThisWeek).sort().map(([cur, amt]) => (
+                    <div key={cur}>
+                      <p className="text-[9px] text-slate-400 mb-0">{cur} 금주 필요</p>
+                      <h4 className={`text-lg font-bold font-mono tracking-tight ${cur === 'USD' ? 'text-emerald-400' : (cur === 'EUR' ? 'text-blue-400' : 'text-purple-400')}`}>
+                        {cur === 'USD' ? formatUSD(amt) : (cur === 'EUR' ? formatEUR(amt) : formatJPY(amt))}
+                      </h4>
+                    </div>
+                  ))}
                 </div>
                 <div className="mt-2 border-l-2 border-amber-500 pl-3">
-                  <p className="text-[10px] text-amber-500 font-black mb-0.5 uppercase tracking-tighter">환전 필요액 (Deficit)</p>
+                  <p className="text-[10px] text-amber-500 font-black mb-0.5 uppercase tracking-tighter">실질 환전 필요액 (USD 기준)</p>
                   <h4 className="text-lg font-black text-white font-mono tracking-tight">
                     {exchangeDeficitUsd > 0 ? formatUSD(exchangeDeficitUsd) : '$0.00'}
                   </h4>
                 </div>
               <div className="mt-2 text-slate-400">
-                <span className="text-[10px] mr-2">총 필요액</span>
-                <span className="text-sm font-bold font-mono text-emerald-600 border-b border-slate-700/50 pb-0.5">{formatUSD(usdTotal)}</span>
+                <span className="text-[9px] mr-2">총 대기 (전체)</span>
+                <span className="text-xs font-bold font-mono text-emerald-600 border-b border-slate-700/50 pb-0.5">약 {(krwTotalEquivalent / 100000000).toFixed(1)} 억원</span>
               </div>
             </div>
             <div className="text-right flex flex-col items-end z-10">
               <div className="flex items-center gap-2 mb-2">
-                <span className="bg-white/10 px-1.5 py-0.5 rounded text-[8px] font-bold text-slate-400">Rate: {formatKRW(exchangeRate)}</span>
+                <span className="bg-white/10 px-1.5 py-0.5 rounded text-[8px] font-bold text-slate-400">USD Rate: {formatKRW(exchangeRate)}</span>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">환전 필요 예상액</p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-slate-400 mb-0.5">금주 예상액 (Full)</p>
+                <p className="text-[10px] text-slate-400 mb-0.5">금주 예상액 (원화환산)</p>
                 <h4 className="text-xl font-bold text-slate-500 font-mono tracking-tighter">약 {(krwThisWeekEquivalent / 100000000).toFixed(1)} 억원</h4>
               </div>
               <div className="mt-2 text-right">
-                <p className="text-[10px] text-amber-500 font-black mb-0.5">실질 환전 필요액</p>
-                <h4 className="text-xl font-bold text-amber-400 font-mono tracking-tighter">약 {(krwDeficitEquivalent / 100000000).toFixed(2)} 억원</h4>
+                <p className="text-[10px] text-amber-500 font-black mb-0.5">USD 부족 필요액</p>
+                <h4 className="text-xl font-bold text-amber-400 font-mono tracking-tighter">약 {(krwDeficitEquivalentUsd / 100000000).toFixed(2)} 억원</h4>
               </div>
-              <div className="mt-2 text-right opacity-50">
-                <span className="text-[9px] text-slate-400 mr-2">총 필요액 한화</span>
-                <span className="text-xs font-bold font-mono text-slate-500 border-b border-slate-700/50 pb-0.5">약 {(krwEquivalent / 100000000).toFixed(1)} 억원</span>
+              <div className="mt-3 text-right opacity-80 border-t border-slate-800 pt-2">
+                <p className="text-[9px] text-slate-500 mb-0.5 tracking-tighter">타 통화(EUR/JPY) 부족분 포함 합계</p>
+                <h5 className="text-sm font-bold font-mono text-orange-400">약 {(totalKrwDeficit / 100000000).toFixed(2)} 억원</h5>
               </div>
             </div>
           </div>
