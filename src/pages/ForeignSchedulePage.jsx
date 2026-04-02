@@ -358,8 +358,8 @@ const ForeignSchedulePage = ({
               <div className="md:col-span-1">
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">거래 유형</label>
                 <select name="type" value={exchangeData.type} onChange={handleExchangeChange} className="w-full text-sm font-black bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-emerald-500">
-                  <option value="BUY">KRW → {exchangeData.currency} (매입)</option>
-                  <option value="SELL">{exchangeData.currency} → KRW (매각)</option>
+                  <option value="BUY">KRW → 외화 (매입)</option>
+                  <option value="SELL">외화 → KRW (매각)</option>
                 </select>
               </div>
               <div>
@@ -442,26 +442,65 @@ const ForeignSchedulePage = ({
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
                   {filteredExchangeResults.map((e) => {
-                    const rawType = (e.type || '').toUpperCase();
-                    const isSell = rawType === 'SELL';
-                    const isBuy = rawType === 'BUY' || (!rawType && e.krwAmount < 0); 
+                    const krw = Number(e.krwAmount || 0);
+                    // 원화가 마이너스(지출)면 외화 매입(+), 원화가 플러스(유입)면 외화 매표/매각(-)
+                    const isBuy = krw < 0;
+                    const isSell = krw > 0;
+                    const displayCurrency = e.currency || 'USD';
 
                     return (
                       <tr key={e.id} className={`hover:bg-slate-50 group transition-colors ${editingId === e.id ? 'bg-indigo-50/20' : ''}`}>
                         {editingId === e.id ? (
-                          <td className="px-4 py-2 border-r" colSpan={7}>편집 모드...</td>
+                          <>
+                            <td className="px-4 py-2 border-r">
+                              <input type="date" name="date" value={editData.date} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100" />
+                            </td>
+                            <td className="px-4 py-2 border-r text-center">
+                              <select name="currency" value={editData.currency} onChange={handleEditChange} className="text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100">
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                                <option value="JPY">JPY</option>
+                              </select>
+                            </td>
+                            <td className="px-4 py-2 border-r text-right">
+                              <input type="number" name="krwAmount" value={editData.krwAmount} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none text-right ring-2 ring-indigo-100" />
+                            </td>
+                            <td className="px-4 py-2 border-r text-right">
+                              <input type="number" step="0.01" name="usdAmount" value={editData.usdAmount} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none text-right ring-2 ring-indigo-100" />
+                            </td>
+                            <td className="px-6 py-2 border-r text-center font-black text-emerald-600">
+                              {(Math.abs(Number(editData.krwAmount)) / (Math.abs(Number(editData.usdAmount)) || 1)).toFixed(2)}
+                            </td>
+                            <td className="px-4 py-2 border-r">
+                               <select name="section" value={editData.section} onChange={handleEditChange} className="text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100 w-full">
+                                  <option value="컴포즈커피">컴포즈</option>
+                                  <option value="스마트팩토리">스마트</option>
+                               </select>
+                            </td>
+                            <td className="px-4 py-2 flex items-center justify-center gap-1.5 border-r">
+                               <input type="text" name="desc" value={editData.desc} onChange={handleEditChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1.5 py-1 outline-none ring-2 ring-indigo-100" />
+                            </td>
+                            <td className="px-4 py-2 text-center flex gap-1 justify-center">
+                              <button onClick={saveEdit} className="p-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-sm transition-all active:scale-95">
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                              <button onClick={cancelEdit} className="p-1.5 bg-white text-slate-400 border border-slate-200 rounded-lg hover:text-red-500 hover:border-red-100 transition-all active:scale-95">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </>
                         ) : (
                           <>
                             <td className="px-4 py-3 border-r font-bold">{e.date}</td>
-                            <td className="px-4 py-3 border-r text-center font-black text-indigo-500">{e.currency || 'USD'}</td>
+                            <td className="px-4 py-3 border-r text-center font-black text-indigo-500">{displayCurrency}</td>
                             <td className="px-4 py-3 border-r text-right font-mono font-bold">
                               <span className={isSell ? 'text-emerald-600' : 'text-slate-700'}>
-                                {isSell ? '+' : '-'} {formatKRW(Math.abs(e.krwAmount || 0))}
+                                {isSell ? '+' : '-'} {formatKRW(Math.abs(krw))}
                               </span>
                             </td>
                             <td className="px-4 py-3 border-r text-right font-mono font-bold">
                               <span className={isBuy ? 'text-blue-600' : 'text-rose-500'}>
-                                {isBuy ? '+' : '-'} {(e.currency || 'USD') === 'USD' ? formatUSD(Math.abs(e.usdAmount || 0)) : `${Math.abs(e.usdAmount || 0).toLocaleString()} ${e.currency || 'USD'}`}
+                                {isBuy ? '+' : '-'} {displayCurrency === 'USD' ? formatUSD(Math.abs(e.usdAmount || 0)) : `${Math.abs(e.usdAmount || 0).toLocaleString()} ${displayCurrency}`}
                               </span>
                             </td>
                             <td className="px-6 py-3 border-r text-center font-mono font-black text-slate-900 bg-emerald-50/10">
@@ -474,9 +513,14 @@ const ForeignSchedulePage = ({
                             </td>
                             <td className="px-4 py-3 text-[10px] text-slate-400 break-words leading-relaxed" title={e.desc}>{e.desc}</td>
                             <td className="px-4 py-3 text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button onClick={() => onDeleteExchangeResult(e.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="flex items-center justify-center gap-1">
+                                <button onClick={() => startEdit(e)} className="text-slate-300 hover:text-indigo-500 transition-colors p-1">
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => onDeleteExchangeResult(e.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </td>
                           </>
                         )}
