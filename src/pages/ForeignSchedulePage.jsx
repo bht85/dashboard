@@ -481,13 +481,13 @@ const ForeignSchedulePage = ({
                         <>
                           <td className="px-4 py-3 border-r font-bold">{e.date}</td>
                           <td className="px-4 py-3 border-r text-right font-mono font-bold">
-                            <span className={e.type === 'SELL' ? 'text-emerald-600' : 'text-slate-700'}>
-                              {e.type === 'SELL' ? '+' : '-'} {formatKRW(e.krwAmount)}
+                            <span className={(e.type || '').toUpperCase() === 'SELL' ? 'text-emerald-600' : 'text-slate-700'}>
+                              {(e.type || '').toUpperCase() === 'SELL' ? '+' : '-'} {formatKRW(Math.abs(e.krwAmount || 0))}
                             </span>
                           </td>
                           <td className="px-4 py-3 border-r text-right font-mono font-bold">
-                            <span className={e.type === 'BUY' ? 'text-blue-600' : 'text-rose-500'}>
-                              {e.type === 'BUY' ? '+' : '-'} {e.currency === 'USD' ? formatUSD(e.usdAmount) : `${(e.usdAmount || 0).toLocaleString()} ${e.currency}`}
+                            <span className={(e.type || '').toUpperCase() === 'BUY' ? 'text-blue-600' : 'text-rose-500'}>
+                              {(e.type || '').toUpperCase() === 'BUY' ? '+' : '-'} {(e.currency || 'USD') === 'USD' ? formatUSD(Math.abs(e.usdAmount || 0)) : `${Math.abs(e.usdAmount || 0).toLocaleString()} ${e.currency || 'USD'}`}
                             </span>
                           </td>
                           <td className="px-6 py-3 border-r text-center font-mono font-black text-slate-900 bg-emerald-50/10">
@@ -529,16 +529,20 @@ const ForeignSchedulePage = ({
               <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-end gap-12 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)]">
                 <div className="flex flex-col items-end">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">당월 매입 총액 (KRW)</span>
-                  <span className="text-lg font-black text-slate-900 tabular-nums">{formatKRW(filteredExchangeResults.reduce((sum, e) => sum + e.krwAmount, 0))}</span>
+                  <span className="text-lg font-black text-slate-900 tabular-nums">
+                    {formatKRW(filteredExchangeResults.reduce((sum, e) => sum + Math.abs(e.krwAmount || 0), 0))}
+                  </span>
                 </div>
                 <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">당월 환전 총액 (USD)</span>
-                  <span className="text-lg font-black text-blue-600 tabular-nums">{formatUSD(filteredExchangeResults.reduce((sum, e) => sum + e.usdAmount, 0))}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">당월 환전 총액 (USD 외)</span>
+                  <span className="text-lg font-black text-blue-600 tabular-nums">
+                    {filteredExchangeResults.reduce((sum, e) => sum + Math.abs(e.usdAmount || 0), 0).toLocaleString()}
+                  </span>
                 </div>
                 <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-bold text-emerald-500/70 uppercase tracking-tighter mb-1">당월 평균 환율</span>
+                  <span className="text-[10px] font-bold text-emerald-500/70 uppercase tracking-tighter mb-1">당월 평균 환율 (KRW/Unit)</span>
                   <span className="text-lg font-black text-emerald-600 tabular-nums">
-                    {(filteredExchangeResults.reduce((sum, e) => sum + e.krwAmount, 0) / filteredExchangeResults.reduce((sum, e) => sum + e.usdAmount, 0)).toFixed(2)}
+                    {(filteredExchangeResults.reduce((sum, e) => sum + Math.abs(e.krwAmount || 0), 0) / (filteredExchangeResults.reduce((sum, e) => sum + Math.abs(e.usdAmount || 0), 0) || 1)).toFixed(2)}
                   </span>
                 </div>
               </div>
