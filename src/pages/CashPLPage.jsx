@@ -420,7 +420,52 @@ const CashPLPage = ({
     return results;
   }, [selectedMonth, dailyStatuses, withdrawals, exchangeRate, masterCompose, masterSmart, fxExchangeResults]);
 
-  // ─── 컴포즈 집계 ─────────────────────────────────────────────
+  // ─── 캐시 잔액 집계 로직 (Reconciliation) ──────────────────────────
+  const cashReconciliation = useMemo(() => {
+    // 1. 당월 총 입금/출금 합산 (모든 법인 합계)
+    const monthTotal = { deposits: 0, withdrawals: 0, balance: 0 };
+    
+    // 2. 기초 잔액 (전월 말 잔액) 찾기
+    const [year, month] = selectedMonth.split('-').map(Number);
+    const prevMonthDate = new Date(year, month - 2, 1); // JS Date month is 0-indexed
+    const prevMonthStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
+    
+    // 전월의 모든 날짜 중 가장 마지막 날짜를 찾아서 그날의 합산 잔액을 가져옴
+    const allDates = Object.keys(dailyStatuses).sort();
+    const prevMonthDates = allDates.filter(d => d.startsWith(prevMonthStr));
+    const lastDatePrevMonth = prevMonthDates[prevMonthDates.length - 1];
+    
+    let beginningBalance = 0;
+    if (lastDatePrevMonth && dailyStatuses[lastDatePrevMonth]?.details) {
+      dailyStatuses[lastDatePrevMonth].details.forEach(d => {
+        if (isExcludedAccount(d)) return;
+        const rate = (d.isUSD || d.currency === 'USD') ? exchangeRate : 1;
+        beginningBalance += (d.balance || 0) * rate;
+      });
+    }
+
+    // 3. 당월 입/출금 합산
+    Object.entries(dailyStatuses).forEach(([date, status]) => {
+      if (!date.startsWith(selectedMonth) || !status.details) return;
+      status.details.forEach(d => {
+        if (isExcludedAccount(d)) return;
+        const rate = (d.isUSD || d.currency === 'USD') ? exchangeRate : 1;
+        monthTotal.deposits += (d.deposits || 0) * rate;
+        monthTotal.withdrawals += (d.withdrawals || 0) * rate;
+      });
+    });
+
+    const endingBalance = beginningBalance + monthTotal.deposits - monthTotal.withdrawals;
+
+    return {
+      beginningBalance,
+      totalIn: monthTotal.deposits,
+      totalOut: monthTotal.withdrawals,
+      endingBalance
+    };
+  }, [selectedMonth, dailyStatuses, exchangeRate]);
+
+  // 각 섹션 합계 계산 헬퍼
   const composeMap = useMemo(() => {
     const map = aggregateBySubject(withdrawals, '컴포즈커피', selectedMonth, exchangeRate);
     
@@ -615,8 +660,29 @@ const CashPLPage = ({
         </div>
       </div>
 
-      {/* 요약 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      {/* 통합 캐시 리컨실리에이션 요약 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        {[
+          { label: `기초입산 (${availableMonths[availableMonths.indexOf(selectedMonth) + 1] ? availableMonths[availableMonths.indexOf(selectedMonth) + 1].substring(5) : '전'}월말)`, value: cashReconciliation.beginningBalance, color: 'slate' },
+          { label: '당월 총 입금액 (Inflow)', value: cashReconciliation.totalIn, color: 'blue' },
+          { label: '당월 총 출금액 (Outflow)', value: cashReconciliation.totalOut, color: 'red' },
+          { label: '당월 기말 잔액 (Balance)', value: cashReconciliation.endingBalance, color: 'emerald' },
+        ].map(card => (
+          <div key={card.label} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{card.label}</p>
+            <p className={`text-lg font-black font-mono tabular-nums ${
+              card.color === 'red' ? 'text-red-500' : 
+              card.color === 'blue' ? 'text-blue-600' : 
+              card.color === 'emerald' ? 'text-emerald-700' : 'text-slate-700'
+            }`}>
+              {formatKRW(card.value || 0)}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* 실질 영업이익 요약 (보조) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
         {[
           { label: '컴포즈 영업이익', value: composeSums.operatingProfit, color: 'indigo' },
           { label: '컴포즈 당기순이익', value: composeSums.netProfit, color: 'indigo' },
@@ -625,12 +691,11 @@ const CashPLPage = ({
         ].map(card => {
           const isNeg = card.value < 0;
           return (
-            <div key={card.label} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{card.label}</p>
-              <p className={`text-lg font-black font-mono tabular-nums ${isNeg ? 'text-red-500' : card.color === 'indigo' ? 'text-indigo-700' : 'text-emerald-700'}`}>
+            <div key={card.label} className="bg-slate-50/50 rounded-xl border border-slate-100 p-3">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-tight mb-1">{card.label}</p>
+              <p className={`text-xs font-bold font-mono ${isNeg ? 'text-red-500' : 'text-slate-700'}`}>
                 {isNeg ? `(${formatKRW(Math.abs(card.value))})` : formatKRW(card.value || 0)}
               </p>
-              <p className="text-[9px] text-slate-300 mt-1 uppercase font-bold">{monthLabel} 기준</p>
             </div>
           );
         })}
