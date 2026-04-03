@@ -430,12 +430,9 @@ const CashPLPage = ({
       const unrecordedIn = Math.max(0, s.excelIn - effectiveManualIn);
       const unrecordedOut = Math.max(0, s.excelOut - effectiveManualOut);
       
-      // Heuristic: 입/출금이 동시에 나면 환전 등 기타 내부거래로 간주
-      const estimatedInternal = Math.min(unrecordedIn, unrecordedOut);
-      
       results[entity] = {
-        netRevenue: unrecordedIn - estimatedInternal,
-        automaticWithdrawal: unrecordedOut - estimatedInternal
+        netRevenue: unrecordedIn,
+        automaticWithdrawal: unrecordedOut
       };
     });
 
