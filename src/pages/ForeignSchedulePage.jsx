@@ -549,24 +549,44 @@ const ForeignSchedulePage = ({
               </table>
             </div>
             {filteredExchangeResults.length > 0 && (
-              <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-end gap-12 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)]">
-                <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">당월 매입 총액 (KRW)</span>
-                  <span className="text-lg font-black text-slate-900 tabular-nums">
-                    {formatKRW(filteredExchangeResults.reduce((sum, e) => sum + Math.abs(e.krwAmount || 0), 0))}
-                  </span>
+              <div className="p-6 bg-slate-50 border-t border-slate-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)]">
+                {/* 권종별 평균 환율 섹션 */}
+                <div className="flex flex-wrap gap-6 flex-1">
+                  {Object.entries(
+                    filteredExchangeResults.reduce((acc, e) => {
+                      const curr = e.currency || 'USD';
+                      if (!acc[curr]) acc[curr] = { krw: 0, foreign: 0 };
+                      acc[curr].krw += Math.abs(e.krwAmount || 0);
+                      acc[curr].foreign += Math.abs(e.usdAmount || 0);
+                      return acc;
+                    }, {})
+                  ).map(([curr, stats]) => {
+                    const avgRate = stats.krw / (stats.foreign || 1);
+                    return (
+                      <div key={curr} className="bg-white border border-slate-200 rounded-xl p-3 px-4 shadow-sm flex flex-col gap-1 min-w-[140px] animate-in fade-in zoom-in-95 duration-300">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-[10px] font-black text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded uppercase">{curr} 평균 환율</span>
+                          <span className="text-xs font-black text-slate-800 font-mono tracking-tight">{avgRate.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 mt-1 pt-1 border-t border-slate-100">
+                          <span className="text-[9px] font-bold text-slate-400">당월 총액</span>
+                          <span className="text-[11px] font-black text-slate-700 font-mono">
+                            {curr === 'USD' ? formatUSD(stats.foreign) : `${stats.foreign.toLocaleString()} ${curr}`}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">당월 환전 총액 (USD 외)</span>
-                  <span className="text-lg font-black text-blue-600 tabular-nums">
-                    {filteredExchangeResults.reduce((sum, e) => sum + Math.abs(e.usdAmount || 0), 0).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-[10px] font-bold text-emerald-500/70 uppercase tracking-tighter mb-1">당월 평균 환율 (KRW/Unit)</span>
-                  <span className="text-lg font-black text-emerald-600 tabular-nums">
-                    {(filteredExchangeResults.reduce((sum, e) => sum + Math.abs(e.krwAmount || 0), 0) / (filteredExchangeResults.reduce((sum, e) => sum + Math.abs(e.usdAmount || 0), 0) || 1)).toFixed(2)}
-                  </span>
+
+                {/* 전체 KRW 요약 */}
+                <div className="flex items-center gap-8 pl-6 border-l border-slate-200">
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter mb-1">당월 매입 총액 (KRW)</span>
+                    <span className="text-xl font-black text-slate-900 tabular-nums">
+                      {formatKRW(filteredExchangeResults.reduce((sum, e) => sum + Math.abs(e.krwAmount || 0), 0))}
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
