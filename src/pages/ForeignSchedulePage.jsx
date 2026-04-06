@@ -17,6 +17,7 @@ const ForeignSchedulePage = ({
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // YYYY-MM
+  const [scheduleStatusFilter, setScheduleStatusFilter] = useState('ALL'); // 'ALL', 'PENDING', 'COMPLETED'
 
   // Schedule Form State
   const [scheduleData, setScheduleData] = useState({
@@ -158,6 +159,16 @@ const ForeignSchedulePage = ({
     setEditData({ ...editData, [e.target.name]: e.target.value });
   };
 
+  // Filtered lists
+  const filteredSchedule = fxSchedule
+    .filter(s => s.date.startsWith(selectedMonth))
+    .filter(s => {
+      if (scheduleStatusFilter === 'ALL') return true;
+      if (scheduleStatusFilter === 'COMPLETED') return s.status === '송금 완료(집행)';
+      if (scheduleStatusFilter === 'PENDING') return s.status !== '송금 완료(집행)';
+      return true;
+    });
+
   const filteredExchangeResults = exchangeResults.filter(e => e.date.startsWith(selectedMonth));
 
   const changeMonth = (delta) => {
@@ -168,12 +179,7 @@ const ForeignSchedulePage = ({
 
   return (
     <div className="animate-in slide-in-from-bottom-4 duration-500">
-      <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">외화 관리 센터</h2>
-          <p className="text-sm text-slate-500 mt-1">외화 송금 예약 일정과 실제 환전 결과를 통합하여 관리합니다.</p>
-        </div>
-
+      <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
           <button 
             onClick={() => setActiveTab('schedule')}
@@ -198,11 +204,23 @@ const ForeignSchedulePage = ({
             외화 환전 결과
           </button>
         </div>
+
+        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+          <button onClick={() => changeMonth(-1)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-xs font-black text-slate-700 px-3 min-w-[100px] text-center">
+            {selectedMonth.split('-')[0]}년 {selectedMonth.split('-')[1]}월
+          </span>
+          <button onClick={() => changeMonth(1)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg transition-colors">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {activeTab === 'schedule' ? (
         <>
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8 p-6">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6 p-6">
             <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm">
               <Plus className="w-4 h-4 text-indigo-500" /> 신규 송금 일정 기입
             </h3>
@@ -262,10 +280,33 @@ const ForeignSchedulePage = ({
 
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
-                <Globe className="w-4 h-4 text-blue-500" />
-                등록된 송금 일정
-              </h3>
+              <div className="flex items-center gap-4">
+                <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
+                  <Globe className="w-4 h-4 text-blue-500" />
+                  송금 일정 리스트
+                </h3>
+                <div className="h-4 w-[1px] bg-slate-200"></div>
+                <div className="flex bg-white border border-slate-200 rounded-lg p-0.5">
+                  <button 
+                    onClick={() => setScheduleStatusFilter('ALL')}
+                    className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${scheduleStatusFilter === 'ALL' ? 'bg-slate-900 text-white' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    전체 ({fxSchedule.filter(s => s.date.startsWith(selectedMonth)).length})
+                  </button>
+                  <button 
+                    onClick={() => setScheduleStatusFilter('PENDING')}
+                    className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${scheduleStatusFilter === 'PENDING' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    송금 대기 ({fxSchedule.filter(s => s.date.startsWith(selectedMonth) && s.status !== '송금 완료(집행)').length})
+                  </button>
+                  <button 
+                    onClick={() => setScheduleStatusFilter('COMPLETED')}
+                    className={`px-3 py-1 rounded-md text-[10px] font-black transition-all ${scheduleStatusFilter === 'COMPLETED' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    송금 완료 ({fxSchedule.filter(s => s.date.startsWith(selectedMonth) && s.status === '송금 완료(집행)').length})
+                  </button>
+                </div>
+              </div>
               <div className="text-[10px] font-bold bg-slate-900 text-slate-300 px-3 py-1 rounded-full uppercase tracking-wider">
                 Market Rate: {formatKRW(exchangeRate)}
               </div>
@@ -276,16 +317,16 @@ const ForeignSchedulePage = ({
                   <tr>
                     <th className="px-4 py-3 border-r">지급예정일</th>
                     <th className="px-4 py-3 border-r">거래처</th>
-                    <th className="px-4 py-3 border-r text-right">금액 (USD)</th>
+                    <th className="px-4 py-3 border-r text-right">금액 (외화)</th>
                     <th className="px-6 py-3 border-r text-right bg-indigo-50/30 text-indigo-600">환산 금액 (KRW)</th>
                     <th className="px-4 py-3 border-r text-center">은행명</th>
                     <th className="px-4 py-3 border-r">내용</th>
-                    <th className="px-4 py-3 border-r">비고</th>
+                    <th className="px-4 py-3 border-r">상태</th>
                     <th className="px-4 py-3 text-center">작업</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
-                  {fxSchedule.map((s) => (
+                  {filteredSchedule.map((s) => (
                     <tr key={s.id} className="hover:bg-slate-50 group">
                       <td className="px-4 py-3 border-r">
                         <input 
@@ -296,9 +337,11 @@ const ForeignSchedulePage = ({
                         />
                       </td>
                       <td className="px-4 py-3 border-r font-bold text-slate-800">{s.client}</td>
-                      <td className="px-4 py-3 border-r text-right font-mono font-bold text-blue-600">{formatUSD(s.amount)}</td>
+                      <td className="px-4 py-3 border-r text-right font-mono font-bold text-blue-600">
+                        {s.currency === 'USD' ? formatUSD(s.amount) : `${s.amount.toLocaleString()} ${s.currency}`}
+                      </td>
                       <td className="px-6 py-3 border-r text-right font-mono font-black text-slate-900 bg-indigo-50/10">
-                        {formatKRW(s.amount * exchangeRate)}
+                        {formatKRW(s.amount * (s.currency === 'EUR' ? exchangeRateEUR : s.currency === 'JPY' ? exchangeRateJPY : exchangeRate))}
                       </td>
                       <td className="px-4 py-3 border-r text-center">{s.bank}</td>
                       <td className="px-4 py-3 border-r text-[10px] text-slate-400">{s.desc}</td>
@@ -326,9 +369,14 @@ const ForeignSchedulePage = ({
                       </td>
                     </tr>
                   ))}
-                  {fxSchedule.length === 0 && (
+                  {filteredSchedule.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="text-center py-8 text-slate-400 text-[11px] border-b">등록된 외화 송금 일정이 없습니다.</td>
+                      <td colSpan={8} className="text-center py-20 text-slate-400">
+                        <div className="flex flex-col items-center gap-2">
+                           <Calendar className="w-8 h-8 opacity-20" />
+                           <p className="text-[11px] font-bold">{selectedMonth.split('-')[1]}월에 해당하는 일정이 없습니다.</p>
+                        </div>
+                      </td>
                     </tr>
                   )}
                 </tbody>
@@ -408,18 +456,6 @@ const ForeignSchedulePage = ({
               </h3>
               
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
-                  <button onClick={() => changeMonth(-1)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded transition-colors">
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <span className="text-xs font-black text-slate-700 px-2 min-w-[80px] text-center">
-                    {selectedMonth.split('-')[0]}년 {selectedMonth.split('-')[1]}월
-                  </span>
-                  <button onClick={() => changeMonth(1)} className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded transition-colors">
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="h-4 w-[1px] bg-slate-200 mx-1"></div>
                 <div className="text-[10px] font-bold text-slate-400 flex gap-2">
                   <span>전체: {exchangeResults.length}건</span>
                   <span className="text-indigo-400">당월: {filteredExchangeResults.length}건</span>
