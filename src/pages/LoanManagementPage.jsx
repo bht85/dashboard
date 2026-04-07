@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Landmark, Plus, Trash2, Calendar, Calculator, Edit2, ArrowRightLeft, FileText, ChevronRight } from 'lucide-react';
 import { formatUSD, formatKRW, formatMillionKRW } from '../utils/formatters';
 
