@@ -2,6 +2,10 @@ export const formatKRW = (val) => new Intl.NumberFormat('ko-KR').format(Math.flo
 export const formatUSD = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 export const formatEUR = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val);
 export const formatJPY = (val) => new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(val);
+export const formatMillionKRW = (val) => {
+  const m = Math.floor(val / 1000000);
+  return new Intl.NumberFormat('ko-KR').format(m) + "백만";
+};
 
 export const formatForeign = (val, currency) => {
   if (currency === 'EUR') return formatEUR(val);
