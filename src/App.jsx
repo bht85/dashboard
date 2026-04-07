@@ -15,6 +15,7 @@ import CashFlowPage from './pages/CashFlowPage';
 import CashEventPage from './pages/CashEventPage';
 import AccountMappingPage from './pages/AccountMappingPage';
 import CashPLPage from './pages/CashPLPage';
+import LoanManagementPage from './pages/LoanManagementPage';
 import AuthPage from './pages/AuthPage';
 import * as XLSX from 'xlsx';
 import { isExcludedAccount } from './utils/formatters';
@@ -97,6 +98,7 @@ const App = () => {
   const [dailyStatuses, setDailyStatuses] = useState({});
   const [dailyIssues, setDailyIssues] = useState({}); // { "2024-03-26": "이슈내용..." }
   const [fxExchangeResults, setFxExchangeResults] = useState([]); // 신규: 외화 환전 결과 데이터
+  const [loans, setLoans] = useState([]); // 신규: 금융 관리 (대여금) 데이터
 
   // --- Real-time Firestore Sync ---
   useEffect(() => {
@@ -164,6 +166,12 @@ const App = () => {
         setFxExchangeResults(data.sort((a,b) => (a.date > b.date ? 1 : -1)));
     }, logAndHandle("fxExchangeResults"));
 
+    // 8. Loans Sync (신규: 금융 관리 - 대여금 연동)
+    const unsubLoans = onSnapshot(collection(db, "loans"), (snapshot) => {
+        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        setLoans(data.sort((a,b) => (a.startDate > b.startDate ? 1 : -1)));
+    }, logAndHandle("loans"));
+
     // 4. Daily Status Sync
     const unsubStatus = onSnapshot(collection(db, "dailyStatuses"), (snapshot) => {
         const statuses = {};
@@ -195,7 +203,7 @@ const App = () => {
         setDailyStatuses(statuses);
     }, logAndHandle("dailyStatuses"));
 
-    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); unsubCashFlow(); unsubFXExchange(); };
+    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); unsubCashFlow(); unsubFXExchange(); unsubLoans(); };
   }, [user]);
 
   // --- Firestore Update Wrappers ---
@@ -300,6 +308,18 @@ const App = () => {
     if (!id) return;
     console.log(`Deleting FX Exchange Result: ${id}`);
     await deleteDoc(doc(collection(db, "fxExchangeResults"), String(id)));
+  };
+
+  const updateLoan = async (data) => {
+    const docId = data.id ? String(data.id) : Date.now().toString();
+    console.log(`Updating Loan: ${docId}`);
+    await setDoc(doc(collection(db, "loans"), docId), data);
+  };
+
+  const deleteLoan = async (id) => {
+    if (!id) return;
+    console.log(`Deleting Loan: ${id}`);
+    await deleteDoc(doc(collection(db, "loans"), String(id)));
   };
 
   const updateDailyIssue = async (date, content) => {
@@ -581,6 +601,17 @@ const App = () => {
           exchangeRate={exchangeRate}
           dailyStatuses={dailyStatuses}
           withdrawals={withdrawals}
+        />
+      ) : <div className="p-20 text-center font-black text-slate-400">접근 권한이 없습니다. (Test Period)</div>)}
+      
+      {currentView === 'loans' && (['jiin0723@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email?.toLowerCase()) ? (
+        <LoanManagementPage 
+          loans={loans}
+          onUpdateLoan={updateLoan}
+          onDeleteLoan={deleteLoan}
+          exchangeRate={exchangeRate}
+          exchangeRateEUR={exchangeRateEUR}
+          exchangeRateJPY={exchangeRateJPY}
         />
       ) : <div className="p-20 text-center font-black text-slate-400">접근 권한이 없습니다. (Test Period)</div>)}
       
