@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
 import { Landmark, Plus, Trash2, Calendar, Calculator, Edit2, ArrowRightLeft, FileText, ChevronRight } from 'lucide-react';
-import { formatUSD, formatKRW } from '../utils/formatters';
+import { formatUSD, formatKRW, formatMillionKRW } from '../utils/formatters';
 
 const LoanManagementPage = ({ 
   loans = [], 
@@ -463,10 +462,10 @@ const LoanManagementPage = ({
                                   const amt = calculateProRataInterest(loan.principal, loan.interestRate, currentYear, m, loan.startDate, loan.endDate);
                                   const isZ = amt <= 0;
                                   return (
-                                    <div key={m} className={`flex flex-col border rounded p-1.5 transition-colors ${isZ ? 'bg-slate-50 border-slate-100 opacity-30' : 'bg-indigo-50/30 border-indigo-100'}`}>
-                                      <span className={`text-[9px] font-black ${isZ ? 'text-slate-400' : 'text-indigo-500'}`}>{m}월</span>
-                                      <span className="text-[10px] font-mono font-bold text-slate-700">
-                                        {loan.currency === 'KRW' ? formatKRW(amt) : formatUSD(amt)}
+                                    <div key={m} className={`flex flex-col border rounded p-1 transition-colors ${isZ ? 'bg-slate-50 border-slate-100 opacity-30' : 'bg-indigo-50/30 border-indigo-100'}`}>
+                                      <span className={`text-[8px] font-black ${isZ ? 'text-slate-400' : 'text-indigo-500'}`}>{m}월</span>
+                                      <span className="text-[9px] font-mono font-bold text-slate-700">
+                                        {loan.currency === 'KRW' ? formatMillionKRW(amt) : formatUSD(amt)}
                                       </span>
                                     </div>
                                   );
@@ -525,9 +524,9 @@ const LoanManagementPage = ({
                       return sum + p;
                     }, 0);
                     return (
-                      <div key={m} className="bg-slate-50 border border-slate-100 rounded-lg p-2.5 hover:shadow-md transition-all">
-                        <span className="text-[9px] font-black text-slate-400 block mb-1 uppercase">{m}월</span>
-                        <span className="text-[11px] font-mono font-black text-slate-900">{formatKRW(monthlySum)}</span>
+                      <div key={m} className="bg-slate-50 border border-slate-100 rounded-lg p-2 hover:shadow-md transition-all">
+                        <span className="text-[8px] font-black text-slate-400 block mb-0.5 uppercase">{m}월</span>
+                        <span className="text-[10px] font-mono font-black text-slate-900">{formatMillionKRW(monthlySum)}</span>
                       </div>
                     );
                   })}
