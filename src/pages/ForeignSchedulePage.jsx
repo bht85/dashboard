@@ -338,7 +338,7 @@ const ForeignSchedulePage = ({
                       </td>
                       <td className="px-4 py-3 border-r font-bold text-slate-800">{s.client}</td>
                       <td className="px-4 py-3 border-r text-right font-mono font-bold text-blue-600">
-                        {s.currency === 'USD' ? formatUSD(s.amount) : `${s.amount.toLocaleString()} ${s.currency}`}
+                        {(!s.currency || s.currency === 'USD') ? formatUSD(s.amount) : `${s.amount.toLocaleString()} ${s.currency}`}
                       </td>
                       <td className="px-6 py-3 border-r text-right font-mono font-black text-slate-900 bg-indigo-50/10">
                         {formatKRW(s.amount * (s.currency === 'EUR' ? exchangeRateEUR : s.currency === 'JPY' ? exchangeRateJPY : exchangeRate))}
