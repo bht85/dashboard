@@ -465,8 +465,8 @@ const LoanManagementPage = ({
                                   return (
                                     <div key={m} className={`flex flex-col border rounded p-1 transition-colors ${isZ ? 'bg-slate-50 border-slate-100 opacity-30' : 'bg-indigo-50/30 border-indigo-100'}`}>
                                       <span className={`text-[8px] font-black ${isZ ? 'text-slate-400' : 'text-indigo-500'}`}>{m}월</span>
-                                      <span className="text-[9px] font-mono font-bold text-slate-700">
-                                        {loan.currency === 'KRW' ? formatMillionKRW(amt) : formatUSD(amt)}
+                                      <span className="text-[10px] font-mono font-bold text-slate-700">
+                                        {loan.currency === 'KRW' ? formatKRW(amt) : formatUSD(amt)}
                                       </span>
                                     </div>
                                   );
