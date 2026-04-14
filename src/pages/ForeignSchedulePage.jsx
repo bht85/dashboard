@@ -219,7 +219,7 @@ const ForeignSchedulePage = ({
 
   const handleAddCoffeeIndex = async (e) => {
     e.preventDefault();
-    if (!coffeeData.month || !coffeeData.price) return;
+    if (!coffeeData.price) return;
     
     await onUpdateCoffeeIndex({
         id: coffeeData.isEditing ? coffeeData.id : Date.now(),
@@ -245,12 +245,14 @@ const ForeignSchedulePage = ({
     const selected = coffeeIndices.find(c => String(c.id) === String(calcData.indexId));
     if (!selected || !calcData.quantity) return;
     
-    const calculatedAmount = (selected.price * 22.046 / 1000) * parseFloat(calcData.quantity);
+    // Formula: ((Index + 50) * 22.046 / 1000) * Quantity
+    const expectedIndex = selected.price + 50;
+    const calculatedAmount = (expectedIndex * 22.046 / 1000) * parseFloat(calcData.quantity);
     
     setScheduleData({
         ...scheduleData,
         amount: calculatedAmount.toFixed(2),
-        desc: `${selected.month} ${calcData.quantity}kg 산출분 (${selected.price}c/lb)`
+        desc: `${selected.month} ${calcData.quantity}kg 산출분 (예상:${expectedIndex}c/lb)`
     });
     setShowCalc(false);
     setCalcData({ indexId: '', quantity: '' });
@@ -358,9 +360,9 @@ const ForeignSchedulePage = ({
                 {calcData.indexId && calcData.quantity && (
                     <div className="mt-3 text-[10px] font-bold text-amber-600 flex items-center gap-2">
                         <Check className="w-3.5 h-3.5" />
-                        계산식: ({coffeeIndices.find(c => String(c.id) === String(calcData.indexId))?.price} * 22.046 / 1000) * {calcData.quantity}kg = 
+                        계산식: (({coffeeIndices.find(c => String(c.id) === String(calcData.indexId))?.price} + 50) * 22.046 / 1000) * {calcData.quantity}kg = 
                         <span className="text-sm font-black text-amber-800 ml-1">
-                          ${((coffeeIndices.find(c => String(c.id) === String(calcData.indexId))?.price * 22.046 / 1000) * parseFloat(calcData.quantity)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          ${(((coffeeIndices.find(c => String(c.id) === String(calcData.indexId))?.price + 50) * 22.046 / 1000) * parseFloat(calcData.quantity)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
                         </span>
                     </div>
                 )}
@@ -748,7 +750,8 @@ const ForeignSchedulePage = ({
                   <tr>
                     <th className="px-6 py-3 border-r">월물</th>
                     <th className="px-6 py-3 border-r text-right">커피 지수 (c/lb)</th>
-                    <th className="px-6 py-3 border-r text-right text-indigo-500">KG당 단가 (USD)</th>
+                    <th className="px-6 py-3 border-r text-right bg-amber-50 text-amber-700">예상 커피 지수 (+50)</th>
+                    <th className="px-6 py-3 border-r text-right text-indigo-500">예상 KG당 단가 (USD)</th>
                     <th className="px-6 py-3 border-r text-center">기록 일자</th>
                     <th className="px-6 py-3 text-center">작업</th>
                   </tr>
@@ -757,9 +760,10 @@ const ForeignSchedulePage = ({
                   {coffeeIndices.map((item) => (
                     <tr key={item.id} className="hover:bg-slate-50 group">
                       <td className="px-6 py-4 border-r font-black text-slate-800">{item.month}</td>
-                      <td className="px-6 py-4 border-r text-right font-mono font-black text-amber-600">{item.price?.toFixed(2)}</td>
+                      <td className="px-6 py-4 border-r text-right font-mono font-black text-slate-400">{item.price?.toFixed(2)}</td>
+                      <td className="px-6 py-4 border-r text-right font-mono font-black text-amber-600 bg-amber-50/20">{(item.price + 50).toFixed(2)}</td>
                       <td className="px-6 py-4 border-r text-right font-mono font-bold text-indigo-500">
-                        ${(item.price * 22.046 / 1000).toLocaleString(undefined, {minimumFractionDigits: 4})}
+                        ${((item.price + 50) * 22.046 / 1000).toLocaleString(undefined, {minimumFractionDigits: 4})}
                       </td>
                       <td className="px-6 py-4 border-r text-center font-bold text-slate-400">{item.updatedAt || '-'}</td>
                       <td className="px-6 py-4 text-center">
