@@ -22,7 +22,10 @@ const ForeignSchedulePage = ({
   const [activeTab, setActiveTab] = useState('schedule'); // 'schedule', 'exchange', 'coffee', 'beans'
   const [editingScheduleId, setEditingScheduleId] = useState(null);
   const [editScheduleData, setEditScheduleData] = useState({});
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // YYYY-MM
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }); // YYYY-MM
   const [scheduleStatusFilter, setScheduleStatusFilter] = useState('ALL'); // 'ALL', 'PENDING', 'COMPLETED'
 
   // Schedule Form State
@@ -98,7 +101,9 @@ const ForeignSchedulePage = ({
   const changeMonth = (offset) => {
     const [year, month] = selectedMonth.split('-').map(Number);
     const date = new Date(year, month - 1 + offset, 1);
-    setSelectedMonth(date.toISOString().substring(0, 7));
+    const nextYear = date.getFullYear();
+    const nextMonth = String(date.getMonth() + 1).padStart(2, '0');
+    setSelectedMonth(`${nextYear}-${nextMonth}`);
   };
 
   const handleAddCoffeeIndex = async (e) => {

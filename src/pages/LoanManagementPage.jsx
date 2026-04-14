@@ -15,7 +15,10 @@ const LoanManagementPage = ({
   const [editData, setEditData] = useState({});
   const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'ACTIVE', 'COMPLETED'
   const [currencyFilter, setCurrencyFilter] = useState('ALL'); // 'ALL', 'KRW', 'FOREIGN'
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // YYYY-MM
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }); // YYYY-MM
   const [expandedRows, setExpandedRows] = useState({}); // Tracking which rows are expanded
 
   const toggleRow = (id) => {
