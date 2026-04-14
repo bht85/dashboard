@@ -99,6 +99,7 @@ const App = () => {
   const [dailyIssues, setDailyIssues] = useState({}); // { "2024-03-26": "이슈내용..." }
   const [fxExchangeResults, setFxExchangeResults] = useState([]); // 신규: 외화 환전 결과 데이터
   const [loans, setLoans] = useState([]); // 신규: 금융 관리 (대여금) 데이터
+  const [coffeeIndices, setCoffeeIndices] = useState([]); // 신규: 커피 지수(월물) 데이터
 
   // --- Real-time Firestore Sync ---
   useEffect(() => {
@@ -172,6 +173,13 @@ const App = () => {
         setLoans(data.sort((a,b) => (a.startDate > b.startDate ? 1 : -1)));
     }, logAndHandle("loans"));
 
+    // 9. Coffee Indices Sync (신규: 커피 지수 월물 연동)
+    const unsubCoffee = onSnapshot(collection(db, "coffeeIndices"), (snapshot) => {
+        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        // 월물 순서대로 정렬 (예: 5월물, 7월물...) - 문자열 정렬 또는 별도 정렬 필드 필요
+        setCoffeeIndices(data.sort((a,b) => (a.month > b.month ? 1 : -1)));
+    }, logAndHandle("coffeeIndices"));
+
     // 4. Daily Status Sync
     const unsubStatus = onSnapshot(collection(db, "dailyStatuses"), (snapshot) => {
         const statuses = {};
@@ -203,7 +211,7 @@ const App = () => {
         setDailyStatuses(statuses);
     }, logAndHandle("dailyStatuses"));
 
-    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); unsubCashFlow(); unsubFXExchange(); unsubLoans(); };
+    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); unsubCashFlow(); unsubFXExchange(); unsubLoans(); unsubCoffee(); };
   }, [user]);
 
   // --- Firestore Update Wrappers ---
@@ -320,6 +328,18 @@ const App = () => {
     if (!id) return;
     console.log(`Deleting Loan: ${id}`);
     await deleteDoc(doc(collection(db, "loans"), String(id)));
+  };
+
+  const updateCoffeeIndex = async (data) => {
+    const docId = data.id ? String(data.id) : Date.now().toString();
+    console.log(`Updating Coffee Index: ${docId}`);
+    await setDoc(doc(collection(db, "coffeeIndices"), docId), data);
+  };
+
+  const deleteCoffeeIndex = async (id) => {
+    if (!id) return;
+    console.log(`Deleting Coffee Index: ${id}`);
+    await deleteDoc(doc(collection(db, "coffeeIndices"), String(id)));
   };
 
   const updateDailyIssue = async (date, content) => {
@@ -579,6 +599,9 @@ const App = () => {
           exchangeRate={exchangeRate}
           exchangeRateEUR={exchangeRateEUR}
           exchangeRateJPY={exchangeRateJPY}
+          coffeeIndices={coffeeIndices}
+          onUpdateCoffeeIndex={updateCoffeeIndex}
+          onDeleteCoffeeIndex={deleteCoffeeIndex}
         />
       )}
       {currentView === 'cashStatus' && (

@@ -12,8 +12,11 @@ const ForeignSchedulePage = ({
   exchangeRate = 1520,
   exchangeRateEUR = 1620,
   exchangeRateJPY = 10,
+  coffeeIndices = [],
+  onUpdateCoffeeIndex,
+  onDeleteCoffeeIndex,
 }) => {
-  const [activeTab, setActiveTab] = useState('schedule'); // 'schedule' or 'exchange'
+  const [activeTab, setActiveTab] = useState('schedule'); // 'schedule', 'exchange', 'coffee'
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // YYYY-MM
@@ -177,6 +180,43 @@ const ForeignSchedulePage = ({
     setSelectedMonth(date.toISOString().substring(0, 7));
   };
 
+  const handleAddCoffeeIndex = async (e) => {
+    e.preventDefault();
+    if (!coffeeData.month || !coffeeData.price) return;
+    
+    await onUpdateCoffeeIndex({
+        id: coffeeData.isEditing ? coffeeData.id : Date.now(),
+        month: coffeeData.month,
+        futures: coffeeData.futures,
+        price: parseFloat(coffeeData.price)
+    });
+    
+    setCoffeeData({ month: '', futures: '', price: '', isEditing: false, id: null });
+  };
+
+  const startEditCoffee = (item) => {
+    setCoffeeData({
+        ...item,
+        isEditing: true
+    });
+  };
+
+  const applyCalculation = () => {
+    const selected = coffeeIndices.find(c => String(c.id) === String(calcData.indexId));
+    if (!selected || !calcData.quantity) return;
+    
+    // Formula: (Index * 22.046 / 1000) * Quantity
+    const calculatedAmount = (selected.price * 22.046 / 1000) * parseFloat(calcData.quantity);
+    
+    setScheduleData({
+        ...scheduleData,
+        amount: calculatedAmount.toFixed(2),
+        desc: `${selected.month} ${calcData.quantity}kg 산출분 (${selected.price}c/lb)`
+    });
+    setShowCalc(false);
+    setCalcData({ indexId: '', quantity: '' });
+  };
+
   return (
     <div className="animate-in slide-in-from-bottom-4 duration-500">
       <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -192,16 +232,19 @@ const ForeignSchedulePage = ({
             <Calendar className="w-3.5 h-3.5" />
             외화 송금 일정
           </button>
+            <ArrowRightLeft className="w-3.5 h-3.5" />
+            외화 환전 결과
+          </button>
           <button 
-            onClick={() => setActiveTab('exchange')}
+            onClick={() => setActiveTab('coffee')}
             className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
-              activeTab === 'exchange' 
+              activeTab === 'coffee' 
                 ? 'bg-white text-indigo-600 shadow-sm' 
                 : 'text-slate-500 hover:text-slate-700'
             }`}
           >
-            <ArrowRightLeft className="w-3.5 h-3.5" />
-            외화 환전 결과
+            <Globe className="w-3.5 h-3.5 text-amber-500" />
+            커피 지수 관리
           </button>
         </div>
 
@@ -221,9 +264,67 @@ const ForeignSchedulePage = ({
       {activeTab === 'schedule' ? (
         <>
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-6 p-6">
-            <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm">
-              <Plus className="w-4 h-4 text-indigo-500" /> 신규 송금 일정 기입
+            <h3 className="font-bold text-slate-800 mb-4 flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2">
+                <Plus className="w-4 h-4 text-indigo-500" /> 신규 송금 일정 기입
+              </div>
+              <button 
+                type="button"
+                onClick={() => setShowCalc(!showCalc)}
+                className="text-[10px] font-black bg-slate-900 text-white px-3 py-1.5 rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors"
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5 text-amber-400" />
+                커피 지수 기반 금액 산출 {showCalc ? '닫기' : ''}
+              </button>
             </h3>
+
+            {showCalc && (
+              <div className="mb-6 p-4 bg-amber-50 border border-amber-100 rounded-xl animate-in slide-in-from-top-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-[9px] font-bold text-amber-700 uppercase mb-1">적용 월물 선택</label>
+                    <select 
+                        value={calcData.indexId} 
+                        onChange={(e) => setCalcData({...calcData, indexId: e.target.value})}
+                        className="w-full text-xs font-black bg-white border border-amber-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500"
+                    >
+                        <option value="">월물 선택...</option>
+                        {coffeeIndices.map(c => (
+                            <option key={c.id} value={c.id}>{c.month} ({c.price} c/lb)</option>
+                        ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-bold text-amber-700 uppercase mb-1">물량 (kg)</label>
+                    <input 
+                        type="number" 
+                        value={calcData.quantity} 
+                        onChange={(e) => setCalcData({...calcData, quantity: e.target.value})}
+                        placeholder="ex) 19200" 
+                        className="w-full text-xs font-black bg-white border border-amber-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500" 
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button 
+                        type="button"
+                        onClick={applyCalculation}
+                        className="w-full bg-amber-500 text-white font-black py-2 rounded-lg hover:bg-amber-600 transition shadow-sm flex items-center justify-center gap-2"
+                    >
+                        산출 금액 적용
+                    </button>
+                  </div>
+                </div>
+                {calcData.indexId && calcData.quantity && (
+                    <div className="mt-3 text-[10px] font-bold text-amber-600 flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5" />
+                        계산식: ({coffeeIndices.find(c => String(c.id) === String(calcData.indexId))?.price} * 22.046 / 1000) * {calcData.quantity}kg = 
+                        <span className="text-sm font-black text-amber-800 ml-1">
+                          ${((coffeeIndices.find(c => String(c.id) === String(calcData.indexId))?.price * 22.046 / 1000) * parseFloat(calcData.quantity)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </span>
+                    </div>
+                )}
+              </div>
+            )}
             <form onSubmit={handleAddSchedule} className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">지급예정일</label>
@@ -384,7 +485,7 @@ const ForeignSchedulePage = ({
             </div>
           </div>
         </>
-      ) : (
+      ) : activeTab === 'exchange' ? (
         <>
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mb-8 p-6">
             <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm">
@@ -628,7 +729,108 @@ const ForeignSchedulePage = ({
             )}
           </div>
         </>
-      )}
+      ) : (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+            <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm">
+              <Plus className="w-4 h-4 text-amber-500" /> 커피 지수(월물) 데이터 관리
+            </h3>
+            <form onSubmit={handleAddCoffeeIndex} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">월물</label>
+                <input 
+                    type="text" 
+                    value={coffeeData.month} 
+                    onChange={(e) => setCoffeeData({...coffeeData, month: e.target.value})}
+                    placeholder="ex) 5월물 ('26)" 
+                    className="w-full text-sm font-black bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500" 
+                    required 
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Futures</label>
+                <input 
+                    type="text" 
+                    value={coffeeData.futures} 
+                    onChange={(e) => setCoffeeData({...coffeeData, futures: e.target.value})}
+                    placeholder="ex) May '26" 
+                    className="w-full text-sm font-black bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500" 
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">커피 지수 (c/lb)</label>
+                <input 
+                    type="number" 
+                    step="0.01"
+                    value={coffeeData.price} 
+                    onChange={(e) => setCoffeeData({...coffeeData, price: e.target.value})}
+                    placeholder="ex) 294.05" 
+                    className="w-full text-sm font-black bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500" 
+                    required 
+                />
+              </div>
+              <div className="flex items-end gap-2">
+                <button type="submit" className="flex-1 bg-amber-500 text-white font-black py-2 rounded-lg hover:bg-amber-600 transition shadow-sm">
+                  {coffeeData.isEditing ? '수정 완료' : '데이터 추가'}
+                </button>
+                {coffeeData.isEditing && (
+                    <button type="button" onClick={() => setCoffeeData({month: '', futures: '', price: '', isEditing: false, id: null})} className="px-4 py-2 border border-slate-200 rounded-lg text-xs">취소</button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
+                    <Calendar className="w-4 h-4 text-amber-500" />
+                    저장된 지수 리스트 (Market Data)
+                </h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[11px] border-collapse">
+                <thead className="bg-slate-50 text-slate-500 font-bold border-b text-[10px]">
+                  <tr>
+                    <th className="px-6 py-3 border-r">월물</th>
+                    <th className="px-6 py-3 border-r">Futures</th>
+                    <th className="px-6 py-3 border-r text-right">커피 지수 (c/lb)</th>
+                    <th className="px-6 py-3 border-r text-right bg-amber-50/30 text-amber-700">예상지수 (+50c/lb)</th>
+                    <th className="px-6 py-3 border-r text-right text-indigo-500">KG당 단가 (USD)</th>
+                    <th className="px-6 py-3 text-center">작업</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-600">
+                  {coffeeIndices.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50 group">
+                      <td className="px-6 py-4 border-r font-black text-slate-800">{item.month}</td>
+                      <td className="px-6 py-4 border-r">{item.futures}</td>
+                      <td className="px-6 py-4 border-r text-right font-mono font-black text-amber-600">{item.price?.toFixed(2)}</td>
+                      <td className="px-6 py-4 border-r text-right font-mono font-bold bg-amber-50/10">{(item.price + 50).toFixed(2)}</td>
+                      <td className="px-6 py-4 border-r text-right font-mono font-bold text-indigo-500">
+                        ${(item.price * 22.046 / 1000).toLocaleString(undefined, {minimumFractionDigits: 4})}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                           <button onClick={() => startEditCoffee(item)} className="text-slate-300 hover:text-indigo-500 transition-colors p-1">
+                             <Edit2 className="w-3.5 h-3.5" />
+                           </button>
+                           <button onClick={() => onDeleteCoffeeIndex(item.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
+                             <Trash2 className="w-3.5 h-3.5" />
+                           </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {coffeeIndices.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="text-center py-20 text-slate-300 font-bold">등록된 커피 지수 데이터가 없습니다.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
     </div>
   );
 };
