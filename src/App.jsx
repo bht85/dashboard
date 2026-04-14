@@ -100,6 +100,7 @@ const App = () => {
   const [fxExchangeResults, setFxExchangeResults] = useState([]); // 신규: 외화 환전 결과 데이터
   const [loans, setLoans] = useState([]); // 신규: 금융 관리 (대여금) 데이터
   const [coffeeIndices, setCoffeeIndices] = useState([]); // 신규: 커피 지수(월물) 데이터
+  const [rawBeanContracts, setRawBeanContracts] = useState([]); // 신규: 생두 계약 데이터
 
   // --- Real-time Firestore Sync ---
   useEffect(() => {
@@ -179,6 +180,11 @@ const App = () => {
         // 월물 순서대로 정렬 (예: 5월물, 7월물...) - 문자열 정렬 또는 별도 정렬 필드 필요
         setCoffeeIndices(data.sort((a,b) => (a.month > b.month ? 1 : -1)));
     }, logAndHandle("coffeeIndices"));
+
+    // 10. Raw Bean Contracts Sync
+    const unsubContracts = onSnapshot(collection(db, "rawBeanContracts"), (snapshot) => {
+        setRawBeanContracts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, logAndHandle("rawBeanContracts"));
 
     // 4. Daily Status Sync
     const unsubStatus = onSnapshot(collection(db, "dailyStatuses"), (snapshot) => {
@@ -343,6 +349,19 @@ const App = () => {
     if (!id) return;
     console.log(`Deleting Coffee Index: ${id}`);
     await deleteDoc(doc(collection(db, "coffeeIndices"), String(id)));
+  };
+
+  const updateRawBeanContract = async (data) => {
+    const docId = data.id ? String(data.id) : Date.now().toString();
+    await setDoc(doc(collection(db, "rawBeanContracts"), docId), {
+      ...data,
+      updatedAt: new Date().toLocaleDateString('ko-KR')
+    });
+  };
+
+  const deleteRawBeanContract = async (id) => {
+    if (!id) return;
+    await deleteDoc(doc(collection(db, "rawBeanContracts"), String(id)));
   };
 
   const updateDailyIssue = async (date, content) => {
@@ -605,6 +624,9 @@ const App = () => {
           coffeeIndices={coffeeIndices}
           onUpdateCoffeeIndex={updateCoffeeIndex}
           onDeleteCoffeeIndex={deleteCoffeeIndex}
+          rawBeanContracts={rawBeanContracts}
+          onUpdateRawBeanContract={updateRawBeanContract}
+          onDeleteRawBeanContract={deleteRawBeanContract}
         />
       )}
       {currentView === 'cashStatus' && (

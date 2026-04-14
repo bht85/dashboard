@@ -15,8 +15,11 @@ const ForeignSchedulePage = ({
   coffeeIndices = [],
   onUpdateCoffeeIndex,
   onDeleteCoffeeIndex,
+  rawBeanContracts = [],
+  onUpdateRawBeanContract,
+  onDeleteRawBeanContract
 }) => {
-  const [activeTab, setActiveTab] = useState('schedule'); // 'schedule', 'exchange', 'coffee'
+  const [activeTab, setActiveTab] = useState('schedule'); // 'schedule', 'exchange', 'coffee', 'beans'
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
   const [editingScheduleId, setEditingScheduleId] = useState(null);
@@ -48,7 +51,14 @@ const ForeignSchedulePage = ({
     currency: 'USD',
   });
 
-  // Coffee Index Form State
+  // Raw Bean Contract State
+  const [contractData, setContractData] = useState({
+    origin: '', supplier: '', contractNo: '', containerCount: '', installment: '',
+    paymentStatus: 'X', paymentYear: '2026', paymentMonth: '01', paymentDay: '',
+    contractMonth: '', differential: '', index: '', indexStatus: '미정',
+    weight: '', planExchangeRate: '1500', amountConfirmed: '미확정',
+    isEditing: false, id: null
+  });
   const [coffeeData, setCoffeeData] = useState({
     year: '26',
     monthNumber: '04',
@@ -230,6 +240,36 @@ const ForeignSchedulePage = ({
     setCoffeeData({ year: '26', monthNumber: '04', price: '', isEditing: false, id: null });
   };
 
+  const handleAddContract = async (e) => {
+    e.preventDefault();
+    await onUpdateRawBeanContract({
+        ...contractData,
+        id: contractData.isEditing ? contractData.id : Date.now(),
+        containerCount: parseInt(contractData.containerCount || 0),
+        differential: parseFloat(contractData.differential || 0),
+        index: parseFloat(contractData.index || 0),
+        weight: parseFloat(contractData.weight || 0),
+        planExchangeRate: parseFloat(contractData.planExchangeRate || 0)
+    });
+    resetContractForm();
+  };
+
+  const resetContractForm = () => {
+    setContractData({
+        origin: '', supplier: '', contractNo: '', containerCount: '', installment: '',
+        paymentStatus: 'X', paymentYear: '2026', paymentMonth: '01', paymentDay: '',
+        contractMonth: '', differential: '', index: '', indexStatus: '미정',
+        weight: '', planExchangeRate: '1500', amountConfirmed: '미확정',
+        isEditing: false, id: null
+    });
+  };
+
+  const startEditContract = (item) => {
+    setContractData({ ...item, isEditing: true });
+    setActiveTab('beans'); // 폼 위치로 이동
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const startEditCoffee = (item) => {
     // "'26. 04월물" -> year: "26", month: "04"
     const match = item.month.match(/'(\d{2})\.\s*(\d{2})월물/);
@@ -288,6 +328,15 @@ const ForeignSchedulePage = ({
           >
             <Globe className="w-3.5 h-3.5 text-amber-500" />
             커피 지수 관리
+          </button>
+          <button 
+            onClick={() => setActiveTab('beans')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'beans' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <Package className="w-3.5 h-3.5 text-indigo-500" />
+            생두 계약 관리
           </button>
         </div>
 
@@ -771,6 +820,187 @@ const ForeignSchedulePage = ({
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+            <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2 text-sm border-b pb-4">
+              <Package className="w-4 h-4 text-indigo-500" /> 신규 생두 계약 등록
+            </h3>
+            <form onSubmit={handleAddContract} className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">산지 / 공급업체</label>
+                <div className="flex gap-1">
+                  <input type="text" placeholder="산지" value={contractData.origin} onChange={e => setContractData({...contractData, origin: e.target.value})} className="w-1/2 text-xs font-bold bg-slate-50 border border-slate-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-indigo-500" required />
+                  <input type="text" placeholder="공급업체" value={contractData.supplier} onChange={e => setContractData({...contractData, supplier: e.target.value})} className="w-1/2 text-xs font-bold bg-slate-50 border border-slate-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-indigo-500" required />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">계약번호 / 컨테이너 / 차수</label>
+                <div className="flex gap-1">
+                  <input type="text" placeholder="No." value={contractData.contractNo} onChange={e => setContractData({...contractData, contractNo: e.target.value})} className="flex-1 text-xs font-bold bg-slate-50 border border-slate-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-indigo-500" />
+                  <input type="number" placeholder="Cnt." value={contractData.containerCount} onChange={e => setContractData({...contractData, containerCount: e.target.value})} className="w-12 text-xs font-bold bg-slate-50 border border-slate-200 rounded px-1 py-1.5 outline-none focus:ring-1 focus:ring-indigo-500" />
+                  <input type="text" placeholder="차수" value={contractData.installment} onChange={e => setContractData({...contractData, installment: e.target.value})} className="w-12 text-xs font-bold bg-slate-50 border border-slate-200 rounded px-1 py-1.5 outline-none focus:ring-1 focus:ring-indigo-500" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">대금지급 상태 / 예정일</label>
+                <div className="flex gap-1 items-center">
+                  <select value={contractData.paymentStatus} onChange={e => setContractData({...contractData, paymentStatus: e.target.value})} className="w-12 text-xs font-bold border border-slate-200 rounded p-1">
+                    <option value="O">완료</option>
+                    <option value="X">미완</option>
+                  </select>
+                  <input type="text" placeholder="2026" value={contractData.paymentYear} onChange={e => setContractData({...contractData, paymentYear: e.target.value})} className="w-14 text-xs font-bold bg-slate-50 border border-slate-200 rounded px-1 py-1.5" />
+                  <input type="text" placeholder="01" value={contractData.paymentMonth} onChange={e => setContractData({...contractData, paymentMonth: e.target.value})} className="w-10 text-xs font-bold bg-slate-50 border border-slate-200 rounded px-1 py-1.5" />
+                  <input type="text" placeholder="일" value={contractData.paymentDay} onChange={e => setContractData({...contractData, paymentDay: e.target.value})} className="w-10 text-xs font-bold bg-slate-50 border border-slate-200 rounded px-1 py-1.5" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">월물 / 지수 / 디퍼</label>
+                <div className="flex gap-1">
+                  <select value={contractData.contractMonth} onChange={e => {
+                    const month = e.target.value;
+                    const index = coffeeIndices.find(c => c.month === month)?.price || '';
+                    setContractData({...contractData, contractMonth: month, index: index});
+                  }} className="flex-1 text-[10px] font-bold border border-slate-200 rounded p-1">
+                    <option value="">월물 선택</option>
+                    {coffeeIndices.map(c => <option key={c.id} value={c.month}>{c.month}</option>)}
+                  </select>
+                  <input type="number" step="0.01" placeholder="Index" value={contractData.index} onChange={e => setContractData({...contractData, index: e.target.value})} className="w-16 text-xs font-bold bg-slate-50 border border-slate-200 rounded px-1 py-1.5 outline-none focus:ring-1 focus:ring-indigo-500" />
+                  <input type="number" step="0.1" placeholder="Diff" value={contractData.differential} onChange={e => setContractData({...contractData, differential: e.target.value})} className="w-12 text-xs font-bold bg-slate-50 border border-slate-200 rounded px-1 py-1.5 outline-none focus:ring-1 focus:ring-indigo-500" />
+                </div>
+              </div>
+              <div className="flex items-end gap-2">
+                <button type="submit" className="flex-1 bg-indigo-600 text-white font-black py-2 rounded-lg hover:bg-indigo-700 transition shadow-sm text-xs">
+                  {contractData.isEditing ? '계약 수정' : '계약 등록'}
+                </button>
+                {contractData.isEditing && <button type="button" onClick={resetContractForm} className="px-3 py-2 border border-slate-200 rounded text-xs">취소</button>}
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">중량 (kg) / 기안 환율</label>
+                <div className="flex gap-1">
+                  <input type="number" placeholder="kg" value={contractData.weight} onChange={e => setContractData({...contractData, weight: e.target.value})} className="flex-1 text-xs font-bold bg-slate-50 border border-slate-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-indigo-500" required />
+                  <input type="number" placeholder="환율" value={contractData.planExchangeRate} onChange={e => setContractData({...contractData, planExchangeRate: e.target.value})} className="flex-1 text-xs font-bold bg-slate-50 border border-slate-200 rounded px-2 py-1.5 outline-none focus:ring-1 focus:ring-indigo-500" required />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">지수 상태 / 금액 확정</label>
+                <div className="flex gap-1">
+                  <select value={contractData.indexStatus} onChange={e => setContractData({...contractData, indexStatus: e.target.value})} className="w-1/2 text-xs font-bold border border-slate-200 rounded p-1">
+                    <option value="미정">지수 미정</option>
+                    <option value="확정">지수 확정</option>
+                  </select>
+                  <select value={contractData.amountConfirmed} onChange={e => setContractData({...contractData, amountConfirmed: e.target.value})} className="w-1/2 text-xs font-bold border border-slate-200 rounded p-1">
+                    <option value="미확정">금액 미확정</option>
+                    <option value="금액 확정">금액 확정</option>
+                  </select>
+                </div>
+              </div>
+              <div className="md:col-span-3 bg-indigo-50/30 rounded-lg p-3 flex items-center justify-between">
+                <div className="flex gap-4">
+                  <div>
+                    <span className="block text-[9px] text-indigo-400 font-bold uppercase">예상 단가 ($/kg)</span>
+                    <span className="text-sm font-black text-indigo-700">
+                      ${((parseFloat(contractData.index || 0) + parseFloat(contractData.differential || 0)) * 22.046 / 1000).toFixed(4)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[9px] text-indigo-400 font-bold uppercase">생두 금액 (USD)</span>
+                    <span className="text-sm font-black text-indigo-700">
+                      ${(((parseFloat(contractData.index || 0) + parseFloat(contractData.differential || 0)) * 22.046 / 1000) * parseFloat(contractData.weight || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[9px] text-indigo-400 font-bold uppercase">생두 금액 (KRW)</span>
+                    <span className="text-sm font-black text-indigo-700">
+                      {Math.round(((parseFloat(contractData.index || 0) + parseFloat(contractData.differential || 0)) * 22.046 / 1000) * parseFloat(contractData.weight || 0) * parseFloat(contractData.planExchangeRate || 0)).toLocaleString()}원
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
+                    <List className="w-4 h-4 text-indigo-500" /> 생두 계약 리스트 (엑셀 통합 뷰)
+                </h3>
+                <span className="text-[10px] font-bold text-slate-400">총 {rawBeanContracts.length}건의 계약</span>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-[10px] border-collapse whitespace-nowrap min-w-[2000px]">
+                <thead className="bg-slate-50 text-slate-500 font-bold border-b">
+                  <tr>
+                    <th className="px-3 py-3 border-r bg-slate-100/50 sticky left-0 z-20">산지</th>
+                    <th className="px-3 py-3 border-r bg-slate-100/50 sticky left-[60px] z-20">공급업체</th>
+                    <th className="px-3 py-3 border-r">계약번호</th>
+                    <th className="px-3 py-3 border-r text-center">Cnt.</th>
+                    <th className="px-3 py-3 border-r text-center">차수</th>
+                    <th className="px-3 py-3 border-r text-center">지급</th>
+                    <th className="px-3 py-3 border-r text-center">지급시기</th>
+                    <th className="px-3 py-3 border-r">월물</th>
+                    <th className="px-3 py-3 border-r text-center text-amber-600">디퍼</th>
+                    <th className="px-3 py-3 border-r text-center text-amber-600">지수</th>
+                    <th className="px-3 py-3 border-r text-center">지수수미</th>
+                    <th className="px-3 py-3 border-r text-right bg-indigo-50/50 text-indigo-600 font-black">단가 ($/kg)</th>
+                    <th className="px-3 py-3 border-r text-right">기안 환율</th>
+                    <th className="px-3 py-3 border-r text-right">중량 (kg)</th>
+                    <th className="px-3 py-3 border-r text-right bg-indigo-50/50 text-indigo-600 font-black">금액 (USD)</th>
+                    <th className="px-3 py-3 border-r text-center">금액확정</th>
+                    <th className="px-3 py-3 border-r text-right text-indigo-800 font-black bg-indigo-100/30">금액 (원)</th>
+                    <th className="px-3 py-3 text-center sticky right-0 bg-white z-20 shadow-[-2px_0_5px_rgba(0,0,0,0.03)]">작업</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-600">
+                  {rawBeanContracts.map((c) => {
+                    const unitPrice = (parseFloat(c.index || 0) + parseFloat(c.differential || 0)) * 22.046 / 1000;
+                    const amountUSD = unitPrice * parseFloat(c.weight || 0);
+                    const amountKRW = Math.round(amountUSD * parseFloat(c.planExchangeRate || 0));
+                    
+                    return (
+                      <tr key={c.id} className="hover:bg-slate-50 group">
+                        <td className="px-3 py-2 border-r font-bold bg-white sticky left-0 z-10 group-hover:bg-slate-50">{c.origin}</td>
+                        <td className="px-3 py-2 border-r font-bold bg-white sticky left-[60px] z-10 group-hover:bg-slate-50">{c.supplier}</td>
+                        <td className="px-3 py-2 border-r text-slate-400">{c.contractNo}</td>
+                        <td className="px-3 py-2 border-r text-center">{c.containerCount}</td>
+                        <td className="px-3 py-2 border-r text-center">{c.installment}</td>
+                        <td className="px-3 py-2 border-r text-center">
+                          <span className={`${c.paymentStatus === 'O' ? 'text-emerald-500' : 'text-slate-300'}`}>{c.paymentStatus}</span>
+                        </td>
+                        <td className="px-3 py-2 border-r text-center">
+                          {c.paymentYear}. {c.paymentMonth}
+                          {c.paymentDay && `.${c.paymentDay}`}
+                        </td>
+                        <td className="px-3 py-2 border-r font-bold text-slate-800">{c.contractMonth}</td>
+                        <td className="px-3 py-2 border-r text-center font-mono">{c.differential}</td>
+                        <td className="px-3 py-2 border-r text-center font-mono">{c.index}</td>
+                        <td className="px-3 py-2 border-r text-center">
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-black ${c.indexStatus === '확정' ? 'bg-indigo-100 text-indigo-600' : 'bg-rose-100 text-rose-600'}`}>{c.indexStatus}</span>
+                        </td>
+                        <td className="px-3 py-2 border-r text-right font-mono font-black text-indigo-600">${unitPrice.toFixed(4)}</td>
+                        <td className="px-3 py-2 border-r text-right font-mono">{c.planExchangeRate?.toLocaleString()}원</td>
+                        <td className="px-3 py-2 border-r text-right font-mono">{c.weight?.toLocaleString()}kg</td>
+                        <td className="px-3 py-2 border-r text-right font-mono font-black text-indigo-600">${amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td className="px-3 py-2 border-r text-center">
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-black ${c.amountConfirmed === '금액 확정' ? 'bg-slate-800 text-white' : 'text-slate-300'}`}>{c.amountConfirmed}</span>
+                        </td>
+                        <td className="px-3 py-2 border-r text-right font-mono font-black text-indigo-800 bg-indigo-50/20">{amountKRW.toLocaleString()}원</td>
+                        <td className="px-3 py-2 text-center sticky right-0 bg-white z-10 group-hover:bg-slate-50 shadow-[-2px_0_5px_rgba(0,0,0,0.03)]">
+                           <div className="flex items-center justify-center gap-1.5">
+                             <button onClick={() => startEditContract(c)} className="text-slate-300 hover:text-indigo-500"><Edit2 className="w-3 h-3" /></button>
+                             <button onClick={() => onDeleteRawBeanContract(c.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
+                           </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
