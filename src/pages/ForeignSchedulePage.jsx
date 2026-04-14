@@ -19,6 +19,8 @@ const ForeignSchedulePage = ({
   const [activeTab, setActiveTab] = useState('schedule'); // 'schedule', 'exchange', 'coffee'
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
+  const [editingScheduleId, setEditingScheduleId] = useState(null);
+  const [editScheduleData, setEditScheduleData] = useState({});
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)); // YYYY-MM
   const [scheduleStatusFilter, setScheduleStatusFilter] = useState('ALL'); // 'ALL', 'PENDING', 'COMPLETED'
 
@@ -174,6 +176,28 @@ const ForeignSchedulePage = ({
 
   const handleEditChange = (e) => {
     setEditData({ ...editData, [e.target.name]: e.target.value });
+  };
+
+  const startEditSchedule = (item) => {
+    setEditingScheduleId(item.id);
+    setEditScheduleData({ ...item });
+  };
+
+  const cancelEditSchedule = () => {
+    setEditingScheduleId(null);
+    setEditScheduleData({});
+  };
+
+  const handleEditScheduleChange = (e) => {
+    setEditScheduleData({ ...editScheduleData, [e.target.name]: e.target.value });
+  };
+
+  const saveEditSchedule = async () => {
+    await onUpdateSchedule({
+      ...editScheduleData,
+      amount: parseFloat(editScheduleData.amount)
+    });
+    setEditingScheduleId(null);
   };
 
   const filteredSchedule = fxSchedule
@@ -438,32 +462,87 @@ const ForeignSchedulePage = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
-                  {filteredSchedule.map((s) => (
-                    <tr key={s.id} className="hover:bg-slate-50 group">
-                      <td className="px-4 py-3 border-r">
-                        <input type="date" value={s.date} onChange={(e) => handleDateChange(s.id, e.target.value)} className="text-[11px] font-bold bg-transparent border border-transparent hover:border-slate-200 focus:border-indigo-500 rounded px-1 py-0.5 outline-none transition-colors cursor-pointer block w-full" />
-                      </td>
-                      <td className="px-4 py-3 border-r font-bold text-slate-800">{s.client}</td>
-                      <td className="px-4 py-3 border-r text-right font-mono font-bold text-blue-600">
-                        {(!s.currency || s.currency === 'USD') ? formatUSD(s.amount) : `${s.amount.toLocaleString()} ${s.currency}`}
-                      </td>
-                      <td className="px-6 py-3 border-r text-right font-mono font-black text-slate-900 bg-indigo-50/10">
-                        {formatKRW(s.amount * (s.currency === 'EUR' ? exchangeRateEUR : s.currency === 'JPY' ? exchangeRateJPY : exchangeRate))}
-                      </td>
-                      <td className="px-4 py-3 border-r text-center">{s.bank}</td>
-                      <td className="px-4 py-3 border-r text-[10px] text-slate-400">{s.desc}</td>
-                      <td className="px-4 py-3 border-r">
-                        <select value={s.status} onChange={(e) => handleStatusChange(s.id, e.target.value)} className={`text-[9px] font-black px-2 py-1 rounded-lg border-0 outline-none cursor-pointer transition-colors ${s.status === '송금 완료(집행)' ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200' : s.status === '지출결의 확인' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
-                          <option value="지출결의 확인">지출결의 확인</option>
-                          <option value="지출결의 미확인">지출결의 미확인</option>
-                          <option value="송금 완료(집행)">송금 완료(집행)</option>
-                        </select>
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <button onClick={() => onDeleteSchedule(s.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1"><Trash2 className="w-3.5 h-3.5" /></button>
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredSchedule.map((s) => {
+                    const isEditing = editingScheduleId === s.id;
+                    return (
+                      <tr key={s.id} className={`hover:bg-slate-50 group transition-colors ${isEditing ? 'bg-indigo-50/30' : ''}`}>
+                        {isEditing ? (
+                          <>
+                            <td className="px-4 py-2 border-r">
+                              <input type="date" name="date" value={editScheduleData.date} onChange={handleEditScheduleChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1 py-1 outline-none ring-2 ring-indigo-100" />
+                            </td>
+                            <td className="px-4 py-2 border-r">
+                              <input type="text" name="client" value={editScheduleData.client} onChange={handleEditScheduleChange} className="w-full text-[11px] font-bold border border-indigo-200 rounded px-1 py-1 outline-none ring-2 ring-indigo-100" />
+                            </td>
+                            <td className="px-4 py-2 border-r">
+                              <div className="flex gap-1">
+                                <select name="currency" value={editScheduleData.currency} onChange={handleEditScheduleChange} className="text-[10px] font-bold border border-indigo-200 rounded px-1 py-1 outline-none w-16">
+                                  <option value="USD">USD</option>
+                                  <option value="EUR">EUR</option>
+                                  <option value="JPY">JPY</option>
+                                </select>
+                                <input type="number" step="0.01" name="amount" value={editScheduleData.amount} onChange={handleEditScheduleChange} className="w-full text-[10px] font-bold border border-indigo-200 rounded px-1 py-1 outline-none text-right ring-2 ring-indigo-100" />
+                              </div>
+                            </td>
+                            <td className="px-6 py-2 border-r text-right font-mono font-black text-slate-400 bg-indigo-50/10">
+                              -
+                            </td>
+                            <td className="px-4 py-2 border-r text-center">
+                              <input type="text" name="bank" value={editScheduleData.bank} onChange={handleEditScheduleChange} className="w-full text-[10px] font-bold border border-indigo-200 rounded px-1 py-1 outline-none" />
+                            </td>
+                            <td className="px-4 py-2 border-r">
+                              <input type="text" name="desc" value={editScheduleData.desc} onChange={handleEditScheduleChange} className="w-full text-[10px] font-bold border border-indigo-200 rounded px-1 py-1 outline-none" />
+                            </td>
+                            <td className="px-4 py-2 border-r">
+                              <select name="status" value={editScheduleData.status} onChange={handleEditScheduleChange} className="text-[9px] font-black w-full border border-indigo-200 rounded px-1 py-1 outline-none">
+                                <option value="지출결의 확인">지출결의 확인</option>
+                                <option value="지출결의 미확인">지출결의 미확인</option>
+                                <option value="송금 완료(집행)">송금 완료(집행)</option>
+                              </select>
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button onClick={saveEditSchedule} className="p-1 px-1.5 bg-indigo-600 text-white rounded hover:bg-indigo-700 shadow-sm transition-all active:scale-95 text-[9px] font-bold">저장</button>
+                                <button onClick={cancelEditSchedule} className="p-1 px-1.5 bg-white text-slate-400 border border-slate-200 rounded hover:text-red-500 transition-all text-[9px]">취소</button>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-4 py-3 border-r">
+                              <input type="date" value={s.date} onChange={(e) => handleDateChange(s.id, e.target.value)} className="text-[11px] font-bold bg-transparent border border-transparent hover:border-slate-200 focus:border-indigo-500 rounded px-1 py-0.5 outline-none transition-colors cursor-pointer block w-full" />
+                            </td>
+                            <td className="px-4 py-3 border-r font-bold text-slate-800">{s.client}</td>
+                            <td className="px-4 py-3 border-r text-right font-mono font-bold text-blue-600">
+                              {(!s.currency || s.currency === 'USD') ? formatUSD(s.amount) : `${s.amount.toLocaleString()} ${s.currency}`}
+                            </td>
+                            <td className="px-6 py-3 border-r text-right font-mono font-black text-slate-900 bg-indigo-50/10">
+                              {formatKRW(s.amount * (s.currency === 'EUR' ? exchangeRateEUR : s.currency === 'JPY' ? exchangeRateJPY : exchangeRate))}
+                            </td>
+                            <td className="px-4 py-3 border-r text-center">{s.bank}</td>
+                            <td className="px-4 py-3 border-r text-[10px] text-slate-400">{s.desc}</td>
+                            <td className="px-4 py-3 border-r">
+                              <select value={s.status} onChange={(e) => handleStatusChange(s.id, e.target.value)} className={`text-[9px] font-black px-2 py-1 rounded-lg border-0 outline-none cursor-pointer transition-colors ${s.status === '송금 완료(집행)' ? 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-200' : s.status === '지출결의 확인' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
+                                <option value="지출결의 확인">지출결의 확인</option>
+                                <option value="지출결의 미확인">지출결의 미확인</option>
+                                <option value="송금 완료(집행)">송금 완료(집행)</option>
+                              </select>
+                            </td>
+                            <td className="px-4 py-3 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="flex items-center justify-center gap-1">
+                                <button onClick={() => startEditSchedule(s)} className="text-slate-300 hover:text-indigo-500 transition-colors p-1">
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button onClick={() => onDeleteSchedule(s.id)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  })}
                   {filteredSchedule.length === 0 && (
                     <tr>
                       <td colSpan={8} className="text-center py-20 text-slate-400">
