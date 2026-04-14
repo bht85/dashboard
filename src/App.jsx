@@ -333,7 +333,10 @@ const App = () => {
   const updateCoffeeIndex = async (data) => {
     const docId = data.id ? String(data.id) : Date.now().toString();
     console.log(`Updating Coffee Index: ${docId}`);
-    await setDoc(doc(collection(db, "coffeeIndices"), docId), data);
+    await setDoc(doc(collection(db, "coffeeIndices"), docId), {
+      ...data,
+      updatedAt: new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
+    });
   };
 
   const deleteCoffeeIndex = async (id) => {
