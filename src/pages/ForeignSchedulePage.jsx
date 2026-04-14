@@ -117,6 +117,28 @@ const ForeignSchedulePage = ({
     setCoffeeData({ year: '26', monthNumber: '04', price: '', isEditing: false, id: null });
   };
 
+  const startEditCoffee = (item) => {
+    const match = (item.month || '').match(/'(\d+)\.\s+(\d+)월물/);
+    if (match) {
+      setCoffeeData({
+        year: match[1],
+        monthNumber: match[2],
+        price: String(item.price),
+        isEditing: true,
+        id: item.id
+      });
+    } else {
+      setCoffeeData({
+        year: '26',
+        monthNumber: '04',
+        price: String(item.price),
+        isEditing: true,
+        id: item.id
+      });
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleAddContract = async (e) => {
     e.preventDefault();
     await onUpdateRawBeanContract({
