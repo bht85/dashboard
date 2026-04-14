@@ -410,7 +410,8 @@ const ForeignSchedulePage = ({
                 <label className="block text-[11px] font-black text-slate-500 uppercase mb-3">월물 지수 (SELECT)</label>
                 <select value={contractData.contractMonth} onChange={e => {
                   const m = e.target.value;
-                  const p = coffeeIndices.find(ci => ci.month === m)?.price || '';
+                  const selectedIdx = coffeeIndices.find(ci => ci.month === m);
+                  const p = selectedIdx ? (selectedIdx.price + 50) : '';
                   setContractData({...contractData, contractMonth: m, index: p});
                 }} className="w-full text-xs font-black bg-white border-2 border-slate-100 rounded-2xl px-3 py-4 mb-2">
                    <option value="">월물 선택</option>
