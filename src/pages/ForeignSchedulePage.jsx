@@ -252,18 +252,58 @@ const ForeignSchedulePage = ({
       ) : activeTab === 'coffee' ? (
         <div className="space-y-6">
           <div className="bg-white rounded-3xl border-2 border-slate-100 shadow-xl p-8">
-            <h3 className="font-black text-slate-800 mb-6 flex items-center gap-3 text-base"><Globe className="w-5 h-5 text-amber-500" /> 커피 지수 데이터 관리</h3>
+            <h3 className="font-black text-slate-800 mb-6 flex items-center gap-3 text-base">
+                <Globe className="w-5 h-5 text-amber-500" /> 
+                {coffeeData.isEditing ? '커피 지수 정보 수정' : '커피 지수 데이터 관리'}
+            </h3>
             <form onSubmit={handleAddCoffeeIndex} className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div><label className="block text-[10px] font-black text-slate-400 mb-2">연도</label><select value={coffeeData.year} onChange={e => setCoffeeData({...coffeeData, year: e.target.value})} className="w-full text-sm font-black border-2 border-slate-100 rounded-xl px-4 py-3">{['24','25','26','27','28','29','30'].map(y => <option key={y} value={y}>{2000+parseInt(y)}년</option>)}</select></div>
-              <div><label className="block text-[10px] font-black text-slate-400 mb-2">월물</label><select value={coffeeData.monthNumber} onChange={e => setCoffeeData({...coffeeData, monthNumber: e.target.value})} className="w-full text-sm font-black border-2 border-slate-100 rounded-xl px-4 py-3">{Array.from({length:12}).map((_,i) => {const m = String(i+1).padStart(2,'0'); return <option key={m} value={m}>{m}월물</option>})}</select></div>
-              <div><label className="block text-[10px] font-black text-slate-400 mb-2">지수 (c/lb)</label><input type="number" step="0.01" value={coffeeData.price} onChange={e => setCoffeeData({...coffeeData, price: e.target.value})} className="w-full text-sm font-black border-2 border-slate-100 rounded-xl px-4 py-3" required /></div>
-              <div className="flex items-end"><button type="submit" className="w-full bg-amber-500 text-white font-black py-3 rounded-xl transition">지수 정보 저장</button></div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-wider">연도</label>
+                <select value={coffeeData.year} onChange={e => setCoffeeData({...coffeeData, year: e.target.value})} className="w-full text-sm font-black border-2 border-slate-100 rounded-xl px-4 py-3">
+                    {['24','25','26','27','28','29','30'].map(y => <option key={y} value={y}>{2000+parseInt(y)}년</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-wider">월물</label>
+                <select value={coffeeData.monthNumber} onChange={e => setCoffeeData({...coffeeData, monthNumber: e.target.value})} className="w-full text-sm font-black border-2 border-slate-100 rounded-xl px-4 py-3">
+                    {Array.from({length:12}).map((_,i) => {const m = String(i+1).padStart(2,'0'); return <option key={m} value={m}>{m}월물</option>})}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-wider">지수 (c/lb)</label>
+                <input type="number" step="0.01" value={coffeeData.price} onChange={e => setCoffeeData({...coffeeData, price: e.target.value})} className="w-full text-sm font-black border-2 border-slate-100 rounded-xl px-4 py-3 outline-none focus:border-amber-500" required />
+              </div>
+              <div className="flex items-end gap-2">
+                <button type="submit" className={`flex-1 ${coffeeData.isEditing ? 'bg-indigo-600' : 'bg-amber-500'} text-white font-black py-3 rounded-xl hover:opacity-90 transition shadow-lg`}>
+                    {coffeeData.isEditing ? '수정 완료' : '지수 정보 저장'}
+                </button>
+                {coffeeData.isEditing && (
+                    <button type="button" onClick={() => setCoffeeData({year: '26', monthNumber: '04', price: '', isEditing: false, id: null})} className="px-4 py-3 border-2 border-slate-100 rounded-xl text-xs font-bold text-slate-400 hover:bg-slate-50">취소</button>
+                )}
+              </div>
             </form>
           </div>
           <div className="bg-white rounded-3xl border-2 border-slate-100 overflow-hidden shadow-xl text-[11px]">
+            <div className="px-8 py-5 border-b border-slate-100 bg-slate-50/50">
+               <h3 className="font-black text-slate-800 text-sm">저장된 월물 지수 리스트</h3>
+            </div>
             <table className="w-full text-left">
-              <thead className="bg-slate-50 border-b text-slate-400 font-black"><tr><th className="px-8 py-4 border-r">월물</th><th className="px-8 py-4 border-r text-right">지수</th><th className="px-8 py-4 border-r text-right">예상 지수 (+50)</th><th className="px-8 py-4 text-center">작업</th></tr></thead>
-              <tbody className="divide-y divide-slate-100">{coffeeIndices.map(item => <tr key={item.id} className="hover:bg-slate-50 font-black"><td className="px-8 py-4 border-r">{item.month}</td><td className="px-8 py-4 border-r text-right text-slate-400">{item.price?.toFixed(2)}</td><td className="px-8 py-4 border-r text-right text-amber-600 font-mono">{(item.price + 50).toFixed(2)}</td><td className="px-8 py-4 text-center"><button onClick={() => onDeleteCoffeeIndex(item.id)} className="text-slate-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button></td></tr>)}</tbody>
+              <thead className="bg-slate-50 border-b text-slate-400 font-black"><tr><th className="px-8 py-4 border-r uppercase tracking-widest">월물 (Futures)</th><th className="px-8 py-4 border-r text-right uppercase">지수 (Price)</th><th className="px-8 py-4 border-r text-right uppercase text-amber-600 bg-amber-50/10">예상 지수 (+50)</th><th className="px-8 py-4 text-center">작업</th></tr></thead>
+              <tbody className="divide-y divide-slate-100">
+                {coffeeIndices.map(item => (
+                  <tr key={item.id} className="hover:bg-slate-50 font-black group transition-colors">
+                    <td className="px-8 py-4 border-r text-slate-800">{item.month}</td>
+                    <td className="px-8 py-4 border-r text-right text-slate-400 font-mono">{item.price?.toFixed(2)}</td>
+                    <td className="px-8 py-4 border-r text-right text-amber-600 font-mono bg-amber-50/5">{(item.price + 50).toFixed(2)}</td>
+                    <td className="px-8 py-4 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-2 justify-center">
+                        <button onClick={() => startEditCoffee(item)} className="text-slate-300 hover:text-indigo-600 transition-colors"><Edit2 className="w-4 h-4" /></button>
+                        <button onClick={() => onDeleteCoffeeIndex(item.id)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
           </div>
         </div>
