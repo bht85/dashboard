@@ -232,6 +232,14 @@ const ForeignSchedulePage = ({
             <Calendar className="w-3.5 h-3.5" />
             외화 송금 일정
           </button>
+          <button 
+            onClick={() => setActiveTab('exchange')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+              activeTab === 'exchange' 
+                ? 'bg-white text-indigo-600 shadow-sm' 
+                : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
             <ArrowRightLeft className="w-3.5 h-3.5" />
             외화 환전 결과
           </button>
