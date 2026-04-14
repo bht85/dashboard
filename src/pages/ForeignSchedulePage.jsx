@@ -50,7 +50,8 @@ const ForeignSchedulePage = ({
 
   // Coffee Index Form State
   const [coffeeData, setCoffeeData] = useState({
-    month: "'26. 04월물",
+    year: '26',
+    monthNumber: '04',
     price: '',
     isEditing: false,
     id: null
@@ -222,15 +223,22 @@ const ForeignSchedulePage = ({
     
     await onUpdateCoffeeIndex({
         id: coffeeData.isEditing ? coffeeData.id : Date.now(),
-        month: coffeeData.month,
+        month: `'${coffeeData.year}. ${coffeeData.monthNumber}월물`,
         price: parseFloat(coffeeData.price)
     });
     
-    setCoffeeData({ month: "'26. 04월물", price: '', isEditing: false, id: null });
+    setCoffeeData({ year: '26', monthNumber: '04', price: '', isEditing: false, id: null });
   };
 
   const startEditCoffee = (item) => {
-    setCoffeeData({ ...item, isEditing: true });
+    // "'26. 04월물" -> year: "26", month: "04"
+    const match = item.month.match(/'(\d{2})\.\s*(\d{2})월물/);
+    setCoffeeData({ 
+        ...item, 
+        year: match ? match[1] : '26',
+        monthNumber: match ? match[2] : '01',
+        isEditing: true 
+    });
   };
 
   const applyCalculation = () => {
@@ -672,24 +680,35 @@ const ForeignSchedulePage = ({
             <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2 text-sm">
               <Plus className="w-4 h-4 text-amber-500" /> 커피 지수(월물) 데이터 관리
             </h3>
-            <form onSubmit={handleAddCoffeeIndex} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <form onSubmit={handleAddCoffeeIndex} className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">월물 선택 (26.04 ~ 28.12)</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">연도 선택</label>
                 <select 
-                    value={coffeeData.month} 
-                    onChange={(e) => setCoffeeData({...coffeeData, month: e.target.value})}
+                    value={coffeeData.year} 
+                    onChange={(e) => setCoffeeData({...coffeeData, year: e.target.value})}
                     className="w-full text-sm font-black bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500" 
                     required 
                 >
-                  {/* 정적 리스트 생성: 26.04 ~ 28.12 */}
-                  {Array.from({ length: 33 }).map((_, i) => {
-                    const startMonth = 3; // 4월 (0-indexed: 3)
-                    const date = new Date(2026, startMonth + i, 1);
-                    const yearLabel = String(date.getFullYear()).substring(2);
-                    const monthLabel = String(date.getMonth() + 1).padStart(2, '0');
-                    const label = `'${yearLabel}. ${monthLabel}월물`;
+                  {Array.from({ length: 7 }).map((_, i) => {
+                    const year = 24 + i;
                     return (
-                      <option key={label} value={label}>{label}</option>
+                      <option key={year} value={String(year)}>{2000 + year}년</option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">월물 선택</label>
+                <select 
+                    value={coffeeData.monthNumber} 
+                    onChange={(e) => setCoffeeData({...coffeeData, monthNumber: e.target.value})}
+                    className="w-full text-sm font-black bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500" 
+                    required 
+                >
+                  {Array.from({ length: 12 }).map((_, i) => {
+                    const m = String(i + 1).padStart(2, '0');
+                    return (
+                      <option key={m} value={m}>{m}월물</option>
                     );
                   })}
                 </select>
@@ -711,7 +730,7 @@ const ForeignSchedulePage = ({
                   {coffeeData.isEditing ? '수정 완료' : '데이터 저장'}
                 </button>
                 {coffeeData.isEditing && (
-                    <button type="button" onClick={() => setCoffeeData({month: "'26. 04월물", price: '', isEditing: false, id: null})} className="px-4 py-2 border border-slate-200 rounded-lg text-xs">취소</button>
+                    <button type="button" onClick={() => setCoffeeData({year: '26', monthNumber: '04', price: '', isEditing: false, id: null})} className="px-4 py-2 border border-slate-200 rounded-lg text-xs">취소</button>
                 )}
               </div>
             </form>
