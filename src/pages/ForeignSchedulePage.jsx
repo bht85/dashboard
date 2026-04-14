@@ -50,7 +50,7 @@ const ForeignSchedulePage = ({
 
   // Coffee Index Form State
   const [coffeeData, setCoffeeData] = useState({
-    month: '1월물',
+    month: "'26. 04월물",
     price: '',
     isEditing: false,
     id: null
@@ -226,7 +226,7 @@ const ForeignSchedulePage = ({
         price: parseFloat(coffeeData.price)
     });
     
-    setCoffeeData({ month: '1월물', price: '', isEditing: false, id: null });
+    setCoffeeData({ month: "'26. 04월물", price: '', isEditing: false, id: null });
   };
 
   const startEditCoffee = (item) => {
@@ -674,16 +674,24 @@ const ForeignSchedulePage = ({
             </h3>
             <form onSubmit={handleAddCoffeeIndex} className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">월물 선택</label>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">월물 선택 (26.04 ~ 28.12)</label>
                 <select 
                     value={coffeeData.month} 
                     onChange={(e) => setCoffeeData({...coffeeData, month: e.target.value})}
                     className="w-full text-sm font-black bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-amber-500" 
                     required 
                 >
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => (
-                    <option key={m} value={`${m}월물`}>{m}월물</option>
-                  ))}
+                  {/* 정적 리스트 생성: 26.04 ~ 28.12 */}
+                  {Array.from({ length: 33 }).map((_, i) => {
+                    const startMonth = 3; // 4월 (0-indexed: 3)
+                    const date = new Date(2026, startMonth + i, 1);
+                    const yearLabel = String(date.getFullYear()).substring(2);
+                    const monthLabel = String(date.getMonth() + 1).padStart(2, '0');
+                    const label = `'${yearLabel}. ${monthLabel}월물`;
+                    return (
+                      <option key={label} value={label}>{label}</option>
+                    );
+                  })}
                 </select>
               </div>
               <div>
@@ -703,7 +711,7 @@ const ForeignSchedulePage = ({
                   {coffeeData.isEditing ? '수정 완료' : '데이터 저장'}
                 </button>
                 {coffeeData.isEditing && (
-                    <button type="button" onClick={() => setCoffeeData({month: '1월물', price: '', isEditing: false, id: null})} className="px-4 py-2 border border-slate-200 rounded-lg text-xs">취소</button>
+                    <button type="button" onClick={() => setCoffeeData({month: "'26. 04월물", price: '', isEditing: false, id: null})} className="px-4 py-2 border border-slate-200 rounded-lg text-xs">취소</button>
                 )}
               </div>
             </form>
