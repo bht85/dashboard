@@ -67,6 +67,10 @@ const ForeignSchedulePage = ({
     setScheduleData({ ...scheduleData, [e.target.name]: e.target.value });
   };
 
+  const handleExchangeChange = (e) => {
+    setExchangeData({ ...exchangeData, [e.target.name]: e.target.value });
+  };
+
   const handleAddSchedule = async (e) => {
     e.preventDefault();
     if (!scheduleData.date || !scheduleData.client || !scheduleData.amount) return;
