@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Globe, Plus, Trash2, ArrowRightLeft, Calendar, Edit2, Check, X, ChevronLeft, ChevronRight, Package, List, AlertCircle, Search, DollarSign } from 'lucide-react';
+import { Globe, Plus, Trash2, ArrowRightLeft, Calendar, Edit2, Check, X, ChevronLeft, ChevronRight, Package, List, AlertCircle, Search, DollarSign, Printer } from 'lucide-react';
 import { formatUSD, formatKRW } from '../utils/formatters';
 
 const ForeignSchedulePage = ({ 
