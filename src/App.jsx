@@ -17,6 +17,7 @@ import AccountMappingPage from './pages/AccountMappingPage';
 import CashPLPage from './pages/CashPLPage';
 import LoanManagementPage from './pages/LoanManagementPage';
 import AuthPage from './pages/AuthPage';
+import ForeignReportPage from './pages/ForeignReportPage';
 import * as XLSX from 'xlsx';
 import { isExcludedAccount } from './utils/formatters';
 
@@ -28,6 +29,7 @@ const App = () => {
   const [exchangeRate, setExchangeRate] = useState(1520); // USD/KRW
   const [exchangeRateEUR, setExchangeRateEUR] = useState(1620); // EUR/KRW
   const [exchangeRateJPY, setExchangeRateJPY] = useState(10); // JPY/KRW (per 1 JPY)
+  const [reportMonth, setReportMonth] = useState(""); // YYYY-MM for reports
 
   // --- Auth State Sync ---
   useEffect(() => {
@@ -627,6 +629,10 @@ const App = () => {
           rawBeanContracts={rawBeanContracts}
           onUpdateRawBeanContract={updateRawBeanContract}
           onDeleteRawBeanContract={deleteRawBeanContract}
+          onViewReport={(month) => {
+            setReportMonth(month);
+            setCurrentView('foreignReport');
+          }}
         />
       )}
       {currentView === 'cashStatus' && (
@@ -686,6 +692,17 @@ const App = () => {
           fxExchangeResults={fxExchangeResults}
         />
       ) : <div className="p-20 text-center font-black text-slate-400">접근 권한이 없습니다. (Test Period)</div>)}
+
+      {currentView === 'foreignReport' && (
+        <ForeignReportPage 
+          selectedMonth={reportMonth || selectedDate.substring(0, 7)}
+          fxSchedule={fxSchedule}
+          exchangeRate={exchangeRate}
+          exchangeRateEUR={exchangeRateEUR}
+          exchangeRateJPY={exchangeRateJPY}
+          onBack={() => setCurrentView('foreign')}
+        />
+      )}
 
     </Layout>
   );

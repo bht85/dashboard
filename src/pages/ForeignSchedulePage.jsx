@@ -17,7 +17,8 @@ const ForeignSchedulePage = ({
   onDeleteCoffeeIndex,
   rawBeanContracts = [],
   onUpdateRawBeanContract,
-  onDeleteRawBeanContract
+  onDeleteRawBeanContract,
+  onViewReport
 }) => {
   const [activeTab, setActiveTab] = useState('schedule'); // 'schedule', 'exchange', 'coffee', 'beans'
   const [editingScheduleId, setEditingScheduleId] = useState(null);
@@ -221,6 +222,14 @@ const ForeignSchedulePage = ({
           <span className="text-xs font-black text-slate-700 px-3 min-w-[100px] text-center">{selectedMonth.split('-')[0]}년 {selectedMonth.split('-')[1]}월</span>
           <button onClick={() => changeMonth(1)} className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-white rounded-lg transition-colors"><ChevronRight className="w-4 h-4" /></button>
         </div>
+
+        <button 
+          onClick={() => onViewReport(selectedMonth)}
+          className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-black shadow-lg shadow-slate-100 hover:bg-slate-800 transition-all active:scale-95"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          보고서 출력
+        </button>
       </div>
 
       {activeTab === 'schedule' ? (
