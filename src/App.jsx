@@ -387,6 +387,28 @@ const App = () => {
     });
   };
 
+  const bulkUpdateCorpCardUsage = async (dataArray) => {
+    const { writeBatch } = await import('firebase/firestore');
+    const chunks = [];
+    for (let i = 0; i < dataArray.length; i += 500) {
+      chunks.push(dataArray.slice(i, i + 500));
+    }
+
+    for (const chunk of chunks) {
+      const batch = writeBatch(db);
+      chunk.forEach(data => {
+        const docId = data.id || Date.now().toString() + Math.random().toString(36).substr(2, 9);
+        const docRef = doc(collection(db, "corpCardUsage"), String(docId));
+        batch.set(docRef, {
+          ...data,
+          updatedAt: new Date().toISOString()
+        });
+      });
+      await batch.commit();
+      console.log(`Committed chunk of ${chunk.length} corporate card records.`);
+    }
+  };
+
   const deleteCorpCardUsage = async (id) => {
     if (!id) return;
     await deleteDoc(doc(collection(db, "corpCardUsage"), String(id)));
@@ -744,6 +766,7 @@ const App = () => {
           usage={corpCardUsage}
           budget={corpCardBudget}
           onUpdateUsage={updateCorpCardUsage}
+          onBulkUpdateUsage={bulkUpdateCorpCardUsage}
           onDeleteUsage={deleteCorpCardUsage}
           onUpdateBudget={updateCorpCardBudget}
           selectedDate={selectedDate}

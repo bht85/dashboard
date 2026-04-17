@@ -12,7 +12,7 @@ import * as XLSX from 'xlsx';
 import { COMPOSE_SUBJECTS, SMART_SUBJECTS } from './AccountMappingPage';
 import { formatKRW } from '../utils/formatters';
 
-const CorporateCardPage = ({ usage, budget, onUpdateUsage, onDeleteUsage, onUpdateBudget, selectedDate }) => {
+const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, onDeleteUsage, onUpdateBudget, selectedDate }) => {
   const [activeTab, setActiveTab] = useState('usage');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(selectedDate.substring(0, 7)); // YYYY-MM
@@ -22,9 +22,9 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onDeleteUsage, onUpda
   const availableMonths = useMemo(() => {
     const months = new Set(usage.map(u => u.month));
     months.add(selectedDate.substring(0, 7));
-    return Array.from(months).sort().reverse();
+    // Filter out invalid months
+    return Array.from(months).filter(m => /^\d{4}-\d{2}$/.test(m)).sort().reverse();
   }, [usage, selectedDate]);
-
   // Combined subjects for category mapping
   const ALL_SUBJECTS = useMemo(() => {
     const subjects = new Set();
@@ -102,70 +102,73 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onDeleteUsage, onUpda
     const reader = new FileReader();
     reader.onload = async (evt) => {
       try {
-        const bstr = evt.target.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
+        const data = new Uint8Array(evt.target.result);
+        const wb = XLSX.read(data, { type: 'array', cellDates: true });
         
-        // Target "CC 카드사용내역" sheet, fallback to first sheet
         const targetSheetName = wb.SheetNames.find(name => name.includes("CC 카드사용내역")) || wb.SheetNames[0];
         const ws = wb.Sheets[targetSheetName];
         const rawData = XLSX.utils.sheet_to_json(ws);
 
-        console.log(`Uploaded Data from sheet "${targetSheetName}":`, rawData);
+        console.log(`Processing ${rawData.length} records from sheet "${targetSheetName}"...`);
         
+        const preparedData = [];
         for (const row of rawData) {
           const cardCompany = row['카드사명'] || row['카드사'] || '';
           const cardNumber = row['카드번호'] || '';
-          const dateStr = row['승인일자'] || row['이용일시'] || row['날짜'] || row['사용일자'];
+          const dateVal = row['승인일자'] || row['이용일시'] || row['날짜'] || row['사용일자'];
           const merchant = row['가맹점명'] || row['가맹점'] || row['내용'] || '';
           const amount = parseInt(String(row['승인금액'] || row['이용금액'] || row['금액'] || 0).replace(/,/g, ''));
           const userName = row['구분'] || row['사용자'] || row['이름'] || row['카드명'] || '';
           const dept1 = row['조직1'] || '';
           const dept2 = row['조직2'] || '';
 
-          if (dateStr && amount > 0) {
-            // Normalize date to YYYY-MM-DD
-            let cleanDate = String(dateStr);
-            if (cleanDate.includes('.')) {
-              cleanDate = cleanDate.replace(/\./g, '-').split(' ')[0];
-            } else if (typeof dateStr === 'number') {
-              const d = new Date((dateStr - (25567 + 1)) * 86400 * 1000);
-              cleanDate = d.toISOString().split('T')[0];
-            } else if (cleanDate.includes(' ')) {
-              cleanDate = cleanDate.split(' ')[0];
+          if (dateVal && amount > 0) {
+            let cleanDate = '';
+            if (dateVal instanceof Date) {
+              cleanDate = dateVal.toISOString().split('T')[0];
+            } else {
+              let s = String(dateVal);
+              if (s.includes('.')) s = s.replace(/\./g, '-');
+              cleanDate = s.split(' ')[0];
             }
             
-            const month = cleanDate.substring(0, 7);
-            
-            await onUpdateUsage({
-              id: `${cleanDate}_${merchant}_${amount}_${userName}_${cardNumber}`,
-              date: cleanDate,
-              month,
-              cardCompany,
-              cardNumber,
-              merchant,
-              amount,
-              user: userName || '미지정',
-              dept1,
-              dept2,
-              category: '' 
-            });
+            if (cleanDate.length >= 7) {
+              const month = cleanDate.substring(0, 7);
+              preparedData.push({
+                id: `${cleanDate}_${merchant}_${amount}_${userName}_${cardNumber}`,
+                date: cleanDate,
+                month,
+                cardCompany,
+                cardNumber,
+                merchant,
+                amount,
+                user: userName || '미지정',
+                dept1,
+                dept2,
+                category: '' 
+              });
+            }
           }
         }
-        alert(`"${targetSheetName}" 시트에서 내역 업로드가 완료되었습니다.`);
+
+        if (preparedData.length > 0) {
+          await onBulkUpdateUsage(preparedData);
+          alert(`"${targetSheetName}" 시트에서 ${preparedData.length}건의 내역 업로드가 완료되었습니다.`);
+        } else {
+          alert('업로드할 유효한 데이터가 없습니다. 엑셀 형식을 확인해주세요.');
+        }
       } catch (err) {
         console.error("Upload error:", err);
-        if (err.code === 'permission-denied') {
-          alert('데이터베이스 권한이 없습니다. 파이어베이스 콘솔에서 보안 규칙을 확인해주세요.');
-        } else if (err.message?.includes('permission')) {
-          alert('데이터 저장 권한이 부족합니다. 관리자에게 문의하세요.');
+        if (err.code === 'permission-denied' || err.message?.includes('permission')) {
+          alert('데이터베이스 권한 오류: 파이어베이스 콘솔에서 보안 규칙이 올바르게 적용되었는지 확인해주세요.');
         } else {
-          alert(`파일 파싱 또는 저장 중 오류가 발생했습니다: ${err.message || '알 수 없는 오류'}`);
+          alert(`업로드 실패: ${err.message || '알 수 없는 오류'}\n콘솔 로그를 확인해주세요.`);
         }
       } finally {
         setUploading(false);
       }
     };
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
   };
 
   return (
