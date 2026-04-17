@@ -109,26 +109,37 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
         const ws = wb.Sheets[targetSheetName];
         const rawData = XLSX.utils.sheet_to_json(ws);
 
-        if (rawData.length > 0) {
-          console.log("First row keys:", Object.keys(rawData[0])); 
+        if (rawData.length === 0) {
+          alert(`"${targetSheetName}" 시트에 데이터가 없습니다.`);
+          return;
         }
-        
-        console.log(`Aggregating ${rawData.length} records from sheet "${targetSheetName}"...`);
+
+        // Normalize data keys (trim spaces)
+        const normalizedData = rawData.map(row => {
+          const newRow = {};
+          Object.keys(row).forEach(key => {
+            newRow[String(key).trim()] = row[key];
+          });
+          return newRow;
+        });
+
+        const firstKeys = Object.keys(normalizedData[0]);
+        console.log("Detected keys:", firstKeys);
         
         const aggregationMap = {};
 
-        for (const row of rawData) {
+        for (const row of normalizedData) {
           const cardCompany = row['카드사명'] || row['카드사'] || '';
           const cardNumber = row['카드번호'] || '';
-          const dateVal = row['승인일자'] || row['이용일시'] || row['날짜'] || row['사용일자'];
+          const dateVal = row['승인일자'] || row['이용일시'] || row['날짜'] || row['사용일자'] || row['거래일자'];
           
-          // Use Math.abs to include cancellations/refunds
-          const rawAmount = row['승인금액'] || row['이용금액'] || row['금액'] || 0;
-          const amount = parseInt(String(rawAmount).replace(/,/g, ''));
+          // Use Math.abs up front and better parsing
+          const rawAmount = row['승인금액'] || row['이용금액'] || row['금액'] || row['결제금액'] || 0;
+          const amount = typeof rawAmount === 'number' ? rawAmount : parseInt(String(rawAmount).replace(/,/g, ''));
           
           const userName = row['구분'] || row['사용자'] || row['이름'] || row['카드명'] || '';
-          const dept1 = row['조직1'] || '';
-          const dept2 = row['조직2'] || '';
+          const dept1 = row['조직1'] || row['부서1'] || '';
+          const dept2 = row['조직2'] || row['부서2'] || '';
 
           if (dateVal && Math.abs(amount) > 0) {
             let cleanMonth = '';
