@@ -163,18 +163,15 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
     });
   }, [budget, selectedMonth, selectedTrendSubject, ALL_SUBJECTS_IN_DATA]);
 
-  // Chart Data: User Spending Ratio (Top Spenders)
-  const userSpendingData = useMemo(() => {
+  // Chart Data: Team Spending Ratio (Top Spending Teams)
+  const teamSpendingRatioData = useMemo(() => {
     const map = {};
     let total = 0;
     
     filteredUsage.forEach(u => {
-      const name = u.user || '미지정';
-      const dept = u.dept1 || '';
-      const key = `${name}${dept ? ` (${dept})` : ''}`;
-      
-      if (!map[key]) map[key] = { name: key, value: 0 };
-      map[key].value += u.amount;
+      const dept = u.dept1 || '미지정';
+      if (!map[dept]) map[dept] = { name: dept, value: 0 };
+      map[dept].value += u.amount;
       total += u.amount;
     });
     
@@ -651,19 +648,19 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                 </div>
               </div>
 
-              {/* User Spending Ratio Analysis (New) */}
+              {/* Team Spending Ratio Analysis */}
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                    <User className="w-5 h-5 text-indigo-500" /> 인원별 지출 비중 분석
+                    <BarChart3 className="w-5 h-5 text-indigo-500" /> 팀별 지출 비중 분석
                   </h3>
-                  <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-wider">Spending Share by Individual (Scroll to see all)</p>
+                  <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-wider">Spending Share by Team (Scroll to see all)</p>
                 </div>
                 <div className="bg-slate-50/50 rounded-[32px] p-6 border border-slate-100">
                   <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                    <div style={{ height: `${Math.max(400, userSpendingData.length * 50)}px`, width: '100%' }}>
+                    <div style={{ height: `${Math.max(400, teamSpendingRatioData.length * 50)}px`, width: '100%' }}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={userSpendingData} layout="vertical" margin={{ left: 10, right: 40 }}>
+                        <BarChart data={teamSpendingRatioData} layout="vertical" margin={{ left: 10, right: 40 }}>
                           <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                           <XAxis type="number" hide />
                           <YAxis 
