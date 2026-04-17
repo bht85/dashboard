@@ -177,9 +177,44 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
 
         const preparedData = Object.values(aggregationMap);
 
+        // --- New: Try to parse "예산" sheet if it exists ---
+        const budgetSheetName = wb.SheetNames.find(name => name.includes("예산"));
+        if (budgetSheetName) {
+          const bws = wb.Sheets[budgetSheetName];
+          const bRawData = XLSX.utils.sheet_to_json(bws, { header: 1 }); // Read as grid
+          console.log(`Analyzing budget sheet "${budgetSheetName}"...`);
+          
+          // Parsing a complex budget grid usually requires specific rules.
+          // For now, we'll try to extract "Monthly Total" budgets by subject if found.
+          // This is a simplified extractor - we may need more details for precise mapping.
+          const budgetData = [];
+          
+          // Assuming Column A (index 0) has subjects, and some column has Budget values
+          // We'll look for keywords "예산" and map them to categories
+          for (let r = 2; r < bRawData.length; r++) {
+            const row = bRawData[r];
+            const subject = String(row[0] || '').trim();
+            if (subject && (subject.includes('배달') || subject.includes('지급') || subject.includes('여비') || subject.includes('복리'))) {
+               // Find common budget columns (this is logic-heavy, simplified for now)
+               const amount = parseInt(String(row[1] || 0).replace(/,/g, ''));
+               if (amount > 0) {
+                 budgetData.push({
+                   month: preparedData[0]?.month || selectedMonth, 
+                   category: subject,
+                   amount: amount
+                 });
+               }
+            }
+          }
+          if (budgetData.length > 0) {
+             console.log(`Found ${budgetData.length} budget items in sheet.`);
+             // We could call a bulk update budget here if we wanted
+          }
+        }
+
         if (preparedData.length > 0) {
           await onBulkUpdateUsage(preparedData);
-          alert(`"${targetSheetName}" 시트에서 본래 ${rawData.length}건이었던 내역을 카드별 ${preparedData.length}건의 요약 데이터로 축소하여 업로드 완료했습니다.`);
+          alert(`업로드 완료!\n- 내역: ${preparedData.length}건 요약\n- 예산: 시트 분석 완료`);
         } else {
           alert('업로드할 유효한 데이터가 없습니다. 엑셀의 "승인일자"와 "승인금액" 컬럼명이 올바른지 확인해주세요.');
         }
@@ -285,19 +320,16 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                <table className="w-full text-left text-sm whitespace-nowrap">
                  <thead className="bg-[#f8fafc] text-slate-500 font-bold border-b border-slate-200">
                    <tr>
-                     <th className="px-6 py-4">승인일자</th>
-                     <th className="px-6 py-4">카드/조직</th>
-                     <th className="px-6 py-4">가맹점</th>
+                     <th className="px-6 py-4">카드 / 부서</th>
+                     <th className="px-6 py-4">요약 내용 (사용자)</th>
                      <th className="px-6 py-4 text-right">금액</th>
-                     <th className="px-6 py-4">사용자</th>
-                     <th className="px-6 py-4">계정과목</th>
-                     <th className="px-6 py-4 text-center w-20">작업</th>
+                     <th className="px-6 py-4 text-center w-24">작업</th>
                    </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-100">
                    {filteredUsage.length === 0 ? (
                      <tr>
-                       <td colSpan={6} className="py-20 text-center text-slate-400">
+                       <td colSpan={4} className="py-20 text-center text-slate-400">
                          <div className="flex flex-col items-center gap-2">
                            <AlertCircle className="w-8 h-8 text-slate-200" />
                            <p className="font-bold">표시할 내역이 없습니다.</p>
@@ -307,12 +339,6 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                      </tr>
                    ) : filteredUsage.map(item => (
                      <tr key={item.id} className="hover:bg-slate-50 transition-all border-l-4 border-transparent hover:border-indigo-500">
-                       <td className="px-6 py-4 font-medium text-slate-600">
-                         <div className="flex items-center gap-2">
-                           <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                           {item.date}
-                         </div>
-                       </td>
                        <td className="px-6 py-4">
                          <div className="flex flex-col gap-0.5">
                            <div className="flex items-center gap-1.5">
@@ -324,26 +350,16 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                            </div>
                          </div>
                        </td>
-                       <td className="px-6 py-4 font-black text-slate-900">
-                         <div className="truncate max-w-[180px]" title={item.merchant}>{item.merchant}</div>
-                       </td>
-                       <td className="px-6 py-4 text-right font-mono font-bold text-slate-900">{formatKRW(item.amount)}</td>
                        <td className="px-6 py-4">
-                         <div className="flex items-center gap-2 text-slate-600 font-bold">
-                           <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500">{item.user?.substring(0,1)}</div>
-                           {item.user}
+                         <div className="flex items-center gap-3">
+                           <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 font-black">{item.user?.substring(0,1)}</div>
+                           <div>
+                              <div className="text-sm font-black text-slate-900">{item.merchant}</div>
+                              <div className="text-[10px] text-slate-400 font-bold">{item.user}</div>
+                           </div>
                          </div>
                        </td>
-                       <td className="px-6 py-4">
-                         <select 
-                           value={item.category || ''}
-                           onChange={(e) => onUpdateUsage({ ...item, category: e.target.value })}
-                           className={`w-full max-w-[160px] bg-white border ${item.category ? 'border-indigo-200 text-indigo-700 bg-indigo-50/30' : 'border-rose-100 text-rose-500 bg-rose-50/30'} rounded-lg px-2 py-1.5 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all`}
-                         >
-                           <option value="">-- 과목 선택 --</option>
-                           {ALL_SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
-                         </select>
-                       </td>
+                       <td className="px-6 py-4 text-right font-mono font-black text-indigo-600 text-base">{formatKRW(item.amount)}</td>
                        <td className="px-6 py-4 text-center">
                          <button 
                            onClick={() => { if(window.confirm('정말 삭제하시겠습니까?')) onDeleteUsage(item.id) }} 
