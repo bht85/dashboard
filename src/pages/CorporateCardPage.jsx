@@ -49,46 +49,69 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
   }, [usage, selectedMonth, searchTerm]);
 
   // Aggregate stats
-    // Use "전체부서" as the base for total budget, otherwise sum all depts
+  const monthlyStats = useMemo(() => {
+    const totalUsage = filteredUsage.reduce((sum, item) => sum + (item.amount || 0), 0);
     const monthlyBudgets = budget.filter(b => b.month === selectedMonth);
     const totalBudgetRecord = monthlyBudgets.find(b => b.dept === '전체부서');
-    const monthlyBudget = totalBudgetRecord 
-      ? monthlyBudgets.filter(b => b.dept === '전체부서').reduce((sum, item) => sum + (item.amount || 0), 0)
-      : monthlyBudgets.reduce((sum, item) => sum + (item.amount || 0), 0);
-      
-    const utilization = monthlyBudget > 0 ? (totalUsage / monthlyBudget) * 100 : 0;
+    
+    let monthlyBudgetValue = 0;
+    let totalExcelActual = 0;
+    
+    if (totalBudgetRecord) {
+      monthlyBudgets.filter(b => b.dept === '전체부서').forEach(b => {
+        monthlyBudgetValue += (b.amount || 0);
+        totalExcelActual += (b.actual || 0);
+      });
+    } else {
+      monthlyBudgets.forEach(b => {
+        monthlyBudgetValue += (b.amount || 0);
+        totalExcelActual += (b.actual || 0);
+      });
+    }
+
+    const finalTotalUsage = totalExcelActual > 0 ? totalExcelActual : totalUsage;
+    const utilization = monthlyBudgetValue > 0 ? (finalTotalUsage / monthlyBudgetValue) * 100 : 0;
     
     return {
-      total: totalUsage,
-      budget: monthlyBudget,
+      total: finalTotalUsage,
+      budget: monthlyBudgetValue,
       utilization: utilization.toFixed(1)
     };
   }, [filteredUsage, budget, selectedMonth]);
 
-  // Chart Data: Team Analysis (Actual vs Budget)
+  // Chart Data: Team Analysis (Priority: Excel Execution Data)
   const teamAnalysisData = useMemo(() => {
     const monthBudgets = budget.filter(b => b.month === selectedMonth && b.dept !== '전체부서');
-    const map = {};
+    if (monthBudgets.length === 0) return [];
     
-    // Fill with department budgets
+    const map = {};
     monthBudgets.forEach(b => {
       const dept = b.dept;
       if (!map[dept]) map[dept] = { name: dept, budget: 0, actual: 0 };
-      map[dept].budget += b.amount;
+      map[dept].budget += (b.amount || 0);
+      map[dept].actual += (b.actual || 0);
     });
     
-    // Add actual spending by department
-    filteredUsage.forEach(u => {
-      const dept = u.dept1 || '미지정';
-      if (!map[dept]) map[dept] = { name: dept, budget: 0, actual: 0 };
-      map[dept].actual += u.amount;
-    });
+    // Fallback if no execution data was in the Excel budget sheet
+    if (Object.values(map).every(v => v.actual === 0)) {
+      filteredUsage.forEach(u => {
+        const dept = u.dept1 || '미지정';
+        if (map[dept]) map[dept].actual += u.amount;
+      });
+    }
     
     return Object.values(map).sort((a,b) => b.actual - a.actual);
   }, [filteredUsage, budget, selectedMonth]);
 
   // Chart Data: Category Breakdown
   const categoryChartData = useMemo(() => {
+    const monthBudgets = budget.filter(b => b.month === selectedMonth && b.dept === '전체부서');
+    if (monthBudgets.length > 0 && monthBudgets.some(b => b.actual > 0)) {
+      // Use Excel execution if available
+      return monthBudgets.map(b => ({ name: b.category, value: b.actual }))
+        .filter(v => v.value > 0).sort((a,b) => b.value - a.value);
+    }
+    
     const map = {};
     filteredUsage.forEach(item => {
       const cat = item.category || '미지정';
@@ -96,24 +119,25 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
     });
     return Object.keys(map).map(key => ({ name: key, value: map[key] }))
       .sort((a,b) => b.value - a.value);
-  }, [filteredUsage]);
+  }, [filteredUsage, budget, selectedMonth]);
 
-  // Chart Data: Actual vs Budget
+  // Chart Data: Actual vs Budget (Account subjects)
   const budgetVsActualData = useMemo(() => {
-    const monthBudgets = budget.filter(b => b.month === selectedMonth);
+    const monthBudgets = budget.filter(b => b.month === selectedMonth && b.dept === '전체부서');
     const map = {};
     
-    // Fill with budgets first
     monthBudgets.forEach(b => {
-      map[b.category] = { category: b.category, budget: b.amount, actual: 0 };
+      map[b.category] = { category: b.category, budget: b.amount, actual: b.actual || 0 };
     });
     
-    // Add actual spending
-    filteredUsage.forEach(u => {
-      const cat = u.category || '미지정';
-      if (!map[cat]) map[cat] = { category: cat, budget: 0, actual: 0 };
-      map[cat].actual += u.amount;
-    });
+    // Add usage if not already covered by excel execution data
+    if (Object.values(map).every(v => v.actual === 0)) {
+      filteredUsage.forEach(u => {
+        const cat = u.category || '미지정';
+        if (!map[cat]) map[cat] = { category: cat, budget: 0, actual: 0 };
+        map[cat].actual += u.amount;
+      });
+    }
     
     return Object.values(map).sort((a,b) => b.actual - a.actual);
   }, [filteredUsage, budget, selectedMonth]);
@@ -202,45 +226,54 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
 
         const preparedData = Object.values(aggregationMap);
 
-        // --- Enhanced: Parse "예산" sheet grid ---
+        // --- Enhanced: Parse "예산" sheet grid (Detailed Names + Independent depts + Execution) ---
         const budgetSheetName = wb.SheetNames.find(name => name.includes("예산"));
         if (budgetSheetName) {
           const bws = wb.Sheets[budgetSheetName];
           const bRawData = XLSX.utils.sheet_to_json(bws, { header: 1 });
-          console.log(`Analyzing budget grid in "${budgetSheetName}"...`);
+          console.log(`Analyzing detailed budget grid...`);
           
           if (bRawData.length >= 2) {
-            // Row 2 (index 1) contains category names
             const categoryHeaders = bRawData[1] || [];
-            const budgetData = [];
+            const budgetMap = {}; // Use a map to link Budget and Actual rows for the same team
             
-            // Loop through rows starting from index 2 (Data rows)
             for (let r = 2; r < bRawData.length; r++) {
               const row = bRawData[r];
               const teamName = String(row[0] || '').trim();
               const dataType = String(row[1] || '').trim();
               
-              // Only process "예산액" rows
-              if (dataType === '예산액' && teamName) {
-                // Loop through columns starting from index 2 (Categories)
+              if (!teamName) continue;
+              
+              const isBudget = dataType === '예산액';
+              const isActual = dataType === '집행액';
+              
+              if (isBudget || isActual) {
                 for (let c = 2; c < row.length; c++) {
-                  const amount = parseInt(String(row[c] || 0).replace(/,/g, ''));
-                  const categoryName = String(categoryHeaders[c] || '').trim();
-                  
-                  if (amount > 0 && categoryName) {
-                    budgetData.push({
-                      month: preparedData[0]?.month || selectedMonth,
-                      dept: teamName,
-                      category: categoryName,
-                      amount: amount
-                    });
-                  }
+                   const categoryName = String(categoryHeaders[c] || '').trim();
+                   if (!categoryName) continue;
+                   
+                   const amount = parseInt(String(row[c] || 0).replace(/,/g, ''));
+                   const key = `${teamName}_${categoryName}`;
+                   
+                   if (!budgetMap[key]) {
+                     budgetMap[key] = {
+                       month: preparedData[0]?.month || selectedMonth,
+                       dept: teamName,
+                       category: categoryName,
+                       amount: 0,
+                       actual: 0
+                     };
+                   }
+                   
+                   if (isBudget) budgetMap[key].amount = amount;
+                   if (isActual) budgetMap[key].actual = amount;
                 }
               }
             }
 
+            const budgetData = Object.values(budgetMap).filter(b => b.amount > 0 || b.actual > 0);
             if (budgetData.length > 0 && onBulkUpdateBudget) {
-              console.log(`Extracted ${budgetData.length} budget items for teams.`);
+              console.log(`Extracted ${budgetData.length} records with detailed names & execution.`);
               await onBulkUpdateBudget(budgetData);
             }
           }
@@ -530,7 +563,8 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {budget.filter(b => b.month === selectedMonth).map((b, idx) => {
-                const actual = filteredUsage
+                // Priority: Use 'actual' from Excel if available, otherwise sum filteredUsage
+                const actual = (b.actual && b.actual > 0) ? b.actual : filteredUsage
                   .filter(u => u.category === b.category && (b.dept === '전체부서' || u.dept1 === b.dept))
                   .reduce((s, i) => s + i.amount, 0);
                 const percent = b.amount > 0 ? (actual / b.amount) * 100 : 0;
@@ -551,7 +585,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                     <div className="space-y-3">
                       <div className="flex justify-between text-[11px] font-bold">
                         <span className="text-slate-500 flex items-center gap-1.5">
-                           <TrendingUp className="w-3.5 h-3.5 text-slate-300" /> 집행액: {formatKRW(actual)}
+                           <TrendingUp className="w-3.5 h-3.5 text-slate-300" /> {b.actual > 0 ? '집행액(엑셀)' : '집계액(카드)'}: {formatKRW(actual)}
                         </span>
                         <span className={percent > 100 ? "text-rose-500" : "text-indigo-600"}>{percent.toFixed(1)}%</span>
                       </div>
