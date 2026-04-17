@@ -41,7 +41,9 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onDeleteUsage, onUpda
       const isMonth = u.month === selectedMonth;
       const matchesSearch = searchTerm === '' || 
         (u.merchant || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (u.user || '').toLowerCase().includes(searchTerm.toLowerCase());
+        (u.user || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.cardCompany || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.dept1 || '').toLowerCase().includes(searchTerm.toLowerCase());
       return isMonth && matchesSearch;
     }).sort((a,b) => b.date.localeCompare(a.date));
   }, [usage, selectedMonth, searchTerm]);
@@ -102,46 +104,54 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onDeleteUsage, onUpda
       try {
         const bstr = evt.target.result;
         const wb = XLSX.read(bstr, { type: 'binary' });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.json_to_sheet(ws); // This might be wrong, need json_to_sheet? No, sheet_to_json
+        
+        // Target "CC 카드사용내역" sheet, fallback to first sheet
+        const targetSheetName = wb.SheetNames.find(name => name.includes("CC 카드사용내역")) || wb.SheetNames[0];
+        const ws = wb.Sheets[targetSheetName];
         const rawData = XLSX.utils.sheet_to_json(ws);
 
-        console.log("Uploaded Data:", rawData);
+        console.log(`Uploaded Data from sheet "${targetSheetName}":`, rawData);
         
-        // Map common column names
-        // Expecting: 이용일시(Date), 가맹점(Merchant), 이용금액(Amount), 사용자(User)
         for (const row of rawData) {
-          const dateStr = row['이용일시'] || row['날짜'] || row['사용일자'];
-          const merchant = row['가맹점명'] || row['가맹점'] || row['내용'];
-          const amount = parseInt(String(row['이용금액'] || row['금액'] || 0).replace(/,/g, ''));
-          const userName = row['사용자'] || row['이름'] || row['카드명'];
+          const cardCompany = row['카드사명'] || row['카드사'] || '';
+          const cardNumber = row['카드번호'] || '';
+          const dateStr = row['승인일자'] || row['이용일시'] || row['날짜'] || row['사용일자'];
+          const merchant = row['가맹점명'] || row['가맹점'] || row['내용'] || '';
+          const amount = parseInt(String(row['승인금액'] || row['이용금액'] || row['금액'] || 0).replace(/,/g, ''));
+          const userName = row['구분'] || row['사용자'] || row['이름'] || row['카드명'] || '';
+          const dept1 = row['조직1'] || '';
+          const dept2 = row['조직2'] || '';
 
           if (dateStr && amount > 0) {
             // Normalize date to YYYY-MM-DD
-            let cleanDate = dateStr;
-            if (typeof dateStr === 'string' && dateStr.includes('.')) {
-              cleanDate = dateStr.replace(/\./g, '-').split(' ')[0];
+            let cleanDate = String(dateStr);
+            if (cleanDate.includes('.')) {
+              cleanDate = cleanDate.replace(/\./g, '-').split(' ')[0];
             } else if (typeof dateStr === 'number') {
-              // Excel date serial
               const d = new Date((dateStr - (25567 + 1)) * 86400 * 1000);
               cleanDate = d.toISOString().split('T')[0];
+            } else if (cleanDate.includes(' ')) {
+              cleanDate = cleanDate.split(' ')[0];
             }
             
             const month = cleanDate.substring(0, 7);
             
             await onUpdateUsage({
-              id: `${cleanDate}_${merchant}_${amount}_${userName}`,
+              id: `${cleanDate}_${merchant}_${amount}_${userName}_${cardNumber}`,
               date: cleanDate,
               month,
+              cardCompany,
+              cardNumber,
               merchant,
               amount,
               user: userName || '미지정',
-              category: '' // Initialize empty for mapping
+              dept1,
+              dept2,
+              category: '' 
             });
           }
         }
-        alert('카드 사용 내역 업로드가 완료되었습니다.');
+        alert(`"${targetSheetName}" 시트에서 내역 업로드가 완료되었습니다.`);
       } catch (err) {
         console.error("Upload error:", err);
         alert('파일 파싱 중 오류가 발생했습니다.');
@@ -240,11 +250,12 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onDeleteUsage, onUpda
                <table className="w-full text-left text-sm whitespace-nowrap">
                  <thead className="bg-[#f8fafc] text-slate-500 font-bold border-b border-slate-200">
                    <tr>
-                     <th className="px-6 py-4">사용일시</th>
+                     <th className="px-6 py-4">승인일자</th>
+                     <th className="px-6 py-4">카드/조직</th>
                      <th className="px-6 py-4">가맹점</th>
                      <th className="px-6 py-4 text-right">금액</th>
                      <th className="px-6 py-4">사용자</th>
-                     <th className="px-6 py-4">계정과목 매칭</th>
+                     <th className="px-6 py-4">계정과목</th>
                      <th className="px-6 py-4 text-center w-20">작업</th>
                    </tr>
                  </thead>
@@ -260,18 +271,31 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onDeleteUsage, onUpda
                        </td>
                      </tr>
                    ) : filteredUsage.map(item => (
-                     <tr key={item.id} className="hover:bg-slate-50 transition-all">
+                     <tr key={item.id} className="hover:bg-slate-50 transition-all border-l-4 border-transparent hover:border-indigo-500">
                        <td className="px-6 py-4 font-medium text-slate-600">
                          <div className="flex items-center gap-2">
                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
                            {item.date}
                          </div>
                        </td>
-                       <td className="px-6 py-4 font-black text-slate-900">{item.merchant}</td>
-                       <td className="px-6 py-4 text-right font-mono font-bold text-indigo-600">{formatKRW(item.amount)}</td>
                        <td className="px-6 py-4">
-                         <div className="flex items-center gap-2 text-slate-500">
-                           <User className="w-3.5 h-3.5" />
+                         <div className="flex flex-col gap-0.5">
+                           <div className="flex items-center gap-1.5">
+                             <span className="text-[10px] font-black px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded uppercase tracking-tighter">{item.cardCompany || 'CARD'}</span>
+                             <span className="text-[10px] font-bold text-slate-400 font-mono">{item.cardNumber?.slice(-4) ? `****${item.cardNumber.slice(-4)}` : '-'}</span>
+                           </div>
+                           <div className="text-[10px] text-indigo-500 font-bold">
+                             {item.dept1}{item.dept2 ? ` > ${item.dept2}` : ''}
+                           </div>
+                         </div>
+                       </td>
+                       <td className="px-6 py-4 font-black text-slate-900">
+                         <div className="truncate max-w-[180px]" title={item.merchant}>{item.merchant}</div>
+                       </td>
+                       <td className="px-6 py-4 text-right font-mono font-bold text-slate-900">{formatKRW(item.amount)}</td>
+                       <td className="px-6 py-4">
+                         <div className="flex items-center gap-2 text-slate-600 font-bold">
+                           <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500">{item.user?.substring(0,1)}</div>
                            {item.user}
                          </div>
                        </td>
@@ -279,7 +303,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onDeleteUsage, onUpda
                          <select 
                            value={item.category || ''}
                            onChange={(e) => onUpdateUsage({ ...item, category: e.target.value })}
-                           className={`w-full max-w-[200px] bg-white border ${item.category ? 'border-indigo-200 text-indigo-700 bg-indigo-50/30' : 'border-rose-100 text-rose-500 bg-rose-50/30'} rounded-lg px-3 py-1.5 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all`}
+                           className={`w-full max-w-[160px] bg-white border ${item.category ? 'border-indigo-200 text-indigo-700 bg-indigo-50/30' : 'border-rose-100 text-rose-500 bg-rose-50/30'} rounded-lg px-2 py-1.5 text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition-all`}
                          >
                            <option value="">-- 과목 선택 --</option>
                            {ALL_SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
@@ -288,7 +312,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onDeleteUsage, onUpda
                        <td className="px-6 py-4 text-center">
                          <button 
                            onClick={() => { if(window.confirm('정말 삭제하시겠습니까?')) onDeleteUsage(item.id) }} 
-                           className="p-2 text-slate-300 hover:text-rose-500 transition-colors"
+                           className="p-2 text-slate-200 hover:text-rose-500 transition-colors"
                          >
                            <Trash2 className="w-4 h-4" />
                          </button>
