@@ -459,18 +459,25 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
               </button>
           </div>
           <div className="h-6 w-px bg-slate-200 mx-1"></div>
-          <select 
-            value={selectedMonth} 
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="bg-slate-50 border-none rounded-xl px-4 py-2 text-xs font-bold outline-none cursor-pointer"
-          >
-            {availableMonths.map(m => <option key={m} value={m}>{m.replace('-', '년 ')}월</option>)}
-          </select>
-          <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl shadow-lg shadow-indigo-100 transition-all cursor-pointer active:scale-95">
-            <Upload className="w-3.5 h-3.5" />
-            <span>내역 업로드</span>
-            <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} disabled={uploading} />
-          </label>
+          <div className="flex flex-col">
+            <select 
+              value={selectedMonth} 
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="bg-slate-50 border-none rounded-xl px-4 py-2 text-xs font-black outline-none cursor-pointer text-indigo-600"
+            >
+              {availableMonths.map(m => <option key={m} value={m}>{m.replace('-', '년 ')}월</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col items-end gap-1">
+            <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl shadow-lg shadow-indigo-100 transition-all cursor-pointer active:scale-95">
+              <Upload className="w-3.5 h-3.5" />
+              <span>내역 업로드</span>
+              <input type="file" className="hidden" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} disabled={uploading} />
+            </label>
+            <span className="text-[9px] font-bold text-slate-400 mr-1 animate-pulse italic">
+              * 선택된 [{selectedMonth.split('-')[1]}월]로 업로드됩니다
+            </span>
+          </div>
         </div>
       </div>
 
@@ -628,23 +635,34 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                   <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
                     <BarChart3 className="w-5 h-5 text-emerald-500" /> 부서별 예산 대비 지출 현황
                   </h3>
-                  <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-wider">Budget vs Actual by Department</p>
+                  <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-wider">Budget vs Actual by Department (Scroll to see all)</p>
                 </div>
-                <div className="h-[350px] min-h-[350px] w-full bg-slate-50/50 rounded-3xl p-4">
-                  <ResponsiveContainer width="100%" height="100%" minHeight={300}>
-                    <BarChart data={teamAnalysisData} layout="vertical" margin={{ left: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
-                      <XAxis type="number" hide />
-                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#64748b' }} width={100} />
-                      <Tooltip 
-                        formatter={(value) => formatKRW(value)}
-                        contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', color: '#fff', fontSize: '10px', fontWeight: 'bold' }}
-                      />
-                      <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingBottom: '20px' }} />
-                      <Bar dataKey="budget" name="예산" fill="#e2e8f0" radius={[0, 4, 4, 0]} barSize={12} />
-                      <Bar dataKey="actual" name="실제 지출" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={12} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="bg-slate-50/50 rounded-[32px] p-6 border border-slate-100">
+                  <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                    <div style={{ height: `${Math.max(400, teamAnalysisData.length * 45)}px`, width: '100%' }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={teamAnalysisData} layout="vertical" margin={{ left: 10, right: 30 }}>
+                          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                          <XAxis type="number" hide />
+                          <YAxis 
+                            dataKey="name" 
+                            type="category" 
+                            axisLine={false} 
+                            tickLine={false} 
+                            tick={{ fontSize: 11, fontWeight: 'black', fill: '#475569' }} 
+                            width={160} 
+                          />
+                          <Tooltip 
+                            formatter={(value) => formatKRW(value)}
+                            contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
+                          />
+                          <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'black', paddingBottom: '20px' }} />
+                          <Bar dataKey="budget" name="예산" fill="#e2e8f0" radius={[0, 6, 6, 0]} barSize={20} />
+                          <Bar dataKey="actual" name="실제 지출" fill="#6366f1" radius={[0, 6, 6, 0]} barSize={20} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
