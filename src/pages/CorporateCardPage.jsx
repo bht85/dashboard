@@ -226,23 +226,23 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
 
         const preparedData = Object.values(aggregationMap);
 
-        // --- Enhanced: Parse "예산" sheet grid (Detailed Names + Independent depts + Execution) ---
+        // --- Enhanced: Parse "예산" sheet grid (Use UI selectedMonth to avoid wrong month guessing) ---
         const budgetSheetName = wb.SheetNames.find(name => name.includes("예산"));
         if (budgetSheetName) {
           const bws = wb.Sheets[budgetSheetName];
           const bRawData = XLSX.utils.sheet_to_json(bws, { header: 1 });
-          console.log(`Analyzing detailed budget grid...`);
+          console.log(`Analyzing detailed budget grid for month: ${selectedMonth}`);
           
           if (bRawData.length >= 2) {
             const categoryHeaders = bRawData[1] || [];
-            const budgetMap = {}; // Use a map to link Budget and Actual rows for the same team
+            const budgetMap = {};
             
             for (let r = 2; r < bRawData.length; r++) {
               const row = bRawData[r];
               const teamName = String(row[0] || '').trim();
               const dataType = String(row[1] || '').trim();
               
-              if (!teamName) continue;
+              if (!teamName || teamName === '예산과목명') continue;
               
               const isBudget = dataType === '예산액';
               const isActual = dataType === '집행액';
@@ -257,7 +257,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                    
                    if (!budgetMap[key]) {
                      budgetMap[key] = {
-                       month: preparedData[0]?.month || selectedMonth,
+                       month: selectedMonth, // Use the UI-selected month explicitly
                        dept: teamName,
                        category: categoryName,
                        amount: 0,
@@ -273,7 +273,9 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
 
             const budgetData = Object.values(budgetMap).filter(b => b.amount > 0 || b.actual > 0);
             if (budgetData.length > 0 && onBulkUpdateBudget) {
-              console.log(`Extracted ${budgetData.length} records with detailed names & execution.`);
+              console.log(`Target Month: ${selectedMonth} | Records: ${budgetData.length}`);
+              // Sample check
+              console.log("Budget Sample:", budgetData[0]);
               await onBulkUpdateBudget(budgetData);
             }
           }
