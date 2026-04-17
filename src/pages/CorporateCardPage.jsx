@@ -687,6 +687,8 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                     </div>
                  ))}
                </div>
+            </div>
+
             {/* Monthly Subject Trend Analysis (New Feature) */}
             <div className="p-8 bg-white border border-slate-200 rounded-[32px] shadow-sm">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
