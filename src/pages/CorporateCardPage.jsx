@@ -13,9 +13,10 @@ import { COMPOSE_SUBJECTS, SMART_SUBJECTS } from './AccountMappingPage';
 import { formatKRW } from '../utils/formatters';
 
 const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, onDeleteUsage, onUpdateBudget, onBulkUpdateBudget, selectedDate }) => {
-  const [activeTab, setActiveTab] = useState('usage');
+  const [activeTab, setActiveTab] = useState('analysis'); // Default to analysis
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(selectedDate.substring(0, 7)); // YYYY-MM
+  const [selectedTrendSubject, setSelectedTrendSubject] = useState(''); // Category for trend analysis
   const [uploading, setUploading] = useState(false);
 
   // Available months from usage data
@@ -98,7 +99,12 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
 
   // Chart Data: Team Analysis (Priority: Excel Execution Data)
   const teamAnalysisData = useMemo(() => {
-    const monthBudgets = budget.filter(b => b.month === selectedMonth && b.dept !== '전체부서');
+    // Filter out subtotals to see departments clearly
+    const monthBudgets = budget.filter(b => 
+      b.month === selectedMonth && 
+      b.dept !== '전체부서' && 
+      !b.dept.includes('소계')
+    );
     if (monthBudgets.length === 0) return [];
     
     const map = {};
@@ -113,12 +119,50 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
     if (Object.values(map).every(v => v.actual === 0)) {
       filteredUsage.forEach(u => {
         const dept = u.dept1 || '미지정';
+        if (dept.includes('소계') || dept.includes('전체')) return;
         if (map[dept]) map[dept].actual += u.amount;
       });
     }
     
     return Object.values(map).sort((a,b) => b.actual - a.actual);
   }, [filteredUsage, budget, selectedMonth]);
+
+  // Combined Trend Data for selected category (Last 6 months)
+  const categoryTrendData = useMemo(() => {
+    const target = selectedTrendSubject || ALL_SUBJECTS_IN_DATA[0];
+    if (!target) return [];
+
+    const monthList = [];
+    const date = new Date(selectedMonth + "-01");
+    for (let i = 5; i >= 0; i--) {
+        const d = new Date(date);
+        d.setMonth(d.getMonth() - i);
+        monthList.push(d.toISOString().substring(0, 7));
+    }
+
+    return monthList.map(m => {
+        const items = budget.filter(b => b.month === m && b.category === target);
+        const totalRecord = items.find(b => b.dept === '전체부서');
+        let budgetAmt = 0;
+        let actualAmt = 0;
+
+        if (totalRecord) {
+            budgetAmt = totalRecord.amount || 0;
+            actualAmt = totalRecord.actual || 0;
+        } else {
+            items.forEach(it => {
+                budgetAmt += (it.amount || 0);
+                actualAmt += (it.actual || 0);
+            });
+        }
+
+        return {
+            name: parseInt(m.substring(5)) + "월",
+            budget: budgetAmt,
+            actual: actualAmt
+        };
+    });
+  }, [budget, selectedMonth, selectedTrendSubject, ALL_SUBJECTS_IN_DATA]);
 
   // Chart Data: Category Breakdown (Priority: Excel Execution Data)
   const categoryChartData = useMemo(() => {
@@ -395,9 +439,24 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
 
         <div className="flex flex-wrap items-center gap-3 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
           <div className="flex bg-slate-100 p-1 rounded-xl mr-2">
-              <button onClick={() => setActiveTab('usage')} className={`px-4 py-1.5 text-[11px] font-black rounded-lg transition-all ${activeTab === 'usage' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>내역 조회</button>
-              <button onClick={() => setActiveTab('analysis')} className={`px-4 py-1.5 text-[11px] font-black rounded-lg transition-all ${activeTab === 'analysis' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>지출 분석</button>
-              <button onClick={() => setActiveTab('budget')} className={`px-4 py-1.5 text-[11px] font-black rounded-lg transition-all ${activeTab === 'budget' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>예산 관리</button>
+              <button 
+                onClick={() => setActiveTab('analysis')} 
+                className={`px-4 py-1.5 text-[11px] font-black rounded-lg transition-all ${activeTab === 'analysis' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+              >
+                지출 분석
+              </button>
+              <button 
+                onClick={() => setActiveTab('budget')} 
+                className={`px-4 py-1.5 text-[11px] font-black rounded-lg transition-all ${activeTab === 'budget' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+              >
+                예산 관리
+              </button>
+              <button 
+                onClick={() => setActiveTab('usage')} 
+                className={`px-4 py-1.5 text-[11px] font-black rounded-lg transition-all ${activeTab === 'usage' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+              >
+                내역 조회
+              </button>
           </div>
           <div className="h-6 w-px bg-slate-200 mx-1"></div>
           <select 
@@ -628,6 +687,45 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                     </div>
                  ))}
                </div>
+            {/* Monthly Subject Trend Analysis (New Feature) */}
+            <div className="p-8 bg-white border border-slate-200 rounded-[32px] shadow-sm">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                  <div>
+                    <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                       <Calendar className="w-5 h-5 text-indigo-500" /> 월간 계정과목 추이 분석
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-wider">Historical Trend Analysis per Category</p>
+                  </div>
+                  <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl">
+                    <span className="text-[10px] font-black text-slate-400 px-2 uppercase">과목 선택</span>
+                    <select 
+                        value={selectedTrendSubject || ALL_SUBJECTS_IN_DATA[0]} 
+                        onChange={(e) => setSelectedTrendSubject(e.target.value)}
+                        className="bg-white border-0 text-xs font-black text-slate-700 px-4 py-2 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                    >
+                        {ALL_SUBJECTS_IN_DATA.map(sub => (
+                            <option key={sub} value={sub}>{sub}</option>
+                        ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="h-[400px] w-full bg-slate-50/20 rounded-3xl p-6 border border-slate-100">
+                   <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={categoryTrendData} margin={{ top: 10, right: 30, left: 20, bottom: 10 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} style={{ fontSize: '11px', fontWeight: 'bold', fill: '#94a3b8' }} />
+                        <YAxis axisLine={false} tickLine={false} tickFormatter={(val) => (val/10000).toLocaleString() + "만"} style={{ fontSize: '11px', fontWeight: 'bold', fill: '#94a3b8' }} />
+                        <Tooltip 
+                            formatter={(val) => formatKRW(val)}
+                            contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '20px', color: '#fff' }}
+                        />
+                        <Legend verticalAlign="top" align="right" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'black', paddingBottom: '20px' }} />
+                        <Line type="monotone" dataKey="budget" stroke="#e2e8f0" strokeWidth={3} dot={{ r: 4 }} name="예산" />
+                        <Line type="monotone" dataKey="actual" stroke="#6366f1" strokeWidth={4} dot={{ r: 6, fill: '#6366f1' }} activeDot={{ r: 8 }} name="집행액" />
+                      </LineChart>
+                   </ResponsiveContainer>
+                </div>
             </div>
           </div>
         )}
