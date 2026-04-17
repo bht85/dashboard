@@ -154,7 +154,13 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onDeleteUsage, onUpda
         alert(`"${targetSheetName}" 시트에서 내역 업로드가 완료되었습니다.`);
       } catch (err) {
         console.error("Upload error:", err);
-        alert('파일 파싱 중 오류가 발생했습니다.');
+        if (err.code === 'permission-denied') {
+          alert('데이터베이스 권한이 없습니다. 파이어베이스 콘솔에서 보안 규칙을 확인해주세요.');
+        } else if (err.message?.includes('permission')) {
+          alert('데이터 저장 권한이 부족합니다. 관리자에게 문의하세요.');
+        } else {
+          alert(`파일 파싱 또는 저장 중 오류가 발생했습니다: ${err.message || '알 수 없는 오류'}`);
+        }
       } finally {
         setUploading(false);
       }
