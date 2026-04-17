@@ -28,7 +28,7 @@ const COMPOSE_PL_STRUCTURE = {
       id: 'sga',
       label: 'IV. 판매비와 관리비',
       type: 'expense',
-      subjects: ['임원급여', '직원급여', '상여금', '퇴직급여', '복리후생비', '여비교통비', '접대비', '통신비', '수도광열비', '전력비', '세금과공과금', '감가상각비', '지급임차료', '보험료', '차량유지비', '운반비', '교육훈련비', '도서인쇄비', '사무용품비', '소모품비', '지급수수료', '광고선전비', '판매촉진비', '대손상각비', '건물관리비', '무형고정자산상각', '리스료', '자동이체', '환불'],
+      subjects: ['임원급여', '직원급여', '상여금', '퇴직급여', '복리후생비', '여비교통비', '접대비', '통신비', '수도광열비', '전력비', '세금과공과금', '감가상각비', '지급임차료', '임차보증금', '보험료', '차량유지비', '운반비', '교육훈련비', '도서인쇄비', '사무용품비', '소모품비', '지급수수료', '광고선전비', '판매촉진비', '대손상각비', '건물관리비', '무형고정자산상각', '리스료', '자동이체', '환불'],
     },
     {
       id: 'operatingProfit',
@@ -355,12 +355,15 @@ const CashPLPage = ({
         const isSell = e.type === 'SELL';
         const rate = e.currency === 'EUR' ? exchangeRateEUR : e.currency === 'JPY' ? exchangeRateJPY : exchangeRate;
         
+        const absKRW = Math.abs(e.krwAmount || 0);
+        const absForeign = Math.abs(e.usdAmount || 0);
+
         if (isSell) {
-          totalOut_KRW_Equivalent += (e.usdAmount || 0) * rate; // Foreign out (converted)
-          totalIn_KRW_Equivalent += (e.krwAmount || 0);         // KRW in (actual)
+          totalOut_KRW_Equivalent += absForeign * rate; // Foreign out (converted)
+          totalIn_KRW_Equivalent += absKRW;           // KRW in (actual)
         } else {
-          totalOut_KRW_Equivalent += (e.krwAmount || 0);         // KRW out (actual)
-          totalIn_KRW_Equivalent += (e.usdAmount || 0) * rate;   // Foreign in (converted)
+          totalOut_KRW_Equivalent += absKRW;           // KRW out (actual)
+          totalIn_KRW_Equivalent += absForeign * rate; // Foreign in (converted)
         }
       });
 
