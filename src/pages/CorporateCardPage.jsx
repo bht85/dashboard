@@ -35,7 +35,14 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
 
   const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
-  // Filtered usage data
+  const filteredUsage = useMemo(() => {
+    return usage.filter(u => {
+      const isMonth = u.month === selectedMonth;
+      const matchesSearch = searchTerm === '' || 
+        (u.merchant || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.user || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.cardCompany || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (u.dept1 || '').toLowerCase().includes(searchTerm.toLowerCase());
       return isMonth && matchesSearch;
     }).sort((a,b) => b.date.localeCompare(a.date));
   }, [usage, selectedMonth, searchTerm]);
