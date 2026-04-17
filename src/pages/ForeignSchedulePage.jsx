@@ -532,223 +532,188 @@ const ForeignSchedulePage = ({
           </div>
         </div>
       ) : (
-        <div className="space-y-10">
-          <div className="bg-white rounded-[2.5rem] border-2 border-slate-100 shadow-2xl p-10 overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 rounded-full -mr-32 -mt-32 blur-3xl -z-0"></div>
-            <h3 className="font-black text-slate-800 mb-10 flex items-center gap-4 text-lg border-b pb-6 relative z-10">
-              <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
-                <Package className="w-6 h-6 text-white" />
+        <div className="space-y-6">
+          {/* Main Contract Form */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-50/40 rounded-full -mr-24 -mt-24 blur-3xl -z-0"></div>
+            <h3 className="font-black text-slate-800 mb-6 flex items-center gap-3 text-sm border-b border-slate-100 pb-4 relative z-10">
+              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-100">
+                <Package className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1">
-                 <div>생두 구매 계약 관리 및 등록</div>
-                 <div className="text-[10px] text-slate-400 font-bold tracking-widest mt-1">RAW BEAN PROCUREMENT CONTRACTS</div>
+                 <div className="text-base tracking-tighter">생두 구매 계약 관리 및 등록</div>
+                 <div className="text-[9px] text-slate-400 font-bold tracking-widest uppercase">Raw Bean Procurement Contracts</div>
               </div>
-              {contractData.isEditing && <span className="text-[11px] bg-indigo-50 text-indigo-600 font-black px-3 py-1 rounded-full border border-indigo-100">편집 중</span>}
+              {contractData.isEditing && <span className="text-[10px] bg-indigo-50 text-indigo-600 font-black px-3 py-1 rounded-full border border-indigo-100">편집 중</span>}
             </h3>
             
-            <form onSubmit={handleAddContract} className="grid grid-cols-1 md:grid-cols-12 gap-y-10 gap-x-8 relative z-10">
-              {/* Row 1: 산지 / 업체 / 계약번호 / 차수 */}
-              <div className="md:col-span-3">
-                <label className="block text-[11px] font-black text-slate-500 uppercase mb-3 px-1">{isNewOrigin ? '산지 직접입력' : '산지 선택'}</label>
-                <div className="flex gap-2">
+            <form onSubmit={handleAddContract} className="grid grid-cols-1 md:grid-cols-4 gap-4 relative z-10">
+              {/* Row 1: Basic Info */}
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 px-1">{isNewOrigin ? '산지 직접입력' : '산지 선택'}</label>
+                <div className="flex gap-1.5">
                   {isNewOrigin ? (
-                    <input type="text" placeholder="산지명 입력" value={contractData.origin} onChange={e => setContractData({...contractData, origin: e.target.value})} className="flex-1 text-sm font-black bg-white border-2 border-indigo-200 rounded-2xl px-4 py-3.5 shadow-inner" required />
+                    <input type="text" placeholder="산지명" value={contractData.origin} onChange={e => setContractData({...contractData, origin: e.target.value})} className="flex-1 text-xs font-bold bg-white border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-indigo-400" required />
                   ) : (
-                    <select value={contractData.origin} onChange={e => setContractData({...contractData, origin: e.target.value})} className="flex-1 text-sm font-black bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3.5 appearance-none cursor-pointer" required>
+                    <select value={contractData.origin} onChange={e => setContractData({...contractData, origin: e.target.value})} className="flex-1 text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 appearance-none cursor-pointer" required>
                       <option value="">산지 선택</option>
                       {uniqueOrigins.map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   )}
-                  <button type="button" onClick={() => setIsNewOrigin(!isNewOrigin)} className={`p-3.5 rounded-2xl border-2 transition-all ${isNewOrigin ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100' : 'bg-white text-slate-400 border-slate-100 hover:border-indigo-400'}`}>
-                    {isNewOrigin ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                  <button type="button" onClick={() => setIsNewOrigin(!isNewOrigin)} className={`p-2.5 rounded-xl border transition-all ${isNewOrigin ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-400 border-slate-200 hover:border-indigo-400'}`}>
+                    {isNewOrigin ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>
 
-              <div className="md:col-span-3">
-                <label className="block text-[11px] font-black text-slate-500 uppercase mb-3 px-1">{isNewSupplier ? '공급업체 직접' : '공급업체 선택'}</label>
-                <div className="flex gap-2">
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 px-1">{isNewSupplier ? '업체 직접입력' : '공급업체 선택'}</label>
+                <div className="flex gap-1.5">
                   {isNewSupplier ? (
-                    <input type="text" placeholder="업체명 입력" value={contractData.supplier} onChange={e => setContractData({...contractData, supplier: e.target.value})} className="flex-1 text-sm font-black bg-white border-2 border-indigo-200 rounded-2xl px-4 py-3.5 shadow-inner" required />
+                    <input type="text" placeholder="업체명" value={contractData.supplier} onChange={e => setContractData({...contractData, supplier: e.target.value})} className="flex-1 text-xs font-bold bg-white border border-slate-200 rounded-xl px-3 py-2.5 outline-none focus:border-indigo-400" required />
                   ) : (
-                    <select value={contractData.supplier} onChange={e => setContractData({...contractData, supplier: e.target.value})} className="flex-1 text-sm font-black bg-slate-50 border-2 border-slate-100 rounded-2xl px-4 py-3.5 appearance-none cursor-pointer" required>
+                    <select value={contractData.supplier} onChange={e => setContractData({...contractData, supplier: e.target.value})} className="flex-1 text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 appearance-none cursor-pointer" required>
                       <option value="">업체 선택</option>
                       {uniqueSuppliers.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   )}
-                  <button type="button" onClick={() => setIsNewSupplier(!isNewSupplier)} className={`p-3.5 rounded-2xl border-2 transition-all ${isNewSupplier ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100' : 'bg-white text-slate-400 border-slate-100 hover:border-indigo-400'}`}>
-                    {isNewSupplier ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                  <button type="button" onClick={() => setIsNewSupplier(!isNewSupplier)} className={`p-2.5 rounded-xl border transition-all ${isNewSupplier ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-400 border-slate-200 hover:border-indigo-400'}`}>
+                    {isNewSupplier ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>
 
-              <div className="md:col-span-3">
-                <label className="block text-[11px] font-black text-slate-500 uppercase mb-3 px-1">계약 번호</label>
-                <input type="text" placeholder="CONT-2024-XXXX" value={contractData.contractNo || ''} onChange={e => setContractData({...contractData, contractNo: e.target.value})} className="w-full text-sm font-black bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3.5" />
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 px-1">계약 번호</label>
+                <input type="text" placeholder="CONT-2024-XXXX" value={contractData.contractNo || ''} onChange={e => setContractData({...contractData, contractNo: e.target.value})} className="w-full text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5" />
               </div>
 
-              <div className="md:col-span-3">
-                <label className="block text-[11px] font-black text-slate-500 uppercase mb-3 px-1">지급 차수 (BATCH)</label>
-                <input type="text" placeholder="ex) 11차" value={contractData.installment || ''} onChange={e => setContractData({...contractData, installment: e.target.value})} className="w-full text-sm font-black bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3.5" />
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 px-1">지급 차수</label>
+                <input type="text" placeholder="ex) 11차" value={contractData.installment || ''} onChange={e => setContractData({...contractData, installment: e.target.value})} className="w-full text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5" />
               </div>
 
-              {/* Row 2: 단가 설정 방식 탭 */}
-              <div className="md:col-span-12 border-b-2 border-slate-100 pb-2 mb-2">
-                <div className="flex gap-4">
+              {/* Row 2: Tabs for Price Mode */}
+              <div className="md:col-span-4 flex items-center justify-between border-t border-slate-50 pt-3 mt-1">
+                <div className="flex bg-slate-100 p-1 rounded-xl">
                    <button 
                      type="button" 
                      onClick={() => setContractData({...contractData, isFixedPrice: false})}
-                     className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${!contractData.isFixedPrice ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-50 text-slate-400 hover:text-slate-600'}`}
+                     className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${!contractData.isFixedPrice ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                    >
-                     시장가 연동 (Diff + Index)
+                     시장가 연동 (Diff+Index)
                    </button>
                    <button 
                      type="button" 
                      onClick={() => setContractData({...contractData, isFixedPrice: true})}
-                     className={`px-6 py-2 rounded-xl text-xs font-black transition-all ${contractData.isFixedPrice ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-50 text-slate-400 hover:text-slate-600'}`}
+                     className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${contractData.isFixedPrice ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
                    >
                      고정 단가 입력
                    </button>
                 </div>
-              </div>
-
-              {/* Row 3: 단가 입력 필드 - 조건부 렌더링 */}
-              {!contractData.isFixedPrice ? (
-                <>
-                  <div className="md:col-span-4 bg-indigo-50/50 p-6 rounded-[2rem] border-2 border-indigo-100">
-                    <label className="block text-xs font-black text-indigo-700 uppercase mb-4 flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4" /> 디퍼런셜 (DIFFERENTIAL)
-                    </label>
-                    <div className="relative">
-                      <input type="number" step="0.01" value={contractData.differential || ''} onChange={e => setContractData({...contractData, differential: e.target.value})} className="w-full text-4xl font-black bg-transparent border-b-4 border-indigo-300 outline-none pb-2 text-indigo-800 placeholder:text-indigo-200" placeholder="-6.00" />
-                      <span className="absolute right-0 bottom-4 text-sm font-black text-indigo-300 uppercase">cents / lb</span>
-                    </div>
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-[11px] font-black text-slate-500 uppercase mb-3">월물 지수 (SELECT)</label>
+                {!contractData.isFixedPrice && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] font-black text-slate-300 uppercase">Automation:</span>
                     <select value={contractData.contractMonth || ''} onChange={e => {
                       const m = e.target.value;
                       const selectedIdx = coffeeIndices.find(ci => ci.month === m);
                       const p = selectedIdx ? (selectedIdx.price + 50) : '';
                       setContractData({...contractData, contractMonth: m, index: p});
-                    }} className="w-full text-xs font-black bg-white border-2 border-slate-100 rounded-2xl px-3 py-4 mb-2">
-                       <option value="">월물 선택</option>
+                    }} className="text-[10px] font-black bg-indigo-50 text-indigo-700 border-none rounded-lg px-2 py-1 outline-none">
+                       <option value="">월물 선택 불러오기</option>
                        {coffeeIndices.map(ci => <option key={ci.id} value={ci.month}>{ci.month}</option>)}
                     </select>
-                    <div className="relative">
-                       <input type="number" step="0.01" value={contractData.index || ''} onChange={e => setContractData({...contractData, index: e.target.value})} className="w-full text-sm font-black bg-slate-100 border-2 border-slate-100 rounded-xl px-4 py-2" placeholder="INDEX" />
-                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold uppercase">c/lb</span>
-                    </div>
                   </div>
-                </>
-              ) : (
-                <div className="md:col-span-6 bg-emerald-50/50 p-6 rounded-[2rem] border-2 border-emerald-100">
-                  <label className="block text-xs font-black text-emerald-700 uppercase mb-4 flex items-center gap-2">
-                    <DollarSign className="w-4 h-4" /> 고정 단가 (FIXED UNIT PRICE)
-                  </label>
-                  <div className="relative">
-                    <input 
-                      type="number" 
-                      step="0.0001" 
-                      value={contractData.fixedPrice || ''} 
-                      onChange={e => setContractData({...contractData, fixedPrice: e.target.value})} 
-                      className="w-full text-4xl font-black bg-transparent border-b-4 border-emerald-300 outline-none pb-2 text-emerald-800 placeholder:text-emerald-200" 
-                      placeholder="5.4321" 
-                      required 
-                    />
-                    <span className="absolute right-0 bottom-4 text-sm font-black text-emerald-300 uppercase">USD / KG</span>
+                )}
+              </div>
+
+              {/* Row 3: Price Inputs */}
+              <div className="md:col-span-2">
+                {!contractData.isFixedPrice ? (
+                  <div className="bg-indigo-50/30 p-4 rounded-2xl border border-indigo-100">
+                    <label className="block text-[9px] font-black text-indigo-500 uppercase mb-2">디퍼런셜 (Cents / lb)</label>
+                    <input type="number" step="0.01" value={contractData.differential || ''} onChange={e => setContractData({...contractData, differential: e.target.value})} className="w-full text-2xl font-black bg-transparent border-b-2 border-indigo-200 outline-none pb-1 text-indigo-700 placeholder:text-indigo-200" placeholder="-6.00" />
                   </div>
+                ) : (
+                  <div className="bg-emerald-50/30 p-4 rounded-2xl border border-emerald-100">
+                    <label className="block text-[9px] font-black text-emerald-500 uppercase mb-2">고정 단가 (USD / KG)</label>
+                    <input type="number" step="0.0001" value={contractData.fixedPrice || ''} onChange={e => setContractData({...contractData, fixedPrice: e.target.value})} className="w-full text-2xl font-black bg-transparent border-b-2 border-emerald-200 outline-none pb-1 text-emerald-700 placeholder:text-emerald-100" placeholder="5.4321" required />
+                  </div>
+                )}
+              </div>
+
+              {!contractData.isFixedPrice && (
+                <div className="md:col-span-1">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 px-1">인덱스 (C/LB)</label>
+                  <input type="number" step="0.01" value={contractData.index || ''} onChange={e => setContractData({...contractData, index: e.target.value})} className="w-full text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-indigo-400" placeholder="Index Price" />
                 </div>
               )}
 
-              <div className="md:col-span-2">
-                <label className="block text-[11px] font-black text-slate-500 uppercase mb-3">구매 중량 (TOTAL KG)</label>
-                <div className="relative mb-3">
-                  <input type="number" value={contractData.weight || ''} onChange={e => setContractData({...contractData, weight: e.target.value})} className="w-full text-base font-black bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-3 outline-none focus:border-indigo-400" placeholder="ex) 19200" required />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 font-black text-slate-300 text-xs">KG</span>
-                </div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 px-1">기안 환율</label>
-                <input type="number" value={contractData.planExchangeRate || ''} onChange={e => setContractData({...contractData, planExchangeRate: e.target.value})} className="w-full text-sm font-black bg-slate-100 border-2 border-slate-200 rounded-xl px-4 py-2 text-indigo-700" required />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="block text-[11px] font-black text-slate-500 uppercase mb-3">대금 지급 시기 (PERIOD)</label>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                     <span className="block text-[9px] font-black text-slate-300 mb-1 ml-1">YEAR</span>
-                     <input type="text" value={contractData.paymentYear || ''} onChange={e => setContractData({...contractData, paymentYear: e.target.value})} className="w-full text-sm font-black bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3" />
-                  </div>
-                  <div className="w-20">
-                     <span className="block text-[9px] font-black text-slate-300 mb-1 ml-1">MONTH</span>
-                     <input type="text" value={contractData.paymentMonth || ''} onChange={e => setContractData({...contractData, paymentMonth: e.target.value})} className="w-full text-sm font-black bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 text-center" />
-                  </div>
+              <div className="md:col-span-1">
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 px-1">구매 중량 (KG)</label>
+                <div className="relative">
+                  <input type="number" value={contractData.weight || ''} onChange={e => setContractData({...contractData, weight: e.target.value})} className="w-full text-xs font-bold bg-white border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-indigo-400" placeholder="19200" required />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-300">KG</span>
                 </div>
               </div>
 
-              <div className="md:col-span-2 flex flex-col justify-end">
-                <button type="submit" className="w-full h-full bg-indigo-600 text-white font-black rounded-[2rem] hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-200 flex flex-col items-center justify-center gap-3 active:scale-95 group">
-                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
-                    {contractData.isEditing ? <Check className="w-6 h-6" /> : <Package className="w-6 h-6" />}
-                  </div>
-                  <span className="text-sm tracking-tight">{contractData.isEditing ? '변경 계약 저장' : '신규 계약 등록'}</span>
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 px-1">기안 환율 (KRW)</label>
+                <input type="number" value={contractData.planExchangeRate || ''} onChange={e => setContractData({...contractData, planExchangeRate: e.target.value})} className="w-full text-xs font-bold bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-indigo-700" required />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1.5 px-1">지급 시기 (YYYY-MM)</label>
+                <div className="flex gap-1.5">
+                  <input type="text" value={contractData.paymentYear || ''} onChange={e => setContractData({...contractData, paymentYear: e.target.value})} className="flex-1 text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-2 py-2.5 text-center" />
+                  <input type="text" value={contractData.paymentMonth || ''} onChange={e => setContractData({...contractData, paymentMonth: e.target.value})} className="w-12 text-xs font-bold bg-slate-50 border border-slate-200 rounded-xl px-1 py-2.5 text-center" />
+                </div>
+              </div>
+
+              <div className="md:col-span-4 flex gap-3 mt-2">
+                <button type="submit" className="flex-1 bg-indigo-600 text-white font-black py-3 rounded-2xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 active:scale-95 text-xs">
+                    {contractData.isEditing ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                    {contractData.isEditing ? '변경 내용 저장' : '공급 계약 등록'}
                 </button>
-                {contractData.isEditing && <button type="button" onClick={resetContractForm} className="mt-2 text-[10px] font-black text-slate-400 hover:text-slate-600 transition-colors text-center">편집 취소</button>}
+                {contractData.isEditing && (
+                  <button type="button" onClick={resetContractForm} className="px-4 py-3 border border-slate-200 rounded-2xl text-[10px] font-black text-slate-400 hover:bg-slate-50">취소</button>
+                )}
               </div>
 
-              {/* 산출 대시보드 */}
-              <div className="md:col-span-12 bg-gradient-to-r from-slate-900 to-indigo-950 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-12">
-                   <div className="grid grid-cols-2 md:grid-cols-3 gap-16 flex-1">
-                      <div className="space-y-2">
-                         <div className="flex items-center gap-2 text-indigo-400">
-                             <DollarSign className="w-3.5 h-3.5" />
-                             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Unit Price / KG</span>
-                         </div>
-                         <div className="text-4xl font-black tracking-tighter">
-                            ${contractData.isFixedPrice 
-                              ? parseFloat(contractData.fixedPrice || 0).toFixed(4)
-                              : ((parseFloat(contractData.index || 0) + parseFloat(contractData.differential || 0)) * 22.046 / 1000).toFixed(4)}
-                         </div>
-                      </div>
-                      <div className="space-y-2">
-                         <div className="flex items-center gap-2 text-indigo-400">
-                             <Package className="w-3.5 h-3.5" />
-                             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Total USD Volume</span>
-                         </div>
-                         <div className="text-4xl font-black tracking-tighter">
-                            {(() => {
-                              const unitPrice = contractData.isFixedPrice 
-                                ? parseFloat(contractData.fixedPrice || 0)
-                                : (parseFloat(contractData.index || 0) + parseFloat(contractData.differential || 0)) * 22.046 / 1000;
-                              return `$${(unitPrice * parseFloat(contractData.weight || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-                            })()}
-                         </div>
-                      </div>
-                      <div className="space-y-2 col-span-2 md:col-span-1 border-l border-white/10 pl-12">
-                         <div className="flex items-center gap-2 text-amber-500">
-                             <Calendar className="w-3.5 h-3.5" />
-                             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Estimated KRW Cost</span>
-                         </div>
-                         <div className="text-4xl font-black tracking-tighter text-amber-500">
-                            {(() => {
-                              const unitPrice = contractData.isFixedPrice 
-                                ? parseFloat(contractData.fixedPrice || 0)
-                                : (parseFloat(contractData.index || 0) + parseFloat(contractData.differential || 0)) * 22.046 / 1000;
-                              return `${Math.round(unitPrice * parseFloat(contractData.weight || 0) * (parseFloat(contractData.planExchangeRate) || exchangeRate)).toLocaleString()}원`;
-                            })()}
-                         </div>
-                      </div>
-                   </div>
-                   <div className="bg-white/5 border border-white/10 px-6 py-4 rounded-2xl flex flex-col items-end gap-1">
-                      <div className="text-[9px] font-black text-indigo-300 uppercase letter-spacing-2 tracking-widest">Base Calculation Formula</div>
-                      <div className="text-xs font-bold text-white/50">
-                        {contractData.isFixedPrice 
-                          ? 'Manual Fixed Price Input' 
-                          : '(Index + Diff) × 0.022046'}
-                      </div>
-                   </div>
+              {/* Floating Dashboard - Slimmed down */}
+              <div className="md:col-span-4 mt-6 bg-slate-900 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/black-linen.png')] opacity-20 pointer-events-none"></div>
+                <div className="relative z-10 grid grid-cols-3 gap-6 items-center">
+                  <div className="border-r border-white/10 pr-6">
+                    <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-1">Unit Price / KG</p>
+                    <p className="text-xl font-black tracking-tight">
+                      ${contractData.isFixedPrice 
+                        ? parseFloat(contractData.fixedPrice || 0).toFixed(4)
+                        : ((parseFloat(contractData.index || 0) + parseFloat(contractData.differential || 0)) * 22.046 / 1000).toFixed(4)}
+                    </p>
+                  </div>
+                  <div className="border-r border-white/10 pr-6">
+                    <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-1">Total USD</p>
+                    <p className="text-xl font-black tracking-tight">
+                      {(() => {
+                        const unitPrice = contractData.isFixedPrice 
+                          ? parseFloat(contractData.fixedPrice || 0)
+                          : (parseFloat(contractData.index || 0) + parseFloat(contractData.differential || 0)) * 22.046 / 1000;
+                        return `$${(unitPrice * parseFloat(contractData.weight || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                      })()}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-black text-amber-500 uppercase tracking-widest mb-1">Estimated KRW</p>
+                    <p className="text-xl font-black tracking-tight text-amber-500">
+                      {(() => {
+                        const unitPrice = contractData.isFixedPrice 
+                          ? parseFloat(contractData.fixedPrice || 0)
+                          : (parseFloat(contractData.index || 0) + parseFloat(contractData.differential || 0)) * 22.046 / 1000;
+                        return `${Math.round(unitPrice * parseFloat(contractData.weight || 0) * (parseFloat(contractData.planExchangeRate) || exchangeRate)).toLocaleString()}원`;
+                      })()}
+                    </p>
+                  </div>
                 </div>
               </div>
             </form>
