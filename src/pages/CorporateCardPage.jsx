@@ -85,29 +85,38 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
   const monthlyStats = useMemo(() => {
     const totalUsage = filteredUsage.reduce((sum, item) => sum + (item.amount || 0), 0);
     const monthlyBudgets = budget.filter(b => b.month === selectedMonth);
-    const totalBudgetRecord = monthlyBudgets.find(b => b.dept === '전체부서');
     
     let monthlyBudgetValue = 0;
     let totalExcelActual = 0;
+    let nonBudgetActuals = 0; // Actuals for items with 0 budget
     
-    if (totalBudgetRecord) {
-      monthlyBudgets.filter(b => b.dept === '전체부서').forEach(b => {
+    // Process all budget items for the month
+    monthlyBudgets.forEach(b => {
+      const isTotalRecord = (b.dept === '전체부서');
+      
+      // If we use "전체부서" as the source of truth for totals
+      if (isTotalRecord || monthlyBudgets.every(it => it.dept !== '전체부서')) {
         monthlyBudgetValue += (b.amount || 0);
         totalExcelActual += (b.actual || 0);
-      });
-    } else {
-      monthlyBudgets.forEach(b => {
-        monthlyBudgetValue += (b.amount || 0);
-        totalExcelActual += (b.actual || 0);
-      });
-    }
+        
+        // --- Correction Logic ---
+        // If an item has 0 budget but has spending (like Travel Expenses),
+        // we add its spending to the budget total too so they balance at 100% impact.
+        if ((b.amount || 0) <= 0 && (b.actual || 0) > 0) {
+          nonBudgetActuals += b.actual;
+        }
+      }
+    });
 
+    const adjustedBudget = monthlyBudgetValue + nonBudgetActuals;
     const finalTotalUsage = totalExcelActual > 0 ? totalExcelActual : totalUsage;
-    const utilization = monthlyBudgetValue > 0 ? (finalTotalUsage / monthlyBudgetValue) * 100 : 0;
+    const utilization = adjustedBudget > 0 ? (finalTotalUsage / adjustedBudget) * 100 : 0;
     
     return {
       total: finalTotalUsage,
-      budget: monthlyBudgetValue,
+      budget: adjustedBudget,
+      originalBudget: monthlyBudgetValue,
+      nonBudgetAmount: nonBudgetActuals,
       utilization: utilization.toFixed(1)
     };
   }, [filteredUsage, budget, selectedMonth]);
