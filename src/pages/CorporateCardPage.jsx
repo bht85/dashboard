@@ -109,21 +109,28 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
         const ws = wb.Sheets[targetSheetName];
         const rawData = XLSX.utils.sheet_to_json(ws);
 
+        if (rawData.length > 0) {
+          console.log("First row keys:", Object.keys(rawData[0])); 
+        }
+        
         console.log(`Aggregating ${rawData.length} records from sheet "${targetSheetName}"...`);
         
-        // Use a map to aggregate data by month, card, and user
         const aggregationMap = {};
 
         for (const row of rawData) {
           const cardCompany = row['카드사명'] || row['카드사'] || '';
           const cardNumber = row['카드번호'] || '';
           const dateVal = row['승인일자'] || row['이용일시'] || row['날짜'] || row['사용일자'];
-          const amount = parseInt(String(row['승인금액'] || row['이용금액'] || row['금액'] || 0).replace(/,/g, ''));
+          
+          // Use Math.abs to include cancellations/refunds
+          const rawAmount = row['승인금액'] || row['이용금액'] || row['금액'] || 0;
+          const amount = parseInt(String(rawAmount).replace(/,/g, ''));
+          
           const userName = row['구분'] || row['사용자'] || row['이름'] || row['카드명'] || '';
           const dept1 = row['조직1'] || '';
           const dept2 = row['조직2'] || '';
 
-          if (dateVal && amount > 0) {
+          if (dateVal && Math.abs(amount) > 0) {
             let cleanMonth = '';
             if (dateVal instanceof Date) {
               cleanMonth = dateVal.toISOString().substring(0, 7);
@@ -134,17 +141,16 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
             }
             
             if (cleanMonth.length === 7) {
-              // Unique key for aggregation: Month + CardNumber + User
               const aggKey = `${cleanMonth}_${cardNumber}_${userName}`;
               
               if (!aggregationMap[aggKey]) {
                 aggregationMap[aggKey] = {
                   id: aggKey,
                   month: cleanMonth,
-                  date: `${cleanMonth}-01`, // Use first day of month for summary
+                  date: `${cleanMonth}-01`,
                   cardCompany,
                   cardNumber,
-                  merchant: `${userName} 월 합계`, // Inform user it's a summary
+                  merchant: `${userName} 월 합계`,
                   amount: 0,
                   user: userName || '미지정',
                   dept1,
@@ -164,7 +170,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
           await onBulkUpdateUsage(preparedData);
           alert(`"${targetSheetName}" 시트에서 본래 ${rawData.length}건이었던 내역을 카드별 ${preparedData.length}건의 요약 데이터로 축소하여 업로드 완료했습니다.`);
         } else {
-          alert('업로드할 유효한 데이터가 없습니다. 엑셀 형식을 확인해주세요.');
+          alert('업로드할 유효한 데이터가 없습니다. 엑셀의 "승인일자"와 "승인금액" 컬럼명이 올바른지 확인해주세요.');
         }
       } catch (err) {
         console.error("Upload error:", err);
