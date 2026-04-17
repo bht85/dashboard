@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
-  PieChart, Pie, Cell, LineChart, Line
+  PieChart, Pie, Cell, LineChart, Line, LabelList
 } from 'recharts';
 import * as XLSX from 'xlsx';
 import { COMPOSE_SUBJECTS, SMART_SUBJECTS } from './AccountMappingPage';
@@ -21,11 +21,26 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
 
   // Available months from usage data
   const availableMonths = useMemo(() => {
-    const months = new Set(usage.map(u => u.month));
-    months.add(selectedDate.substring(0, 7));
-    // Filter out invalid months
-    return Array.from(months).filter(m => /^\d{4}-\d{2}$/.test(m)).sort().reverse();
-  }, [usage, selectedDate]);
+    const list = new Set();
+    
+    // 1. Existing data months
+    usage.forEach(u => u.month && list.add(u.month));
+    
+    // 2. Default Range: Current year + Previous year (Total 24 months)
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    
+    // Previous year
+    for (let m = 1; m <= 12; m++) {
+        list.add(`${currentYear - 1}-${String(m).padStart(2, '0')}`);
+    }
+    // Current year
+    for (let m = 1; m <= 12; m++) {
+        list.add(`${currentYear}-${String(m).padStart(2, '0')}`);
+    }
+
+    return Array.from(list).filter(m => /^\d{4}-\d{2}$/.test(m)).sort().reverse();
+  }, [usage]);
   // Combined subjects for category mapping
   const ALL_SUBJECTS = useMemo(() => {
     const subjects = new Set();
@@ -678,7 +693,14 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                             ]}
                             contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
                           />
-                          <Bar dataKey="value" name="지출액" fill="#6366f1" radius={[0, 8, 8, 0]} barSize={24} />
+                          <Bar dataKey="value" name="지출액" fill="#6366f1" radius={[0, 8, 8, 0]} barSize={24}>
+                             <LabelList 
+                                dataKey="ratio" 
+                                position="right" 
+                                formatter={(val) => `${val}%`}
+                                style={{ fill: '#6366f1', fontSize: '11px', fontWeight: 'black', paddingLeft: '8px' }}
+                             />
+                          </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
