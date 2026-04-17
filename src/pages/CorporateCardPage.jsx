@@ -9,6 +9,8 @@ import {
   PieChart, Pie, Cell, LineChart, Line, LabelList
 } from 'recharts';
 import * as XLSX from 'xlsx';
+import { db } from '../firebase';
+import { collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import { COMPOSE_SUBJECTS, SMART_SUBJECTS } from './AccountMappingPage';
 import { formatKRW } from '../utils/formatters';
 
@@ -469,6 +471,38 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
     reader.readAsArrayBuffer(file);
   };
 
+  // --- DELETE ALL DATA FOR THE SELECTED MONTH ---
+  const handleDeleteMonth = async () => {
+    const confirm1 = window.confirm(`정말 [ ${selectedMonth} ]의 모든 데이터(집행 내역 및 예산)를 삭제하시겠습니까?`);
+    if (!confirm1) return;
+
+    const confirm2 = window.confirm(`경고: 삭제된 데이터는 복구할 수 없습니다. 계속하시겠습니까?`);
+    if (!confirm2) return;
+
+    setUploading(true);
+    try {
+      const batch = writeBatch(db);
+      
+      // 1. Delete Usage Documents
+      const usageQuery = query(collection(db, "corpCardUsage"), where("month", "==", selectedMonth));
+      const usageSnap = await getDocs(usageQuery);
+      usageSnap.forEach(d => batch.delete(d.ref));
+      
+      // 2. Delete Budget Documents
+      const budgetQuery = query(collection(db, "corpCardBudget"), where("month", "==", selectedMonth));
+      const budgetSnap = await getDocs(budgetQuery);
+      budgetSnap.forEach(d => batch.delete(d.ref));
+      
+      await batch.commit();
+      alert(`[ ${selectedMonth} ] 데이터가 성공적으로 삭제되었습니다.`);
+    } catch (err) {
+      console.error("Deletion error:", err);
+      alert(`삭제 도중 오류가 발생했습니다: \${err.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
     <div className="animate-in fade-in duration-500 pb-20">
       {/* Header & Monthly Overview */}
@@ -511,6 +545,14 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
               {availableMonths.map(m => <option key={m} value={m}>{m.replace('-', '년 ')}월</option>)}
             </select>
           </div>
+          <button 
+            onClick={handleDeleteMonth}
+            disabled={uploading}
+            className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition-all active:scale-95"
+            title="현재 월 데이터 전체 삭제"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
           <div className="flex flex-col items-end gap-1">
             <label className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl shadow-lg shadow-indigo-100 transition-all cursor-pointer active:scale-95">
               <Upload className="w-3.5 h-3.5" />
