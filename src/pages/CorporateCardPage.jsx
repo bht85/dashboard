@@ -120,34 +120,76 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
     return Object.values(map).sort((a,b) => b.actual - a.actual);
   }, [filteredUsage, budget, selectedMonth]);
 
-  // Chart Data: Category Breakdown
+  // Chart Data: Category Breakdown (Priority: Excel Execution Data)
   const categoryChartData = useMemo(() => {
-    const monthBudgets = budget.filter(b => b.month === selectedMonth && b.dept === '전체부서');
-    if (monthBudgets.length > 0 && monthBudgets.some(b => b.actual > 0)) {
-      // Use Excel execution if available
-      return monthBudgets.map(b => ({ name: b.category, value: b.actual }))
-        .filter(v => v.value > 0).sort((a,b) => b.value - a.value);
+    const monthBudgets = budget.filter(b => b.month === selectedMonth);
+    const map = {};
+    
+    // 1. Try to use "전체부서" totals from Excel
+    const totalBudgets = monthBudgets.filter(b => b.dept === '전체부서');
+    if (totalBudgets.length > 0 && totalBudgets.some(b => (b.actual || 0) > 0)) {
+       totalBudgets.forEach(b => {
+         const cat = b.category || '미지정';
+         map[cat] = (map[cat] || 0) + (b.actual || 0);
+       });
+    } else {
+       // 2. Sum up all other depts from Excel
+       const teamBudgets = monthBudgets.filter(b => b.dept !== '전체부서');
+       if (teamBudgets.length > 0 && teamBudgets.some(b => (b.actual || 0) > 0)) {
+         teamBudgets.forEach(b => {
+           const cat = b.category || '미지정';
+           map[cat] = (map[cat] || 0) + (b.actual || 0);
+         });
+       } else {
+         // 3. Fallback to usage mapping
+         filteredUsage.forEach(u => {
+           const cat = u.category || '미지정';
+           map[cat] = (map[cat] || 0) + u.amount;
+         });
+       }
     }
     
-    const map = {};
-    filteredUsage.forEach(item => {
-      const cat = item.category || '미지정';
-      map[cat] = (map[cat] || 0) + (item.amount || 0);
-    });
-    return Object.keys(map).map(key => ({ name: key, value: map[key] }))
+    return Object.entries(map)
+      .filter(([_, val]) => val > 0)
+      .map(([name, value]) => ({ name, value }))
       .sort((a,b) => b.value - a.value);
   }, [filteredUsage, budget, selectedMonth]);
 
   // Chart Data: Actual vs Budget (Account subjects)
   const budgetVsActualData = useMemo(() => {
-    const monthBudgets = budget.filter(b => b.month === selectedMonth && b.dept === '전체부서');
+    const monthBudgets = budget.filter(b => b.month === selectedMonth);
     const map = {};
     
-    monthBudgets.forEach(b => {
-      map[b.category] = { category: b.category, budget: b.amount, actual: b.actual || 0 };
+    // Find representative category set (from Budget sheet)
+    const baseBudgets = monthBudgets.length > 0 ? 
+      (monthBudgets.filter(b => b.dept === '전체부서').length > 0 ? 
+        monthBudgets.filter(b => b.dept === '전체부서') : monthBudgets) 
+      : [];
+
+    baseBudgets.forEach(b => {
+       if (!map[b.category]) map[b.category] = { category: b.category, budget: 0, actual: 0 };
+       // If we're using all budgets, we need to sum. If "전체부서", it's already there.
+       // For safety, let's just use the logic consistent with categories
     });
-    
-    // Add usage if not already covered by excel execution data
+
+    // Re-use logic from categoryChartData for "actual"
+    // and sum up "budget" from totalBudgets or sum depts
+    const totalBudgets = monthBudgets.filter(b => b.dept === '전체부서');
+    if (totalBudgets.length > 0) {
+        totalBudgets.forEach(b => {
+            if (!map[b.category]) map[b.category] = { category: b.category, budget: 0, actual: 0 };
+            map[b.category].budget += (b.amount || 0);
+            map[b.category].actual += (b.actual || 0);
+        });
+    } else {
+        monthBudgets.filter(b => b.dept !== '전체부서').forEach(b => {
+            if (!map[b.category]) map[b.category] = { category: b.category, budget: 0, actual: 0 };
+            map[b.category].budget += (b.amount || 0);
+            map[b.category].actual += (b.actual || 0);
+        });
+    }
+
+    // Fallback for execution data if Excel actuals are zero
     if (Object.values(map).every(v => v.actual === 0)) {
       filteredUsage.forEach(u => {
         const cat = u.category || '미지정';
