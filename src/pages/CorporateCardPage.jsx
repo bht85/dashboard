@@ -36,17 +36,27 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
   const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
 
   // Filtered usage data
-  const filteredUsage = useMemo(() => {
-    return usage.filter(u => {
-      const isMonth = u.month === selectedMonth;
-      const matchesSearch = searchTerm === '' || 
-        (u.merchant || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (u.user || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (u.cardCompany || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (u.dept1 || '').toLowerCase().includes(searchTerm.toLowerCase());
       return isMonth && matchesSearch;
     }).sort((a,b) => b.date.localeCompare(a.date));
   }, [usage, selectedMonth, searchTerm]);
+
+  // Derived collections for the Matrix UI
+  const { DEPTS_IN_DATA, ALL_SUBJECTS_IN_DATA } = useMemo(() => {
+    const monthBudgets = budget.filter(b => b.month === selectedMonth);
+    const depts = new Set();
+    const subjects = new Set();
+    
+    // Core subjects from Excel
+    monthBudgets.forEach(b => {
+        depts.add(b.dept);
+        subjects.add(b.category);
+    });
+
+    return {
+        DEPTS_IN_DATA: Array.from(depts).sort(),
+        ALL_SUBJECTS_IN_DATA: Array.from(subjects).sort()
+    };
+  }, [budget, selectedMonth]);
 
   // Aggregate stats
   const monthlyStats = useMemo(() => {
@@ -147,6 +157,13 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
     const file = e.target.files[0];
     if (!file) return;
 
+    // --- UX Improvement: Confirm target month ---
+    const confirmUpload = window.confirm(`현재 선택된 [ ${selectedMonth} ] 데이터로 업로드하시겠습니까?\n(파일 내역의 월과 관계없이 현재 선택된 월로 데이터가 생성됩니다.)`);
+    if (!confirmUpload) {
+      e.target.value = ''; // Reset input
+      return;
+    }
+
     setUploading(true);
     const reader = new FileReader();
     reader.onload = async (evt) => {
@@ -226,27 +243,25 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
 
         const preparedData = Object.values(aggregationMap);
 
-        // --- Enhanced: Parse "예산" sheet grid (Robust handling for Merged Cells & Types) ---
+        // --- Enhanced: Parse "예산" sheet grid (Main Grid + Side Table for Other Travel) ---
         const budgetSheetName = wb.SheetNames.find(name => name.includes("예산"));
         if (budgetSheetName) {
           const bws = wb.Sheets[budgetSheetName];
           const bRawData = XLSX.utils.sheet_to_json(bws, { header: 1 });
-          console.log(`Parsing budget for month: ${selectedMonth}`);
+          console.log(`Parsing budget matrix for [${selectedMonth}]...`);
           
           if (bRawData.length >= 2) {
             const categoryHeaders = bRawData[1] || [];
             const budgetMap = {};
-            let lastTeamName = ''; // To handle merged cells in column A
+            let lastTeamName = ''; 
             
+            // 1. Scan Main Grid (Left side)
             for (let r = 2; r < bRawData.length; r++) {
               const row = bRawData[r];
               const rawTeamName = String(row[0] || '').trim();
-              
-              // If current row has a team name, remember it. Otherwise use last seen (for merged cells)
-              if (rawTeamName && rawTeamName !== '예산부서명') {
+              if (rawTeamName && !rawTeamName.includes('부서')) {
                 lastTeamName = rawTeamName;
               }
-              
               const currentTeam = lastTeamName;
               if (!currentTeam) continue;
               
@@ -255,7 +270,8 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
               const isActual = dataType.includes('집행액');
               
               if (isBudget || isActual) {
-                for (let c = 2; c < row.length; c++) {
+                // Main grid categories (usually start from Column C/index 2 up to index 15/Column P)
+                for (let c = 2; c < Math.min(row.length, 16); c++) {
                    const rawCategory = String(categoryHeaders[c] || '').trim();
                    if (!rawCategory || rawCategory === '항목') continue;
                    
@@ -263,24 +279,35 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                    const key = `${currentTeam}_${rawCategory}`;
                    
                    if (!budgetMap[key]) {
-                     budgetMap[key] = {
-                       month: selectedMonth,
-                       dept: currentTeam,
-                       category: rawCategory,
-                       amount: 0,
-                       actual: 0
-                     };
+                     budgetMap[key] = { month: selectedMonth, dept: currentTeam, category: rawCategory, amount: 0, actual: 0 };
                    }
-                   
                    if (isBudget) budgetMap[key].amount = amountValue;
                    if (isActual) budgetMap[key].actual = amountValue;
                 }
               }
             }
 
+            // 2. Scan Side Table (Right side for '여비교통비 - 기타')
+            // Based on screenshot: Col Q (16) is Team, Col T (19) is '여비교통비-기타'
+            const OTHER_TRAVEL_CAT = '여비교통비 - 기타';
+            for (let r = 2; r < bRawData.length; r++) {
+                const row = bRawData[r];
+                const teamNameInSide = String(row[16] || '').trim();
+                if (teamNameInSide && !teamNameInSide.includes('부서')) {
+                    const travelActual = parseInt(String(row[19] || 0).replace(/[^0-9-]/g, ''));
+                    if (travelActual > 0) {
+                        const key = `${teamNameInSide}_${OTHER_TRAVEL_CAT}`;
+                        if (!budgetMap[key]) {
+                            budgetMap[key] = { month: selectedMonth, dept: teamNameInSide, category: OTHER_TRAVEL_CAT, amount: 0, actual: 0 };
+                        }
+                        budgetMap[key].actual += travelActual;
+                    }
+                }
+            }
+
             const budgetData = Object.values(budgetMap).filter(b => b.amount > 0 || b.actual > 0);
             if (budgetData.length > 0 && onBulkUpdateBudget) {
-              console.log(`Final processed budget records: ${budgetData.length}`);
+              console.log(`Parsed ${budgetData.length} budget/execution records (Including Side-Table).`);
               await onBulkUpdateBudget(budgetData);
             }
           }
@@ -558,63 +585,87 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
 
         {activeTab === 'budget' && (
           <div className="p-8">
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="text-lg font-black text-slate-900">카테고리별 예산 설정</h3>
-                <p className="text-sm text-slate-500">각 계정과목별로 한 달 예산을 설정합니다. ({selectedMonth})</p>
-              </div>
-              <p className="text-xs font-black text-indigo-600 bg-indigo-50 px-4 py-2 rounded-xl">
-                총 예산: {formatKRW(monthlyStats.budget)}
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {budget.filter(b => b.month === selectedMonth).map((b, idx) => {
-                // Priority: Use 'actual' from Excel if available, otherwise sum filteredUsage
-                const actual = (b.actual && b.actual > 0) ? b.actual : filteredUsage
-                  .filter(u => u.category === b.category && (b.dept === '전체부서' || u.dept1 === b.dept))
-                  .reduce((s, i) => s + i.amount, 0);
-                const percent = b.amount > 0 ? (actual / b.amount) * 100 : 0;
-                
-                return (
-                  <div key={idx} className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm hover:border-indigo-300 transition-all group relative overflow-hidden">
-                    <div className={`absolute top-0 right-0 px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-bl-xl ${b.dept === '전체부서' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                      {b.dept}
-                    </div>
-                    <div className="mb-4">
-                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{b.category}</span>
-                      <div className="flex items-center gap-2 mt-1">
-                         <Target className="w-4 h-4 text-indigo-500" />
-                         <span className="text-lg font-black text-slate-900">{formatKRW(b.amount)}</span>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-[11px] font-bold">
-                        <span className="text-slate-500 flex items-center gap-1.5">
-                           <TrendingUp className="w-3.5 h-3.5 text-slate-300" /> {b.actual > 0 ? '집행액(엑셀)' : '집계액(카드)'}: {formatKRW(actual)}
-                        </span>
-                        <span className={percent > 100 ? "text-rose-500" : "text-indigo-600"}>{percent.toFixed(1)}%</span>
-                      </div>
-                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full transition-all duration-1000 ${percent > 100 ? "bg-rose-500" : "bg-indigo-600"}`}
-                          style={{ width: `${Math.min(percent, 100)}%` }}
-                        ></div>
-                      </div>
-                    </div>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+               <div>
+                  <h3 className="text-xl font-black text-slate-900">예산 및 집행 현황 (매트릭스)</h3>
+                  <p className="text-sm text-slate-500">부서별 계정과목 예산 및 집행 상세 내역입니다. ({selectedMonth})</p>
+               </div>
+               <div className="flex items-center gap-3">
+                  <div className="px-5 py-3 bg-indigo-50 border border-indigo-100 rounded-2xl flex flex-col items-end">
+                     <span className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Total Budget</span>
+                     <span className="text-lg font-black text-indigo-600">{formatKRW(monthlyStats.budget)}</span>
                   </div>
-                );
-              })}
-              
-              {budget.filter(b => b.month === selectedMonth).length === 0 && (
-                 <div className="col-span-full py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-3">
-                    <AlertCircle className="w-10 h-10 text-slate-300" />
-                    <p className="text-sm font-black text-slate-400">등록된 부서별 예산이 없습니다.</p>
-                    <p className="text-xs text-slate-400">엑셀 업로드를 통해 예산 데이터를 먼저 등록해주세요.</p>
-                 </div>
-              )}
+                  <div className="px-5 py-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col items-end">
+                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Execution</span>
+                     <span className="text-lg font-black text-slate-900">{formatKRW(monthlyStats.total)}</span>
+                  </div>
+               </div>
             </div>
+
+            {/* Matrix Table */}
+            <div className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm">
+               <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="sticky left-0 z-20 bg-slate-50 p-6 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest border-r border-slate-200 min-w-[140px]">부서 / 팀</th>
+                        {ALL_SUBJECTS_IN_DATA.map(cat => (
+                          <th key={cat} className="p-6 text-right text-[11px] font-black text-slate-500 uppercase tracking-widest min-w-[160px] border-r border-slate-200/50">
+                            {cat}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {DEPTS_IN_DATA.map(dept => (
+                        <tr key={dept} className="group hover:bg-slate-50/50 transition-colors border-b border-slate-100 last:border-0">
+                          <td className="sticky left-0 z-10 bg-white group-hover:bg-slate-50/50 p-6 text-xs font-black text-slate-900 border-r border-slate-200 shadow-[4px_0_8px_-4px_rgba(0,0,0,0.05)]">
+                            {dept}
+                          </td>
+                          {ALL_SUBJECTS_IN_DATA.map(cat => {
+                            const b = budget.find(bi => bi.month === selectedMonth && bi.dept === dept && bi.category === cat);
+                            const actual = (b?.actual || 0);
+                            const budgetAmt = (b?.amount || 0);
+                            const utilization = budgetAmt > 0 ? (actual / budgetAmt) * 100 : 0;
+                            
+                            return (
+                              <td key={cat} className="p-6 text-right border-r border-slate-100 last:border-0">
+                                { (budgetAmt > 0 || actual > 0) ? (
+                                  <div className="space-y-2">
+                                    <div className="flex flex-col">
+                                      {budgetAmt > 0 && <span className="text-[10px] text-slate-400 font-bold mb-0.5">예산: {formatKRW(budgetAmt)}</span>}
+                                      <span className="text-sm font-black text-slate-900">{formatKRW(actual)}</span>
+                                    </div>
+                                    <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+                                      <div 
+                                        className={`h-full transition-all duration-1000 ${utilization > 100 ? 'bg-rose-500' : 'bg-indigo-500'}`}
+                                        style={{ width: `${Math.min(utilization, 100)}%` }}
+                                      ></div>
+                                    </div>
+                                    <div className="text-[10px] font-black uppercase flex justify-end gap-1">
+                                      <span className={utilization > 100 ? 'text-rose-500' : 'text-slate-400'}>{utilization.toFixed(1)}%</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-200 text-xs">-</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+               </div>
+            </div>
+
+            {budget.filter(b => b.month === selectedMonth).length === 0 && (
+                 <div className="mt-8 py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-3">
+                    <AlertCircle className="w-10 h-10 text-slate-300" />
+                    <p className="text-sm font-black text-slate-400">데이터가 없습니다.</p>
+                    <p className="text-xs text-slate-400">업로드를 통해 예산 및 집행 내역을 확인하세요.</p>
+                 </div>
+            )}
           </div>
         )}
       </div>
