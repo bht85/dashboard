@@ -226,56 +226,61 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
 
         const preparedData = Object.values(aggregationMap);
 
-        // --- Enhanced: Parse "예산" sheet grid (Use UI selectedMonth to avoid wrong month guessing) ---
+        // --- Enhanced: Parse "예산" sheet grid (Robust handling for Merged Cells & Types) ---
         const budgetSheetName = wb.SheetNames.find(name => name.includes("예산"));
         if (budgetSheetName) {
           const bws = wb.Sheets[budgetSheetName];
           const bRawData = XLSX.utils.sheet_to_json(bws, { header: 1 });
-          console.log(`Analyzing detailed budget grid for month: ${selectedMonth}`);
+          console.log(`Parsing budget for month: ${selectedMonth}`);
           
           if (bRawData.length >= 2) {
             const categoryHeaders = bRawData[1] || [];
             const budgetMap = {};
+            let lastTeamName = ''; // To handle merged cells in column A
             
             for (let r = 2; r < bRawData.length; r++) {
               const row = bRawData[r];
-              const teamName = String(row[0] || '').trim();
+              const rawTeamName = String(row[0] || '').trim();
+              
+              // If current row has a team name, remember it. Otherwise use last seen (for merged cells)
+              if (rawTeamName && rawTeamName !== '예산부서명') {
+                lastTeamName = rawTeamName;
+              }
+              
+              const currentTeam = lastTeamName;
+              if (!currentTeam) continue;
+              
               const dataType = String(row[1] || '').trim();
-              
-              if (!teamName || teamName === '예산과목명') continue;
-              
-              const isBudget = dataType === '예산액';
-              const isActual = dataType === '집행액';
+              const isBudget = dataType.includes('예산액');
+              const isActual = dataType.includes('집행액');
               
               if (isBudget || isActual) {
                 for (let c = 2; c < row.length; c++) {
-                   const categoryName = String(categoryHeaders[c] || '').trim();
-                   if (!categoryName) continue;
+                   const rawCategory = String(categoryHeaders[c] || '').trim();
+                   if (!rawCategory || rawCategory === '항목') continue;
                    
-                   const amount = parseInt(String(row[c] || 0).replace(/,/g, ''));
-                   const key = `${teamName}_${categoryName}`;
+                   const amountValue = parseInt(String(row[c] || 0).replace(/[^0-9-]/g, ''));
+                   const key = `${currentTeam}_${rawCategory}`;
                    
                    if (!budgetMap[key]) {
                      budgetMap[key] = {
-                       month: selectedMonth, // Use the UI-selected month explicitly
-                       dept: teamName,
-                       category: categoryName,
+                       month: selectedMonth,
+                       dept: currentTeam,
+                       category: rawCategory,
                        amount: 0,
                        actual: 0
                      };
                    }
                    
-                   if (isBudget) budgetMap[key].amount = amount;
-                   if (isActual) budgetMap[key].actual = amount;
+                   if (isBudget) budgetMap[key].amount = amountValue;
+                   if (isActual) budgetMap[key].actual = amountValue;
                 }
               }
             }
 
             const budgetData = Object.values(budgetMap).filter(b => b.amount > 0 || b.actual > 0);
             if (budgetData.length > 0 && onBulkUpdateBudget) {
-              console.log(`Target Month: ${selectedMonth} | Records: ${budgetData.length}`);
-              // Sample check
-              console.log("Budget Sample:", budgetData[0]);
+              console.log(`Final processed budget records: ${budgetData.length}`);
               await onBulkUpdateBudget(budgetData);
             }
           }
@@ -456,8 +461,8 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                   </h3>
                   <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-wider">Spending breakdown by category</p>
                 </div>
-                <div className="h-[350px] w-full bg-slate-50/50 rounded-3xl p-4">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="h-[350px] min-h-[350px] w-full bg-slate-50/50 rounded-3xl p-4">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={300}>
                     <PieChart>
                       <Pie
                         data={categoryChartData}
@@ -490,8 +495,8 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                   </h3>
                   <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-wider">Budget vs Actual by Department</p>
                 </div>
-                <div className="h-[350px] w-full bg-slate-50/50 rounded-3xl p-4">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="h-[350px] min-h-[350px] w-full bg-slate-50/50 rounded-3xl p-4">
+                  <ResponsiveContainer width="100%" height="100%" minHeight={300}>
                     <BarChart data={teamAnalysisData} layout="vertical" margin={{ left: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                       <XAxis type="number" hide />
