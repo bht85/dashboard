@@ -12,7 +12,7 @@ import * as XLSX from 'xlsx';
 import { COMPOSE_SUBJECTS, SMART_SUBJECTS } from './AccountMappingPage';
 import { formatKRW } from '../utils/formatters';
 
-const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, onDeleteUsage, onUpdateBudget, selectedDate }) => {
+const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, onDeleteUsage, onUpdateBudget, onBulkUpdateBudget, selectedDate }) => {
   const [activeTab, setActiveTab] = useState('usage');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(selectedDate.substring(0, 7)); // YYYY-MM
@@ -49,10 +49,13 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
   }, [usage, selectedMonth, searchTerm]);
 
   // Aggregate stats
-  const monthlyStats = useMemo(() => {
-    const totalUsage = filteredUsage.reduce((sum, item) => sum + (item.amount || 0), 0);
-    const monthlyBudget = budget.filter(b => b.month === selectedMonth)
-                                .reduce((sum, item) => sum + (item.amount || 0), 0);
+    // Use "전체부서" as the base for total budget, otherwise sum all depts
+    const monthlyBudgets = budget.filter(b => b.month === selectedMonth);
+    const totalBudgetRecord = monthlyBudgets.find(b => b.dept === '전체부서');
+    const monthlyBudget = totalBudgetRecord 
+      ? monthlyBudgets.filter(b => b.dept === '전체부서').reduce((sum, item) => sum + (item.amount || 0), 0)
+      : monthlyBudgets.reduce((sum, item) => sum + (item.amount || 0), 0);
+      
     const utilization = monthlyBudget > 0 ? (totalUsage / monthlyBudget) * 100 : 0;
     
     return {
@@ -60,6 +63,28 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
       budget: monthlyBudget,
       utilization: utilization.toFixed(1)
     };
+  }, [filteredUsage, budget, selectedMonth]);
+
+  // Chart Data: Team Analysis (Actual vs Budget)
+  const teamAnalysisData = useMemo(() => {
+    const monthBudgets = budget.filter(b => b.month === selectedMonth && b.dept !== '전체부서');
+    const map = {};
+    
+    // Fill with department budgets
+    monthBudgets.forEach(b => {
+      const dept = b.dept;
+      if (!map[dept]) map[dept] = { name: dept, budget: 0, actual: 0 };
+      map[dept].budget += b.amount;
+    });
+    
+    // Add actual spending by department
+    filteredUsage.forEach(u => {
+      const dept = u.dept1 || '미지정';
+      if (!map[dept]) map[dept] = { name: dept, budget: 0, actual: 0 };
+      map[dept].actual += u.amount;
+    });
+    
+    return Object.values(map).sort((a,b) => b.actual - a.actual);
   }, [filteredUsage, budget, selectedMonth]);
 
   // Chart Data: Category Breakdown
@@ -177,38 +202,47 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
 
         const preparedData = Object.values(aggregationMap);
 
-        // --- New: Try to parse "예산" sheet if it exists ---
+        // --- Enhanced: Parse "예산" sheet grid ---
         const budgetSheetName = wb.SheetNames.find(name => name.includes("예산"));
         if (budgetSheetName) {
           const bws = wb.Sheets[budgetSheetName];
-          const bRawData = XLSX.utils.sheet_to_json(bws, { header: 1 }); // Read as grid
-          console.log(`Analyzing budget sheet "${budgetSheetName}"...`);
+          const bRawData = XLSX.utils.sheet_to_json(bws, { header: 1 });
+          console.log(`Analyzing budget grid in "${budgetSheetName}"...`);
           
-          // Parsing a complex budget grid usually requires specific rules.
-          // For now, we'll try to extract "Monthly Total" budgets by subject if found.
-          // This is a simplified extractor - we may need more details for precise mapping.
-          const budgetData = [];
-          
-          // Assuming Column A (index 0) has subjects, and some column has Budget values
-          // We'll look for keywords "예산" and map them to categories
-          for (let r = 2; r < bRawData.length; r++) {
-            const row = bRawData[r];
-            const subject = String(row[0] || '').trim();
-            if (subject && (subject.includes('배달') || subject.includes('지급') || subject.includes('여비') || subject.includes('복리'))) {
-               // Find common budget columns (this is logic-heavy, simplified for now)
-               const amount = parseInt(String(row[1] || 0).replace(/,/g, ''));
-               if (amount > 0) {
-                 budgetData.push({
-                   month: preparedData[0]?.month || selectedMonth, 
-                   category: subject,
-                   amount: amount
-                 });
-               }
+          if (bRawData.length >= 2) {
+            // Row 2 (index 1) contains category names
+            const categoryHeaders = bRawData[1] || [];
+            const budgetData = [];
+            
+            // Loop through rows starting from index 2 (Data rows)
+            for (let r = 2; r < bRawData.length; r++) {
+              const row = bRawData[r];
+              const teamName = String(row[0] || '').trim();
+              const dataType = String(row[1] || '').trim();
+              
+              // Only process "예산액" rows
+              if (dataType === '예산액' && teamName) {
+                // Loop through columns starting from index 2 (Categories)
+                for (let c = 2; c < row.length; c++) {
+                  const amount = parseInt(String(row[c] || 0).replace(/,/g, ''));
+                  const categoryName = String(categoryHeaders[c] || '').trim();
+                  
+                  if (amount > 0 && categoryName) {
+                    budgetData.push({
+                      month: preparedData[0]?.month || selectedMonth,
+                      dept: teamName,
+                      category: categoryName,
+                      amount: amount
+                    });
+                  }
+                }
+              }
             }
-          }
-          if (budgetData.length > 0) {
-             console.log(`Found ${budgetData.length} budget items in sheet.`);
-             // We could call a bulk update budget here if we wanted
+
+            if (budgetData.length > 0 && onBulkUpdateBudget) {
+              console.log(`Extracted ${budgetData.length} budget items for teams.`);
+              await onBulkUpdateBudget(budgetData);
+            }
           }
         }
 
@@ -413,31 +447,53 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                 </div>
               </div>
 
-              {/* Budget vs Actual Bar Chart */}
+              {/* Budget vs Actual (By Team) */}
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-emerald-500" /> 예산 대비 지출 현황
+                    <BarChart3 className="w-5 h-5 text-emerald-500" /> 부서별 예산 대비 지출 현황
                   </h3>
-                  <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-wider">Budget vs Actual by category</p>
+                  <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-wider">Budget vs Actual by Department</p>
                 </div>
                 <div className="h-[350px] w-full bg-slate-50/50 rounded-3xl p-4">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={budgetVsActualData} layout="vertical" margin={{ left: 20 }}>
+                    <BarChart data={teamAnalysisData} layout="vertical" margin={{ left: 20 }}>
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                       <XAxis type="number" hide />
-                      <YAxis dataKey="category" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#64748b' }} width={80} />
+                      <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#64748b' }} width={100} />
                       <Tooltip 
                         formatter={(value) => formatKRW(value)}
                         contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', color: '#fff', fontSize: '10px', fontWeight: 'bold' }}
                       />
                       <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingBottom: '20px' }} />
                       <Bar dataKey="budget" name="예산" fill="#e2e8f0" radius={[0, 4, 4, 0]} barSize={12} />
-                      <Bar dataKey="actual" name="실제 지출" fill="#10b981" radius={[0, 4, 4, 0]} barSize={12} />
+                      <Bar dataKey="actual" name="실제 지출" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={12} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
+            </div>
+
+            {/* Account Subject Analysis */}
+            <div className="space-y-6">
+               <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                 <Target className="w-5 h-5 text-indigo-500" /> 계정과목별 상세 분석
+               </h3>
+               <div className="h-[300px] w-full bg-white border border-slate-200 rounded-3xl p-6">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={budgetVsActualData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#64748b' }} />
+                      <YAxis hide />
+                      <Tooltip 
+                        formatter={(value) => formatKRW(value)}
+                        contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', color: '#fff', fontSize: '10px', fontWeight: 'bold' }}
+                      />
+                      <Bar dataKey="budget" name="예산" fill="#f1f5f9" radius={[4, 4, 0, 0]} barSize={30} />
+                      <Bar dataKey="actual" name="지출" fill="#10b981" radius={[4, 4, 0, 0]} barSize={30} />
+                    </BarChart>
+                  </ResponsiveContainer>
+               </div>
             </div>
 
             {/* Merchant Top List */}
@@ -472,41 +528,36 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
               </p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {ALL_SUBJECTS.map(cat => {
-                const b = budget.find(b => b.month === selectedMonth && b.category === cat);
-                const actual = filteredUsage.filter(u => u.category === cat).reduce((s, i) => s + i.amount, 0);
-                const percent = b && b.amount > 0 ? (actual / b.amount) * 100 : 0;
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {budget.filter(b => b.month === selectedMonth).map((b, idx) => {
+                const actual = filteredUsage
+                  .filter(u => u.category === b.category && (b.dept === '전체부서' || u.dept1 === b.dept))
+                  .reduce((s, i) => s + i.amount, 0);
+                const percent = b.amount > 0 ? (actual / b.amount) * 100 : 0;
                 
                 return (
-                  <div key={cat} className="p-5 bg-slate-50 rounded-2xl border border-slate-200 hover:border-indigo-300 transition-all group">
-                    <div className="flex justify-between items-start mb-4">
-                      <span className="text-xs font-black text-slate-900 truncate max-w-[120px]">{cat}</span>
-                      <div className="relative">
-                        <input 
-                          type="text"
-                          placeholder="0"
-                          defaultValue={b ? b.amount : ''}
-                          onBlur={(e) => {
-                            const val = parseInt(e.target.value.replace(/,/g, ''));
-                            if (!isNaN(val)) {
-                              onUpdateBudget({ month: selectedMonth, category: cat, amount: val });
-                            }
-                          }}
-                          className="w-32 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-right text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 font-bold pointer-events-none">원</span>
+                  <div key={idx} className="p-6 bg-white rounded-3xl border border-slate-200 shadow-sm hover:border-indigo-300 transition-all group relative overflow-hidden">
+                    <div className={`absolute top-0 right-0 px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-bl-xl ${b.dept === '전체부서' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                      {b.dept}
+                    </div>
+                    <div className="mb-4">
+                      <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{b.category}</span>
+                      <div className="flex items-center gap-2 mt-1">
+                         <Target className="w-4 h-4 text-indigo-500" />
+                         <span className="text-lg font-black text-slate-900">{formatKRW(b.amount)}</span>
                       </div>
                     </div>
                     
-                    <div className="space-y-1.5">
-                      <div className="flex justify-between text-[10px] font-bold">
-                        <span className="text-slate-400">실제 지출: {formatKRW(actual)}</span>
-                        <span className={percent > 100 ? "text-rose-500" : "text-indigo-500"}>{percent.toFixed(1)}%</span>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-[11px] font-bold">
+                        <span className="text-slate-500 flex items-center gap-1.5">
+                           <TrendingUp className="w-3.5 h-3.5 text-slate-300" /> 집행액: {formatKRW(actual)}
+                        </span>
+                        <span className={percent > 100 ? "text-rose-500" : "text-indigo-600"}>{percent.toFixed(1)}%</span>
                       </div>
-                      <div className="h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
+                      <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                         <div 
-                          className={`h-full transition-all duration-1000 ${percent > 100 ? "bg-rose-500" : "bg-indigo-500"}`}
+                          className={`h-full transition-all duration-1000 ${percent > 100 ? "bg-rose-500" : "bg-indigo-600"}`}
                           style={{ width: `${Math.min(percent, 100)}%` }}
                         ></div>
                       </div>
@@ -514,6 +565,14 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                   </div>
                 );
               })}
+              
+              {budget.filter(b => b.month === selectedMonth).length === 0 && (
+                 <div className="col-span-full py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center gap-3">
+                    <AlertCircle className="w-10 h-10 text-slate-300" />
+                    <p className="text-sm font-black text-slate-400">등록된 부서별 예산이 없습니다.</p>
+                    <p className="text-xs text-slate-400">엑셀 업로드를 통해 예산 데이터를 먼저 등록해주세요.</p>
+                 </div>
+              )}
             </div>
           </div>
         )}

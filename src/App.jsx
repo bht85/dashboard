@@ -415,12 +415,34 @@ const App = () => {
   };
 
   const updateCorpCardBudget = async (data) => {
-    // data should have { month, category, amount }
-    const docId = `${data.month}_${data.category}`;
+    // data should have { month, category, amount, dept }
+    const docId = `${data.month}_${data.dept || '전체부서'}_${data.category}`;
     await setDoc(doc(collection(db, "corpCardBudget"), docId), {
       ...data,
       updatedAt: new Date().toISOString()
     });
+  };
+
+  const bulkUpdateCorpCardBudget = async (dataArray) => {
+    const { writeBatch } = await import('firebase/firestore');
+    const chunks = [];
+    for (let i = 0; i < dataArray.length; i += 500) {
+      chunks.push(dataArray.slice(i, i + 500));
+    }
+
+    for (const chunk of chunks) {
+      const batch = writeBatch(db);
+      chunk.forEach(data => {
+        const docId = `${data.month}_${data.dept || '전체부서'}_${data.category}`;
+        const docRef = doc(collection(db, "corpCardBudget"), String(docId));
+        batch.set(docRef, {
+          ...data,
+          updatedAt: new Date().toISOString()
+        });
+      });
+      await batch.commit();
+    }
+    console.log(`Committed ${dataArray.length} budget records.`);
   };
 
   const updateDailyIssue = async (date, content) => {
@@ -769,6 +791,7 @@ const App = () => {
           onBulkUpdateUsage={bulkUpdateCorpCardUsage}
           onDeleteUsage={deleteCorpCardUsage}
           onUpdateBudget={updateCorpCardBudget}
+          onBulkUpdateBudget={bulkUpdateCorpCardBudget}
           selectedDate={selectedDate}
         />
       )}
