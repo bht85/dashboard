@@ -126,7 +126,6 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
     
     return Object.values(map).sort((a,b) => b.actual - a.actual);
   }, [filteredUsage, budget, selectedMonth]);
-
   // Combined Trend Data for selected category (Last 6 months)
   const categoryTrendData = useMemo(() => {
     const target = selectedTrendSubject || ALL_SUBJECTS_IN_DATA[0];
@@ -163,6 +162,29 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
         };
     });
   }, [budget, selectedMonth, selectedTrendSubject, ALL_SUBJECTS_IN_DATA]);
+
+  // Chart Data: User Spending Ratio (Top Spenders)
+  const userSpendingData = useMemo(() => {
+    const map = {};
+    let total = 0;
+    
+    filteredUsage.forEach(u => {
+      const name = u.user || '미지정';
+      const dept = u.dept1 || '';
+      const key = `${name}${dept ? ` (${dept})` : ''}`;
+      
+      if (!map[key]) map[key] = { name: key, value: 0 };
+      map[key].value += u.amount;
+      total += u.amount;
+    });
+    
+    return Object.values(map)
+      .map(item => ({
+        ...item,
+        ratio: total > 0 ? (item.value / total * 100).toFixed(1) : 0
+      }))
+      .sort((a,b) => b.value - a.value);
+  }, [filteredUsage]);
 
   // Chart Data: Category Breakdown (Priority: Excel Execution Data)
   const categoryChartData = useMemo(() => {
@@ -629,19 +651,19 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                 </div>
               </div>
 
-              {/* Budget vs Actual (By Team) */}
+              {/* User Spending Ratio Analysis (New) */}
               <div className="space-y-6">
                 <div>
                   <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-emerald-500" /> 부서별 예산 대비 지출 현황
+                    <User className="w-5 h-5 text-indigo-500" /> 인원별 지출 비중 분석
                   </h3>
-                  <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-wider">Budget vs Actual by Department (Scroll to see all)</p>
+                  <p className="text-xs text-slate-500 mt-1 uppercase font-bold tracking-wider">Spending Share by Individual (Scroll to see all)</p>
                 </div>
                 <div className="bg-slate-50/50 rounded-[32px] p-6 border border-slate-100">
                   <div className="max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                    <div style={{ height: `${Math.max(400, teamAnalysisData.length * 45)}px`, width: '100%' }}>
+                    <div style={{ height: `${Math.max(400, userSpendingData.length * 50)}px`, width: '100%' }}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={teamAnalysisData} layout="vertical" margin={{ left: 10, right: 30 }}>
+                        <BarChart data={userSpendingData} layout="vertical" margin={{ left: 10, right: 40 }}>
                           <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
                           <XAxis type="number" hide />
                           <YAxis 
@@ -653,12 +675,13 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                             width={160} 
                           />
                           <Tooltip 
-                            formatter={(value) => formatKRW(value)}
+                            formatter={(value, name, props) => [
+                                `${formatKRW(value)} (${props.payload.ratio}%)`, 
+                                "지출액"
+                            ]}
                             contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', color: '#fff', fontSize: '11px', fontWeight: 'bold' }}
                           />
-                          <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'black', paddingBottom: '20px' }} />
-                          <Bar dataKey="budget" name="예산" fill="#e2e8f0" radius={[0, 6, 6, 0]} barSize={20} />
-                          <Bar dataKey="actual" name="실제 지출" fill="#6366f1" radius={[0, 6, 6, 0]} barSize={20} />
+                          <Bar dataKey="value" name="지출액" fill="#6366f1" radius={[0, 8, 8, 0]} barSize={24} />
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
