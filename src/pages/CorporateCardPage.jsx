@@ -56,12 +56,19 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
   const filteredUsage = useMemo(() => {
     return usage.filter(u => {
       const isMonth = u.month === selectedMonth;
+      
+      // Filter out subtotals to prevent double counting in stats/lists
+      const isSubtotal = (u.user || '').includes('소계') || 
+                        (u.user || '').includes('합계') || 
+                        (u.merchant || '').includes('소계') || 
+                        (u.merchant || '').includes('합계');
+
       const matchesSearch = searchTerm === '' || 
         (u.merchant || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (u.user || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (u.cardCompany || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (u.dept1 || '').toLowerCase().includes(searchTerm.toLowerCase());
-      return isMonth && matchesSearch;
+      return isMonth && !isSubtotal && matchesSearch;
     }).sort((a,b) => b.date.localeCompare(a.date));
   }, [usage, selectedMonth, searchTerm]);
 
@@ -73,6 +80,10 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
     
     // Core subjects from Excel
     monthBudgets.forEach(b => {
+        // Skip subtotal depts to keep the matrix clean
+        if (b.dept && (b.dept.includes('소계') || b.dept.includes('합계') || b.dept.includes('전체'))) {
+            return;
+        }
         depts.add(b.dept);
         subjects.add(b.category);
     });
@@ -223,7 +234,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
        });
     } else {
        // 2. Sum up all other depts from Excel
-       const teamBudgets = monthBudgets.filter(b => b.dept !== '전체부서');
+       const teamBudgets = monthBudgets.filter(b => b.dept !== '전체부서' && !b.dept.includes('소계') && !b.dept.includes('합계'));
        if (teamBudgets.length > 0 && teamBudgets.some(b => (b.actual || 0) > 0)) {
          teamBudgets.forEach(b => {
            const cat = b.category || '미지정';
@@ -271,7 +282,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
             map[b.category].actual += (b.actual || 0);
         });
     } else {
-        monthBudgets.filter(b => b.dept !== '전체부서').forEach(b => {
+        monthBudgets.filter(b => b.dept !== '전체부서' && !b.dept.includes('소계') && !b.dept.includes('합계')).forEach(b => {
             if (!map[b.category]) map[b.category] = { category: b.category, budget: 0, actual: 0 };
             map[b.category].budget += (b.amount || 0);
             map[b.category].actual += (b.actual || 0);
@@ -333,17 +344,23 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
         const aggregationMap = {};
 
         for (const row of normalizedData) {
-          const cardCompany = row['카드사명'] || row['카드사'] || '';
-          const cardNumber = row['카드번호'] || '';
+          const cardCompany = (row['카드사명'] || row['카드사'] || '').toString();
+          const cardNumber = (row['카드번호'] || '').toString();
           const dateVal = row['승인일자'] || row['이용일시'] || row['날짜'] || row['사용일자'] || row['거래일자'];
           
           // Use Math.abs up front and better parsing
           const rawAmount = row['승인금액'] || row['이용금액'] || row['금액'] || row['결제금액'] || 0;
           const amount = typeof rawAmount === 'number' ? rawAmount : parseInt(String(rawAmount).replace(/,/g, ''));
           
-          const userName = row['구분'] || row['사용자'] || row['이름'] || row['카드명'] || '';
-          const dept1 = row['조직1'] || row['부서1'] || '';
-          const dept2 = row['조직2'] || row['부서2'] || '';
+          const userName = (row['구분'] || row['사용자'] || row['이름'] || row['카드명'] || '').toString();
+          const dept1 = (row['조직1'] || row['부서1'] || '').toString();
+          const dept2 = (row['조직2'] || row['부서2'] || '').toString();
+
+          // --- FIX: Skip subtotal rows ---
+          const isSubtotalRow = [userName, cardCompany, dept1, dept2].some(val => 
+            val.includes('소계') || val.includes('합계') || val.includes('총계') || val === '계'
+          );
+          if (isSubtotalRow) continue;
 
           if (dateVal && Math.abs(amount) > 0) {
             let cleanMonth = '';
@@ -397,6 +414,12 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
             for (let r = 2; r < bRawData.length; r++) {
               const row = bRawData[r];
               const rawTeamName = String(row[0] || '').trim();
+
+              // --- FIX: Skip subtotal rows in Budget sheet ---
+              if (rawTeamName.includes('소계') || rawTeamName.includes('합계') || rawTeamName.includes('총계')) {
+                continue; 
+              }
+
               if (rawTeamName && !rawTeamName.includes('부서')) {
                 lastTeamName = rawTeamName;
               }
@@ -431,6 +454,12 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
             for (let r = 2; r < bRawData.length; r++) {
                 const row = bRawData[r];
                 const teamNameInSide = String(row[16] || '').trim();
+
+                // --- FIX: Skip subtotal rows in Side Table ---
+                if (teamNameInSide.includes('소계') || teamNameInSide.includes('합계') || teamNameInSide.includes('총계')) {
+                    continue;
+                }
+
                 if (teamNameInSide && !teamNameInSide.includes('부서')) {
                     const travelActual = parseInt(String(row[19] || 0).replace(/[^0-9-]/g, ''));
                     if (travelActual > 0) {
