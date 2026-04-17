@@ -18,6 +18,7 @@ import CashPLPage from './pages/CashPLPage';
 import LoanManagementPage from './pages/LoanManagementPage';
 import AuthPage from './pages/AuthPage';
 import ForeignReportPage from './pages/ForeignReportPage';
+import CorporateCardPage from './pages/CorporateCardPage';
 import * as XLSX from 'xlsx';
 import { isExcludedAccount } from './utils/formatters';
 
@@ -103,6 +104,8 @@ const App = () => {
   const [loans, setLoans] = useState([]); // 신규: 금융 관리 (대여금) 데이터
   const [coffeeIndices, setCoffeeIndices] = useState([]); // 신규: 커피 지수(월물) 데이터
   const [rawBeanContracts, setRawBeanContracts] = useState([]); // 신규: 생두 계약 데이터
+  const [corpCardUsage, setCorpCardUsage] = useState([]); // 신규: 법인카드 사용 내역
+  const [corpCardBudget, setCorpCardBudget] = useState([]); // 신규: 법인카드 예산
 
   // --- Real-time Firestore Sync ---
   useEffect(() => {
@@ -188,6 +191,16 @@ const App = () => {
         setRawBeanContracts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     }, logAndHandle("rawBeanContracts"));
 
+    // 11. Corporate Card Usage Sync
+    const unsubCorpUsage = onSnapshot(collection(db, "corpCardUsage"), (snapshot) => {
+        setCorpCardUsage(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, logAndHandle("corpCardUsage"));
+
+    // 12. Corporate Card Budget Sync
+    const unsubCorpBudget = onSnapshot(collection(db, "corpCardBudget"), (snapshot) => {
+        setCorpCardBudget(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, logAndHandle("corpCardBudget"));
+
     // 4. Daily Status Sync
     const unsubStatus = onSnapshot(collection(db, "dailyStatuses"), (snapshot) => {
         const statuses = {};
@@ -219,7 +232,7 @@ const App = () => {
         setDailyStatuses(statuses);
     }, logAndHandle("dailyStatuses"));
 
-    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); unsubCashFlow(); unsubFXExchange(); unsubLoans(); unsubCoffee(); };
+    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); unsubCashFlow(); unsubFXExchange(); unsubLoans(); unsubCoffee(); unsubCorpUsage(); unsubCorpBudget(); };
   }, [user]);
 
   // --- Firestore Update Wrappers ---
@@ -364,6 +377,28 @@ const App = () => {
   const deleteRawBeanContract = async (id) => {
     if (!id) return;
     await deleteDoc(doc(collection(db, "rawBeanContracts"), String(id)));
+  };
+
+  const updateCorpCardUsage = async (data) => {
+    const docId = data.id ? String(data.id) : Date.now().toString();
+    await setDoc(doc(collection(db, "corpCardUsage"), docId), {
+      ...data,
+      updatedAt: new Date().toISOString()
+    });
+  };
+
+  const deleteCorpCardUsage = async (id) => {
+    if (!id) return;
+    await deleteDoc(doc(collection(db, "corpCardUsage"), String(id)));
+  };
+
+  const updateCorpCardBudget = async (data) => {
+    // data should have { month, category, amount }
+    const docId = `${data.month}_${data.category}`;
+    await setDoc(doc(collection(db, "corpCardBudget"), docId), {
+      ...data,
+      updatedAt: new Date().toISOString()
+    });
   };
 
   const updateDailyIssue = async (date, content) => {
@@ -701,6 +736,17 @@ const App = () => {
           exchangeRateEUR={exchangeRateEUR}
           exchangeRateJPY={exchangeRateJPY}
           onBack={() => setCurrentView('foreign')}
+        />
+      )}
+
+      {currentView === 'corpCard' && (
+        <CorporateCardPage 
+          usage={corpCardUsage}
+          budget={corpCardBudget}
+          onUpdateUsage={updateCorpCardUsage}
+          onDeleteUsage={deleteCorpCardUsage}
+          onUpdateBudget={updateCorpCardBudget}
+          selectedDate={selectedDate}
         />
       )}
 
