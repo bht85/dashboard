@@ -58,10 +58,9 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
       const isMonth = u.month === selectedMonth;
       
       // Filter out subtotals to prevent double counting in stats/lists
-      const isSubtotal = (u.user || '').includes('소계') || 
-                        (u.user || '').includes('합계') || 
-                        (u.merchant || '').includes('소계') || 
-                        (u.merchant || '').includes('합계');
+      const isSubtotal = (u.user || u.merchant || '').includes('소계') || 
+                        (u.user || u.merchant || '').includes('합계') || 
+                        (u.user || u.merchant || '').includes('총계');
 
       const matchesSearch = searchTerm === '' || 
         (u.merchant || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -71,6 +70,40 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
       return isMonth && !isSubtotal && matchesSearch;
     }).sort((a,b) => b.date.localeCompare(a.date));
   }, [usage, selectedMonth, searchTerm]);
+
+  // Combined Usage List: Uses card transactions if available, otherwise generates summaries from Excel execution data
+  const displayUsage = useMemo(() => {
+    if (filteredUsage.length > 0) return filteredUsage;
+    
+    // Fallback: Generate summary rows from budget execution data
+    const monthBudgets = budget.filter(b => 
+        b.month === selectedMonth && 
+        b.dept !== '전체부서' && 
+        !b.dept.includes('소계') &&
+        !b.dept.includes('합계') &&
+        (b.actual || 0) !== 0
+    );
+    
+    const deptMap = {};
+    monthBudgets.forEach(b => {
+        if (!deptMap[b.dept]) {
+            deptMap[b.dept] = { 
+                id: `sum_${b.month}_${b.dept}`,
+                month: b.month,
+                date: `${b.month}-01`,
+                cardCompany: 'EXCEL',
+                dept1: b.dept,
+                merchant: `${b.dept} 집행 요약`,
+                user: 'System',
+                amount: 0,
+                isSummary: true
+            };
+        }
+        deptMap[b.dept].amount += (b.actual || 0);
+    });
+    
+    return Object.values(deptMap).sort((a,b) => b.amount - a.amount);
+  }, [filteredUsage, budget, selectedMonth]);
 
   // Derived collections for the Matrix UI
   const { DEPTS_IN_DATA, ALL_SUBJECTS_IN_DATA } = useMemo(() => {
@@ -362,12 +395,12 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
         const aggregationMap = {};
 
         for (const row of normalizedData) {
-          const cardCompany = (row['카드사명'] || row['카드사'] || '').toString();
-          const cardNumber = (row['카드번호'] || '').toString();
-          const dateVal = row['승인일자'] || row['이용일시'] || row['날짜'] || row['사용일자'] || row['거래일자'];
+          const cardCompany = (row['카드사명'] || row['카드사'] || row['발급사'] || '').toString();
+          const cardNumber = (row['카드번호'] || row['카드'] || '').toString();
+          const dateVal = row['승인일자'] || row['이용일시'] || row['날짜'] || row['사용일자'] || row['거래일자'] || row['승인일'] || row['거래일'];
           
           // Use Math.abs up front and better parsing
-          const rawAmount = row['승인금액'] || row['이용금액'] || row['금액'] || row['결제금액'] || 0;
+          const rawAmount = row['승인금액'] || row['이용금액'] || row['금액'] || row['결제금액'] || row['합계'] || row['거래금액'] || row['승인금액(원)'] || 0;
           const amount = typeof rawAmount === 'number' ? rawAmount : parseInt(String(rawAmount).replace(/,/g, ''));
           
           const userName = (row['구분'] || row['사용자'] || row['이름'] || row['카드명'] || '').toString();
@@ -644,10 +677,10 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
         />
         <StatCard 
           title="결제 건수" 
-          value={`${filteredUsage.length} 건`} 
+          value={`${displayUsage.length} 건`} 
           icon={<CreditCard className="w-4 h-4" />} 
           color="amber" 
-          subtitle="당월 총 카드 승인 횟수"
+          subtitle={filteredUsage.length > 0 ? "당월 총 카드 승인 횟수" : "팀별 지출 요약 건수 (Excel)"}
         />
       </div>
 
@@ -667,7 +700,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                   />
                 </div>
                 <div className="text-[11px] font-black text-slate-400 uppercase">
-                  Showing {filteredUsage.length} transactions for {selectedMonth}
+                  Showing {displayUsage.length} records for {selectedMonth}
                 </div>
              </div>
              <div className="overflow-x-auto">
@@ -681,7 +714,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                    </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-100">
-                   {filteredUsage.length === 0 ? (
+                   {displayUsage.length === 0 ? (
                      <tr>
                        <td colSpan={4} className="py-20 text-center text-slate-400">
                          <div className="flex flex-col items-center gap-2">
@@ -691,13 +724,13 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                          </div>
                        </td>
                      </tr>
-                   ) : filteredUsage.map(item => (
-                     <tr key={item.id} className="hover:bg-slate-50 transition-all border-l-4 border-transparent hover:border-indigo-500">
+                   ) : displayUsage.map(item => (
+                     <tr key={item.id} className={`hover:bg-slate-50 transition-all border-l-4 ${item.isSummary ? 'border-amber-400 bg-amber-50/20' : 'border-transparent hover:border-indigo-500'}`}>
                        <td className="px-6 py-4">
                          <div className="flex flex-col gap-0.5">
                            <div className="flex items-center gap-1.5">
-                             <span className="text-[10px] font-black px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded uppercase tracking-tighter">{item.cardCompany || 'CARD'}</span>
-                             <span className="text-[10px] font-bold text-slate-400 font-mono">{item.cardNumber?.slice(-4) ? `****${item.cardNumber.slice(-4)}` : '-'}</span>
+                             <span className="text-[10px] font-black px-1.5 py-0.5 bg-white border border-slate-200 text-slate-600 rounded uppercase tracking-tighter">{item.cardCompany || 'CARD'}</span>
+                             {!item.isSummary && <span className="text-[10px] font-bold text-slate-400 font-mono">{item.cardNumber?.slice(-4) ? `****${item.cardNumber.slice(-4)}` : '-'}</span>}
                            </div>
                            <div className="text-[10px] text-indigo-500 font-bold">
                              {item.dept1}{item.dept2 ? ` > ${item.dept2}` : ''}
