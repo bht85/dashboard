@@ -205,20 +205,38 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
     const map = {};
     let total = 0;
     
-    filteredUsage.forEach(u => {
-      const dept = u.dept1 || '미지정';
-      if (!map[dept]) map[dept] = { name: dept, value: 0 };
-      map[dept].value += u.amount;
-      total += u.amount;
-    });
+    // Fallback logic: Use card data (filteredUsage) if available, 
+    // otherwise use execution data from Excel (budget prop)
+    if (filteredUsage.length > 0) {
+      filteredUsage.forEach(u => {
+        const dept = u.dept1 || '미지정';
+        if (!map[dept]) map[dept] = { name: dept, value: 0 };
+        map[dept].value += u.amount;
+        total += u.amount;
+      });
+    } else {
+      const monthBudgets = budget.filter(b => 
+        b.month === selectedMonth && 
+        b.dept !== '전체부서' && 
+        !b.dept.includes('소계') &&
+        !b.dept.includes('합계')
+      );
+      monthBudgets.forEach(b => {
+        const dept = b.dept || '미지정';
+        if (!map[dept]) map[dept] = { name: dept, value: 0 };
+        map[dept].value += (b.actual || 0);
+        total += (b.actual || 0);
+      });
+    }
     
     return Object.values(map)
+      .filter(item => item.value > 0)
       .map(item => ({
         ...item,
         ratio: total > 0 ? (item.value / total * 100).toFixed(1) : 0
       }))
       .sort((a,b) => b.value - a.value);
-  }, [filteredUsage]);
+  }, [filteredUsage, budget, selectedMonth]);
 
   // Chart Data: Category Breakdown (Priority: Excel Execution Data)
   const categoryChartData = useMemo(() => {
@@ -369,30 +387,31 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
             } else {
               let s = String(dateVal);
               if (s.includes('.')) s = s.replace(/\./g, '-');
+              if (s.includes('/')) s = s.replace(/\//g, '-');
               cleanMonth = s.substring(0, 7);
             }
             
-            if (cleanMonth.length === 7) {
-              const aggKey = `${cleanMonth}_${cardNumber}_${userName}`;
-              
-              if (!aggregationMap[aggKey]) {
-                aggregationMap[aggKey] = {
-                  id: aggKey,
-                  month: cleanMonth,
-                  date: `${cleanMonth}-01`,
-                  cardCompany,
-                  cardNumber,
-                  merchant: `${userName} 월 합계`,
-                  amount: 0,
-                  user: userName || '미지정',
-                  dept1,
-                  dept2,
-                  category: '',
-                  isSummary: true
-                };
-              }
-              aggregationMap[aggKey].amount += amount;
+            // --- FIX: Use selectedMonth as confirmed by user dialog ---
+            const targetMonth = selectedMonth;
+            const aggKey = `${targetMonth}_${cardNumber}_${userName}`;
+            
+            if (!aggregationMap[aggKey]) {
+              aggregationMap[aggKey] = {
+                id: aggKey,
+                month: targetMonth,
+                date: `${targetMonth}-01`,
+                cardCompany,
+                cardNumber,
+                merchant: `${userName} 월 합계`,
+                amount: 0,
+                user: userName || '미지정',
+                dept1,
+                dept2,
+                category: '',
+                isSummary: true
+              };
             }
+            aggregationMap[aggKey].amount += amount;
           }
         }
 
@@ -461,13 +480,18 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                 }
 
                 if (teamNameInSide && !teamNameInSide.includes('부서')) {
-                    const travelActual = parseInt(String(row[19] || 0).replace(/[^0-9-]/g, ''));
-                    if (travelActual > 0) {
-                        const key = `${teamNameInSide}_${OTHER_TRAVEL_CAT}`;
-                        if (!budgetMap[key]) {
-                            budgetMap[key] = { month: selectedMonth, dept: teamNameInSide, category: OTHER_TRAVEL_CAT, amount: 0, actual: 0 };
+                    const dataType = String(row[1] || '').trim();
+                    const isActual = dataType.includes('집행액');
+
+                    if (isActual) {
+                        const travelActual = parseInt(String(row[19] || 0).replace(/[^0-9-]/g, ''));
+                        if (travelActual !== 0) {
+                            const key = `${teamNameInSide}_${OTHER_TRAVEL_CAT}`;
+                            if (!budgetMap[key]) {
+                                budgetMap[key] = { month: selectedMonth, dept: teamNameInSide, category: OTHER_TRAVEL_CAT, amount: 0, actual: 0 };
+                            }
+                            budgetMap[key].actual += travelActual;
                         }
-                        budgetMap[key].actual += travelActual;
                     }
                 }
             }
