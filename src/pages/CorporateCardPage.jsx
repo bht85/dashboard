@@ -71,14 +71,32 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
     }).sort((a,b) => b.date.localeCompare(a.date));
   }, [usage, selectedMonth, searchTerm]);
 
+  // --- HIERARCHY FILTERING HELPERS ---
+  const isParentDept = (dept) => {
+    if (!dept) return false;
+    const name = dept.trim();
+    if (name === '전체부서' || name === '전체') return true;
+    // Common parent patterns in Korean corporate structure
+    const parentSuffixes = ['본부', '부서', '센터', '실', '부']; // '부' can be tricky but often parent
+    const isParent = parentSuffixes.some(s => name.endsWith(s)) && !name.endsWith('팀');
+    return isParent;
+  };
+
+  const isLeafTeam = (dept) => {
+    if (!dept) return false;
+    if (dept === '대표이사' || dept === '임원') return true; // Special individual-level units
+    return !isParentDept(dept);
+  };
+
   // Combined Usage List: Uses card transactions if available, otherwise generates summaries from Excel execution data
   const displayUsage = useMemo(() => {
     if (filteredUsage.length > 0) return filteredUsage;
     
     // Fallback: Generate summary rows from budget execution data
+    // Use only leaf teams to prevent double-counting if summing up
     const monthBudgets = budget.filter(b => 
         b.month === selectedMonth && 
-        b.dept !== '전체부서' && 
+        isLeafTeam(b.dept) &&
         !b.dept.includes('소계') &&
         !b.dept.includes('합계') &&
         (b.actual || 0) !== 0
@@ -189,12 +207,13 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
     if (Object.values(map).every(v => v.actual === 0)) {
       filteredUsage.forEach(u => {
         const dept = u.dept1 || '미지정';
-        if (dept.includes('소계') || dept.includes('전체')) return;
+        if (isParentDept(dept)) return; // Don't sum into parent row at this level
         if (map[dept]) map[dept].actual += u.amount;
       });
     }
     
-    return Object.values(map).sort((a,b) => b.actual - a.actual);
+    // Clean up: Filter to show only leaf teams to prevent doubling
+    return Object.values(map).filter(m => isLeafTeam(m.name)).sort((a,b) => b.actual - a.actual);
   }, [filteredUsage, budget, selectedMonth]);
   // Combined Trend Data for selected category (Last 6 months)
   const categoryTrendData = useMemo(() => {
@@ -243,6 +262,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
     if (filteredUsage.length > 0) {
       filteredUsage.forEach(u => {
         const dept = u.dept1 || '미지정';
+        if (isParentDept(dept)) return; 
         if (!map[dept]) map[dept] = { name: dept, value: 0 };
         map[dept].value += u.amount;
         total += u.amount;
@@ -250,7 +270,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
     } else {
       const monthBudgets = budget.filter(b => 
         b.month === selectedMonth && 
-        b.dept !== '전체부서' && 
+        isLeafTeam(b.dept) &&
         !b.dept.includes('소계') &&
         !b.dept.includes('합계')
       );
@@ -495,7 +515,8 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                      budgetMap[key] = { month: selectedMonth, dept: currentTeam, category: rawCategory, amount: 0, actual: 0 };
                    }
                    if (isBudget) budgetMap[key].amount = amountValue;
-                   if (isActual) budgetMap[key].actual = amountValue;
+                   // Use addition consistently across single upload pass to handle multi-column hits correctly
+                   if (isActual) budgetMap[key].actual += amountValue;
                 }
               }
             }
@@ -512,7 +533,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                     continue;
                 }
 
-                if (teamNameInSide && !teamNameInSide.includes('부서')) {
+                if (teamNameInSide) {
                     const dataType = String(row[1] || '').trim();
                     const isActual = dataType.includes('집행액');
 
