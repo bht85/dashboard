@@ -496,7 +496,9 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                   const potentialRow = bRawData[j] || [];
                   if (potentialRow.some(cell => {
                     const s = String(cell || '');
-                    return s.includes('유지비') || s.includes('후생비') || s.includes('급여') || s.includes('소모품');
+                    return s.includes('유지비') || s.includes('후생비') || s.includes('급여') || 
+                           s.includes('소모품') || s.includes('활동비') || s.includes('수수료') || 
+                           s.includes('인쇄비') || s.includes('개발비') || s.includes('여비');
                   })) {
                     nameRowIndex = j;
                     break;
