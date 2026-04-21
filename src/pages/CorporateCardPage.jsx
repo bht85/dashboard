@@ -479,12 +479,12 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
           console.log(`Parsing budget matrix for [${selectedMonth}]...`);
           
           if (bRawData.length >= 2) {
-            const categoryHeaders = bRawData[1] || [];
+            const categoryHeaders = bRawData[2] || [];
             const budgetMap = {};
             let lastTeamName = ''; 
             
             // 1. Scan Main Grid (Left side)
-            for (let r = 2; r < bRawData.length; r++) {
+            for (let r = 4; r < bRawData.length; r++) {
               const row = bRawData[r];
               const rawTeamName = String(row[0] || '').trim();
 
@@ -519,7 +519,6 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                      budgetMap[key] = { month: selectedMonth, dept: currentTeam, category: rawCategory, amount: 0, actual: 0 };
                    }
                    if (isBudget) budgetMap[key].amount = amountValue;
-                   // Use addition consistently across single upload pass to handle multi-column hits correctly
                    if (isActual) budgetMap[key].actual += amountValue;
                 }
               }
@@ -529,7 +528,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
             // Based on screenshot: Col Q (16) is Team, Col T (19) is '여비교통비-기타'
             const OTHER_TRAVEL_CAT = '여비교통비 - 기타';
             let lastTeamNameInSide = '';
-            for (let r = 2; r < bRawData.length; r++) {
+            for (let r = 4; r < bRawData.length; r++) {
                 const row = bRawData[r];
                 const teamNameInSide = String(row[16] || '').trim();
 
@@ -548,8 +547,10 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                 const currentTeam = lastTeamNameInSide;
 
                 if (currentTeam) {
-                    // Map side table data to Budget (amount) as requested
-                    const isBudgetRow = dataType.includes('예산액') || dataType === '';
+                    const dataType = String(row[1] || '').trim();
+                    const isBudgetRow = dataType.includes('예산액');
+                    const isActualRow = dataType.includes('집행액');
+                    
                     if (isBudgetRow) {
                         const travelBudget = parseInt(String(row[19] || 0).replace(/[^0-9-]/g, ''));
                         if (travelBudget !== 0) {
@@ -557,7 +558,16 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                             if (!budgetMap[key]) {
                                 budgetMap[key] = { month: selectedMonth, dept: currentTeam, category: OTHER_TRAVEL_CAT, amount: 0, actual: 0 };
                             }
-                            budgetMap[key].amount += travelBudget;
+                            budgetMap[key].amount = travelBudget;
+                        }
+                    } else if (isActualRow) {
+                        const travelActual = parseInt(String(row[19] || 0).replace(/[^0-9-]/g, ''));
+                        if (travelActual !== 0) {
+                            const key = `${currentTeam}_${OTHER_TRAVEL_CAT}`;
+                            if (!budgetMap[key]) {
+                                budgetMap[key] = { month: selectedMonth, dept: currentTeam, category: OTHER_TRAVEL_CAT, amount: 0, actual: 0 };
+                            }
+                            budgetMap[key].actual += travelActual;
                         }
                     }
                 }
