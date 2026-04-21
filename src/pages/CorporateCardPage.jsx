@@ -479,12 +479,24 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
           console.log(`Parsing budget matrix for [${selectedMonth}]...`);
           
           if (bRawData.length >= 2) {
-            const categoryHeaders = bRawData[1] || [];
+            // --- FIX: Dynamically find header row (usually contains keywords like "부서" or "집행액") ---
+            let headerRowIndex = bRawData.findIndex(row => 
+              row && Array.isArray(row) && row.some(cell => {
+                const s = String(cell || '');
+                return s.includes('부서') || s.includes('집행액') || s.includes('예산액');
+              })
+            );
+            
+            // If not found in first 10 rows, fallback to index 1 (Row 2)
+            if (headerRowIndex === -1 || headerRowIndex > 10) headerRowIndex = 1;
+            console.log(`Detected budget header at row index ${headerRowIndex}`);
+
+            const categoryHeaders = bRawData[headerRowIndex] || [];
             const budgetMap = {};
             let lastTeamName = ''; 
             
             // 1. Scan Main Grid (Left side)
-            for (let r = 2; r < bRawData.length; r++) {
+            for (let r = headerRowIndex + 1; r < bRawData.length; r++) {
               const row = bRawData[r];
               const rawTeamName = String(row[0] || '').trim();
 
@@ -529,7 +541,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
             // Based on screenshot: Col Q (16) is Team, Col T (19) is '여비교통비-기타'
             const OTHER_TRAVEL_CAT = '여비교통비 - 기타';
             let lastTeamNameInSide = '';
-            for (let r = 2; r < bRawData.length; r++) {
+            for (let r = headerRowIndex + 1; r < bRawData.length; r++) {
                 const row = bRawData[r];
                 const teamNameInSide = String(row[16] || '').trim();
 
