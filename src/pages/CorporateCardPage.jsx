@@ -471,32 +471,20 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
 
         const preparedData = Object.values(aggregationMap);
 
-        // --- Enhanced: Parse "예산" or "집계" sheet grid (Main Grid + Side Table for Other Travel) ---
-        const budgetSheetName = wb.SheetNames.find(name => name.includes("예산")) || wb.SheetNames.find(name => name.includes("집계"));
+        // --- Enhanced: Parse "예산" sheet grid (Main Grid + Side Table for Other Travel) ---
+        const budgetSheetName = wb.SheetNames.find(name => name.includes("예산"));
         if (budgetSheetName) {
           const bws = wb.Sheets[budgetSheetName];
           const bRawData = XLSX.utils.sheet_to_json(bws, { header: 1 });
           console.log(`Parsing budget matrix for [${selectedMonth}]...`);
           
           if (bRawData.length >= 2) {
-            // --- FIX: Dynamically find header row (usually contains keywords like "부서" or "집행액") ---
-            let headerRowIndex = bRawData.findIndex(row => 
-              row && Array.isArray(row) && row.some(cell => {
-                const s = String(cell || '');
-                return s.includes('부서') || s.includes('집행액') || s.includes('예산액');
-              })
-            );
-            
-            // If not found in first 10 rows, fallback to index 1 (Row 2)
-            if (headerRowIndex === -1 || headerRowIndex > 10) headerRowIndex = 1;
-            console.log(`Detected budget header at row index ${headerRowIndex}`);
-
-            const categoryHeaders = bRawData[headerRowIndex] || [];
+            const categoryHeaders = bRawData[1] || [];
             const budgetMap = {};
             let lastTeamName = ''; 
             
             // 1. Scan Main Grid (Left side)
-            for (let r = headerRowIndex + 1; r < bRawData.length; r++) {
+            for (let r = 2; r < bRawData.length; r++) {
               const row = bRawData[r];
               const rawTeamName = String(row[0] || '').trim();
 
@@ -541,7 +529,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
             // Based on screenshot: Col Q (16) is Team, Col T (19) is '여비교통비-기타'
             const OTHER_TRAVEL_CAT = '여비교통비 - 기타';
             let lastTeamNameInSide = '';
-            for (let r = headerRowIndex + 1; r < bRawData.length; r++) {
+            for (let r = 2; r < bRawData.length; r++) {
                 const row = bRawData[r];
                 const teamNameInSide = String(row[16] || '').trim();
 
@@ -560,16 +548,16 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                 const currentTeam = lastTeamNameInSide;
 
                 if (currentTeam) {
-                    const isActual = dataType.includes('집행액');
-
-                    if (isActual) {
-                        const travelActual = parseInt(String(row[19] || 0).replace(/[^0-9-]/g, ''));
-                        if (travelActual !== 0) {
+                    // Map side table data to Budget (amount) as requested
+                    const isBudgetRow = dataType.includes('예산액') || dataType === '';
+                    if (isBudgetRow) {
+                        const travelBudget = parseInt(String(row[19] || 0).replace(/[^0-9-]/g, ''));
+                        if (travelBudget !== 0) {
                             const key = `${currentTeam}_${OTHER_TRAVEL_CAT}`;
                             if (!budgetMap[key]) {
                                 budgetMap[key] = { month: selectedMonth, dept: currentTeam, category: OTHER_TRAVEL_CAT, amount: 0, actual: 0 };
                             }
-                            budgetMap[key].actual += travelActual;
+                            budgetMap[key].amount += travelBudget;
                         }
                     }
                 }
