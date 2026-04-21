@@ -522,7 +522,9 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
             // 1. Scan Main Grid (Left side)
             for (let r = finalDataStartIndex; r < bRawData.length; r++) {
               const row = bRawData[r];
-              const rawTeamName = String(row[0] || '').trim();
+              const teamInA = String(row[0] || '').trim();
+              const teamInQ = String(row[16] || '').trim();
+              const rawTeamName = teamInA || teamInQ;
 
               // --- FIX: Skip subtotal rows in Budget sheet ---
               const dataType = String(row[1] || '').trim();
