@@ -1035,8 +1035,12 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                       <tr className="bg-slate-50 border-b border-slate-200">
                         <th className="sticky left-0 z-20 bg-slate-50 p-6 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest border-r border-slate-200 min-w-[140px]">부서 / 팀</th>
                         {ALL_SUBJECTS_IN_DATA.map(cat => (
-                          <th key={cat} className="p-6 text-right text-[11px] font-black text-slate-500 uppercase tracking-widest min-w-[160px] border-r border-slate-200/50">
-                            {cat}
+                          <th 
+                            key={cat} 
+                            className="p-6 text-right text-[11px] font-black text-slate-500 border-r border-slate-200/50 min-w-[180px]"
+                            title={cat}
+                          >
+                            <div className="line-clamp-2 uppercase tracking-tight">{cat}</div>
                           </th>
                         ))}
                       </tr>
