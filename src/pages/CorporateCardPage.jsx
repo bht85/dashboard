@@ -569,13 +569,16 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                 const row = bRawData[r];
                 const dataType = String(row[1] || '').trim();
                 const teamNameInSide = String(row[16] || '').trim();
-                const colA = String(row[0] || '').trim();
+                
+                // --- Robust Subtotal Detection ---
+                // Strip all whitespace and check entire row for keywords
+                const rowStr = row.slice(0, 20).map(c => String(c || '').replace(/\s/g, '')).join('|');
+                const isSubtotalRow = rowStr.includes('소계') || rowStr.includes('합계') || 
+                                     dataType.includes('소계') || dataType.includes('합계') || 
+                                     teamNameInSide.includes('소계') || teamNameInSide.includes('합계') ||
+                                     dataType === '계' || teamNameInSide === '계';
 
-                const isSubtotalLabel = dataType.includes('소계') || dataType.includes('합계') || dataType === '계';
-                const isTeamSubtotal = teamNameInSide.includes('소계') || teamNameInSide.includes('합계') || teamNameInSide === '전체부서' || teamNameInSide === '계';
-                const isColASubtotal = colA.includes('소계') || colA.includes('합계');
-
-                if (isSubtotalLabel || isTeamSubtotal || isColASubtotal) {
+                if (isSubtotalRow) {
                     continue;
                 }
 
