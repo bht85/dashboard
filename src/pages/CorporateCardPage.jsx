@@ -472,7 +472,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
         const preparedData = Object.values(aggregationMap);
 
         // --- Enhanced: Parse "예산" or "집계" sheet grid (Main Grid + Side Table for Other Travel) ---
-        const budgetSheetName = wb.SheetNames.find(name => name.includes("집계")) || wb.SheetNames.find(name => name.includes("예산"));
+        const budgetSheetName = wb.SheetNames.find(name => name.includes("예산")) || wb.SheetNames.find(name => name.includes("집계"));
         if (budgetSheetName) {
           const bws = wb.Sheets[budgetSheetName];
           const bRawData = XLSX.utils.sheet_to_json(bws, { header: 1 });
