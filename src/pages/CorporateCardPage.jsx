@@ -576,15 +576,19 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                 const isSubtotalRow = rowStr.includes('소계') || rowStr.includes('합계') || 
                                      dataType.includes('소계') || dataType.includes('합계') || 
                                      teamNameInSide.includes('소계') || teamNameInSide.includes('합계') ||
-                                     dataType === '계' || teamNameInSide === '계';
+                                     dataType === '계' || teamNameInSide === '계' ||
+                                     rowStr.includes('전체부서');
 
-                if (isSubtotalRow || !teamNameInSide) {
+                if (isSubtotalRow) {
+                    lastTeamNameInSide = ''; // CLEAR STATE to prevent leakage into the next team or artifacts
                     continue;
                 }
 
-                if (!teamNameInSide.includes('부서')) {
-                    lastTeamNameInSide = teamNameInSide;
+                // If a team name is explicitly present, update the state
+                if (teamNameInSide && !teamNameInSide.includes('부서')) {
+                     lastTeamNameInSide = teamNameInSide;
                 }
+
                 const currentTeam = lastTeamNameInSide;
 
                 if (currentTeam) {
