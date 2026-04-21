@@ -164,9 +164,10 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
         totalExcelActual += (b.actual || 0);
         
         // --- Correction Logic ---
-        // If an item has 0 budget but has spending (like Travel Expenses),
-        // we add its spending to the budget total too so they balance at 100% impact.
-        if ((b.amount || 0) <= 0 && (b.actual || 0) > 0) {
+        // If an item has 0 budget but has spending, we add its spending to the budget total too.
+        // BUT we must avoid double-counting items that are already treated as special (like Other Travel).
+        // For '여비교통비 - 기타', it usually has 0 amount but positive actual in Column T logic.
+        if (b.category !== '여비교통비 - 기타' && (b.amount || 0) <= 0 && (b.actual || 0) > 0) {
           nonBudgetActuals += b.actual;
         }
       }
@@ -545,7 +546,8 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                 // Main grid categories (usually start from Column C/index 2 up to index 15/Column P)
                 for (let c = 2; c < Math.min(row.length, 16); c++) {
                    const rawCategory = String(categoryHeaders[c] || '').trim();
-                   if (!rawCategory || rawCategory === '항목') continue;
+                   const isTotalCol = rawCategory.includes('합계') || rawCategory.includes('소계') || rawCategory.includes('합계액');
+                   if (!rawCategory || rawCategory === '항목' || isTotalCol) continue;
                    
                    const amountValue = parseInt(String(row[c] || 0).replace(/[^0-9-]/g, ''));
                    const key = `${currentTeam}_${rawCategory}`;
@@ -588,7 +590,9 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                         if (!budgetMap[key]) {
                             budgetMap[key] = { month: selectedMonth, dept: currentTeam, category: OTHER_TRAVEL_CAT, amount: 0, actual: 0 };
                         }
-                        // Always treat T column as Actual/Execution data for 'Other Travel Expenses'
+                        // Treat the spending in Column T as both Budget and Actual to balance 100% 
+                        // and avoid double-counting in the 'nonBudgetActuals' logic
+                        budgetMap[key].amount += travelValue;
                         budgetMap[key].actual += travelValue;
                     }
                 }
