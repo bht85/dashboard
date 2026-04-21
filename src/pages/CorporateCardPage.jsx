@@ -471,8 +471,8 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
 
         const preparedData = Object.values(aggregationMap);
 
-        // --- Enhanced: Parse "예산" sheet grid (Main Grid + Side Table for Other Travel) ---
-        const budgetSheetName = wb.SheetNames.find(name => name.includes("예산"));
+        // --- Enhanced: Parse "예산" or "집계" sheet grid (Main Grid + Side Table for Other Travel) ---
+        const budgetSheetName = wb.SheetNames.find(name => name.includes("집계")) || wb.SheetNames.find(name => name.includes("예산"));
         if (budgetSheetName) {
           const bws = wb.Sheets[budgetSheetName];
           const bRawData = XLSX.utils.sheet_to_json(bws, { header: 1 });
@@ -490,8 +490,8 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
 
               // --- FIX: Skip subtotal rows in Budget sheet ---
               const dataType = String(row[1] || '').trim();
-              const isSubtotalLabel = dataType.includes('소계') || dataType.includes('합계') || dataType.includes('전체') || dataType === '계';
-              const isTeamSubtotal = rawTeamName.includes('소계') || rawTeamName.includes('합계') || rawTeamName.includes('총계') || rawTeamName.includes('전체') || rawTeamName === '계';
+              const isSubtotalLabel = dataType.includes('소계') || dataType.includes('합계') || dataType === '계';
+              const isTeamSubtotal = rawTeamName.includes('소계') || rawTeamName.includes('합계') || rawTeamName === '전체부서' || rawTeamName === '계';
               
               if (isSubtotalLabel || isTeamSubtotal) {
                 continue; 
@@ -528,28 +528,34 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
             // 2. Scan Side Table (Right side for '여비교통비 - 기타')
             // Based on screenshot: Col Q (16) is Team, Col T (19) is '여비교통비-기타'
             const OTHER_TRAVEL_CAT = '여비교통비 - 기타';
+            let lastTeamNameInSide = '';
             for (let r = 2; r < bRawData.length; r++) {
                 const row = bRawData[r];
                 const teamNameInSide = String(row[16] || '').trim();
 
                 // --- FIX: Skip subtotal rows in Side Table ---
                 const dataType = String(row[1] || '').trim();
-                const isSubtotalLabel = dataType.includes('소계') || dataType.includes('합계') || dataType.includes('전체') || dataType === '계';
-                const isTeamSubtotal = teamNameInSide.includes('소계') || teamNameInSide.includes('합계') || teamNameInSide.includes('총계') || teamNameInSide.includes('전체') || teamNameInSide === '계';
+                const isSubtotalLabel = dataType.includes('소계') || dataType.includes('합계') || dataType === '계';
+                const isTeamSubtotal = teamNameInSide.includes('소계') || teamNameInSide.includes('합계') || teamNameInSide === '전체부서' || teamNameInSide === '계';
 
                 if (isSubtotalLabel || isTeamSubtotal) {
                     continue;
                 }
 
-                if (teamNameInSide) {
+                if (teamNameInSide && !teamNameInSide.includes('부서')) {
+                    lastTeamNameInSide = teamNameInSide;
+                }
+                const currentTeam = lastTeamNameInSide;
+
+                if (currentTeam) {
                     const isActual = dataType.includes('집행액');
 
                     if (isActual) {
                         const travelActual = parseInt(String(row[19] || 0).replace(/[^0-9-]/g, ''));
                         if (travelActual !== 0) {
-                            const key = `${teamNameInSide}_${OTHER_TRAVEL_CAT}`;
+                            const key = `${currentTeam}_${OTHER_TRAVEL_CAT}`;
                             if (!budgetMap[key]) {
-                                budgetMap[key] = { month: selectedMonth, dept: teamNameInSide, category: OTHER_TRAVEL_CAT, amount: 0, actual: 0 };
+                                budgetMap[key] = { month: selectedMonth, dept: currentTeam, category: OTHER_TRAVEL_CAT, amount: 0, actual: 0 };
                             }
                             budgetMap[key].actual += travelActual;
                         }
