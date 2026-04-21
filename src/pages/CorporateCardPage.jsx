@@ -582,28 +582,14 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                 const currentTeam = lastTeamNameInSide;
 
                 if (currentTeam) {
-                    const dataType = String(row[1] || '').trim();
-                    const isBudgetRow = dataType.includes('예산액');
-                    const isActualRow = dataType.includes('집행액');
-                    
-                    if (isBudgetRow) {
-                        const travelBudget = parseInt(String(row[19] || 0).replace(/[^0-9-]/g, ''));
-                        if (travelBudget !== 0) {
-                            const key = `${currentTeam}_${OTHER_TRAVEL_CAT}`;
-                            if (!budgetMap[key]) {
-                                budgetMap[key] = { month: selectedMonth, dept: currentTeam, category: OTHER_TRAVEL_CAT, amount: 0, actual: 0 };
-                            }
-                            budgetMap[key].amount = travelBudget;
+                    const travelValue = parseInt(String(row[19] || 0).replace(/[^0-9-]/g, ''));
+                    if (travelValue !== 0) {
+                        const key = `${currentTeam}_${OTHER_TRAVEL_CAT}`;
+                        if (!budgetMap[key]) {
+                            budgetMap[key] = { month: selectedMonth, dept: currentTeam, category: OTHER_TRAVEL_CAT, amount: 0, actual: 0 };
                         }
-                    } else if (isActualRow) {
-                        const travelActual = parseInt(String(row[19] || 0).replace(/[^0-9-]/g, ''));
-                        if (travelActual !== 0) {
-                            const key = `${currentTeam}_${OTHER_TRAVEL_CAT}`;
-                            if (!budgetMap[key]) {
-                                budgetMap[key] = { month: selectedMonth, dept: currentTeam, category: OTHER_TRAVEL_CAT, amount: 0, actual: 0 };
-                            }
-                            budgetMap[key].actual += travelActual;
-                        }
+                        // Always treat T column as Actual/Execution data for 'Other Travel Expenses'
+                        budgetMap[key].actual += travelValue;
                     }
                 }
             }
