@@ -428,9 +428,10 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
           const dept2 = (row['조직2'] || row['부서2'] || '').toString();
 
           // --- FIX: Skip subtotal rows ---
-          const isSubtotalRow = [userName, cardCompany, dept1, dept2].some(val => 
-            val.includes('소계') || val.includes('합계') || val.includes('총계') || val === '계'
-          );
+          const isSubtotalRow = [userName, cardCompany, dept1, dept2].some(val => {
+            const s = String(val || '');
+            return s.includes('소계') || s.includes('합계') || s.includes('총계') || s.includes('전체') || s === '계';
+          });
           if (isSubtotalRow) continue;
 
           if (dateVal && Math.abs(amount) > 0) {
@@ -488,7 +489,11 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
               const rawTeamName = String(row[0] || '').trim();
 
               // --- FIX: Skip subtotal rows in Budget sheet ---
-              if (rawTeamName.includes('소계') || rawTeamName.includes('합계') || rawTeamName.includes('총계')) {
+              const dataType = String(row[1] || '').trim();
+              const isSubtotalLabel = dataType.includes('소계') || dataType.includes('합계') || dataType.includes('전체') || dataType === '계';
+              const isTeamSubtotal = rawTeamName.includes('소계') || rawTeamName.includes('합계') || rawTeamName.includes('총계') || rawTeamName.includes('전체') || rawTeamName === '계';
+              
+              if (isSubtotalLabel || isTeamSubtotal) {
                 continue; 
               }
 
@@ -498,7 +503,6 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
               const currentTeam = lastTeamName;
               if (!currentTeam) continue;
               
-              const dataType = String(row[1] || '').trim();
               const isBudget = dataType.includes('예산액');
               const isActual = dataType.includes('집행액');
               
@@ -529,12 +533,15 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                 const teamNameInSide = String(row[16] || '').trim();
 
                 // --- FIX: Skip subtotal rows in Side Table ---
-                if (teamNameInSide.includes('소계') || teamNameInSide.includes('합계') || teamNameInSide.includes('총계')) {
+                const dataType = String(row[1] || '').trim();
+                const isSubtotalLabel = dataType.includes('소계') || dataType.includes('합계') || dataType.includes('전체') || dataType === '계';
+                const isTeamSubtotal = teamNameInSide.includes('소계') || teamNameInSide.includes('합계') || teamNameInSide.includes('총계') || teamNameInSide.includes('전체') || teamNameInSide === '계';
+
+                if (isSubtotalLabel || isTeamSubtotal) {
                     continue;
                 }
 
                 if (teamNameInSide) {
-                    const dataType = String(row[1] || '').trim();
                     const isActual = dataType.includes('집행액');
 
                     if (isActual) {
