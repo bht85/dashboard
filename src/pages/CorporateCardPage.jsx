@@ -578,11 +578,11 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
                                      teamNameInSide.includes('소계') || teamNameInSide.includes('합계') ||
                                      dataType === '계' || teamNameInSide === '계';
 
-                if (isSubtotalRow) {
+                if (isSubtotalRow || !teamNameInSide) {
                     continue;
                 }
 
-                if (teamNameInSide && !teamNameInSide.includes('부서')) {
+                if (!teamNameInSide.includes('부서')) {
                     lastTeamNameInSide = teamNameInSide;
                 }
                 const currentTeam = lastTeamNameInSide;
