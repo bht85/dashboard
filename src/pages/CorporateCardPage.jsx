@@ -567,14 +567,15 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
             let lastTeamNameInSide = '';
             for (let r = finalDataStartIndex; r < bRawData.length; r++) {
                 const row = bRawData[r];
-                const teamNameInSide = String(row[16] || '').trim();
-
-                // --- FIX: Skip subtotal rows in Side Table ---
                 const dataType = String(row[1] || '').trim();
+                const teamNameInSide = String(row[16] || '').trim();
+                const colA = String(row[0] || '').trim();
+
                 const isSubtotalLabel = dataType.includes('소계') || dataType.includes('합계') || dataType === '계';
                 const isTeamSubtotal = teamNameInSide.includes('소계') || teamNameInSide.includes('합계') || teamNameInSide === '전체부서' || teamNameInSide === '계';
+                const isColASubtotal = colA.includes('소계') || colA.includes('합계');
 
-                if (isSubtotalLabel || isTeamSubtotal) {
+                if (isSubtotalLabel || isTeamSubtotal || isColASubtotal) {
                     continue;
                 }
 
