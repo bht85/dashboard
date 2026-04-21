@@ -479,12 +479,45 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
           console.log(`Parsing budget matrix for [${selectedMonth}]...`);
           
           if (bRawData.length >= 2) {
-            const categoryHeaders = bRawData[2] || [];
+            // --- Smart Detection: Find Name Row and Data Start ---
+            let nameRowIndex = -1;
+            let dataRowIndex = -1;
+
+            for (let i = 0; i < Math.min(bRawData.length, 15); i++) {
+              const row = bRawData[i] || [];
+              const colB = String(row[1] || '').trim();
+              const colA = String(row[0] || '').trim();
+
+              // Data starts where column B is '예산액' or '집행액'
+              if (colB.includes('예산액') || colB.includes('집행액') || colA.includes('부서')) {
+                dataRowIndex = i;
+                // Search upwards for the row containing account names
+                for (let j = i - 1; j >= 0; j--) {
+                  const potentialRow = bRawData[j] || [];
+                  if (potentialRow.some(cell => {
+                    const s = String(cell || '');
+                    return s.includes('유지비') || s.includes('후생비') || s.includes('급여') || s.includes('소모품');
+                  })) {
+                    nameRowIndex = j;
+                    break;
+                  }
+                }
+                break;
+              }
+            }
+
+            // Fallback to legacy behavior if smart detection fails
+            const finalHeaderIndex = nameRowIndex !== -1 ? nameRowIndex : 1;
+            const finalDataStartIndex = dataRowIndex !== -1 ? dataRowIndex : 2;
+            
+            console.log(`Auto-detected: nameRowIndex=${finalHeaderIndex}, dataRowIndex=${finalDataStartIndex}`);
+
+            const categoryHeaders = bRawData[finalHeaderIndex] || [];
             const budgetMap = {};
             let lastTeamName = ''; 
             
             // 1. Scan Main Grid (Left side)
-            for (let r = 4; r < bRawData.length; r++) {
+            for (let r = finalDataStartIndex; r < bRawData.length; r++) {
               const row = bRawData[r];
               const rawTeamName = String(row[0] || '').trim();
 
@@ -528,7 +561,7 @@ const CorporateCardPage = ({ usage, budget, onUpdateUsage, onBulkUpdateUsage, on
             // Based on screenshot: Col Q (16) is Team, Col T (19) is '여비교통비-기타'
             const OTHER_TRAVEL_CAT = '여비교통비 - 기타';
             let lastTeamNameInSide = '';
-            for (let r = 4; r < bRawData.length; r++) {
+            for (let r = finalDataStartIndex; r < bRawData.length; r++) {
                 const row = bRawData[r];
                 const teamNameInSide = String(row[16] || '').trim();
 
