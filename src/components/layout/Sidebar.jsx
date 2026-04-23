@@ -46,7 +46,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView,
       <div className="h-full flex flex-col">
         <div className={`pt-8 pb-6 text-center flex flex-col items-center overflow-hidden transition-all ${isSidebarOpen ? 'px-6' : 'px-2'}`}>
           <div className={`mb-4 transition-all duration-300 ${isSidebarOpen ? 'w-16 h-16' : 'w-10 h-10'}`}>
-            <img src="/logo.png" alt="Compose Coffee" className="w-full h-full object-contain drop-shadow-md" />
+            <img src="/logo.png" alt="Compose Coffee" className="w-full h-full object-contain mix-blend-multiply" />
           </div>
           {isSidebarOpen && (
             <div className="animate-in fade-in duration-300">
