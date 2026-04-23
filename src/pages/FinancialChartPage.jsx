@@ -428,7 +428,7 @@ const FinancialChartPage = ({ dailyStatuses = {}, withdrawals = [], masterCompos
       </div>
 
       {/* NEW: Monthly Long-term Trend Chart */}
-      <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+      {/* <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
@@ -475,7 +475,7 @@ const FinancialChartPage = ({ dailyStatuses = {}, withdrawals = [], masterCompos
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };
