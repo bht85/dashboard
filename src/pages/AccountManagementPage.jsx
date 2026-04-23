@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, Factory, Plus, Trash2, CreditCard } from 'lucide-react';
+import { Building2, Factory, Plus, Trash2, CreditCard, Pencil, Check, X } from 'lucide-react';
 import { formatKRW, formatUSD } from '../utils/formatters';
 
 const AccountManagementPage = ({ composeAccounts, smartAccounts, onAddAccount, onDeleteAccount }) => {
@@ -10,6 +10,33 @@ const AccountManagementPage = ({ composeAccounts, smartAccounts, onAddAccount, o
     type: '일괄',
     currency: 'KRW',
   });
+
+  const [editingId, setEditingId] = useState(null);
+  const [editData, setEditData] = useState({});
+
+  const handleEditClick = (acc, section) => {
+    setEditingId(acc.id);
+    setEditData({ ...acc, section, currency: acc.currency || (acc.isUSD ? 'USD' : 'KRW') });
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditData({ ...editData, [name]: value });
+  };
+
+  const handleEditSave = async () => {
+    if (!editData.bank || !editData.no) return;
+    
+    const updatedAccount = {
+      ...editData,
+      isUSD: editData.currency === 'USD'
+    };
+    const sectionToUpdate = editData.section;
+    delete updatedAccount.section;
+    
+    await onAddAccount(sectionToUpdate, updatedAccount);
+    setEditingId(null);
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -75,6 +102,40 @@ const AccountManagementPage = ({ composeAccounts, smartAccounts, onAddAccount, o
                 currency === 'JPY' ? 'bg-rose-100 text-rose-700' :
                 'bg-slate-100 text-slate-700';
 
+              if (editingId === acc.id) {
+                return (
+                  <tr key={`edit-${acc.id}`} className="bg-indigo-50/50">
+                    <td className="px-6 py-2">
+                      <input type="text" name="bank" value={editData.bank} onChange={handleEditChange} className="w-full text-sm font-bold bg-white border border-slate-200 rounded px-2 py-1.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
+                    </td>
+                    <td className="px-6 py-2">
+                      <input type="text" name="no" value={editData.no} onChange={handleEditChange} className="w-full text-sm font-mono bg-white border border-slate-200 rounded px-2 py-1.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
+                    </td>
+                    <td className="px-6 py-2">
+                      <div className="flex gap-2">
+                        <input type="text" name="type" value={editData.type} onChange={handleEditChange} className="w-2/3 text-sm font-bold bg-white border border-slate-200 rounded px-2 py-1.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500" />
+                        <select name="currency" value={editData.currency} onChange={handleEditChange} className="w-1/3 text-sm font-bold bg-white border border-slate-200 rounded px-2 py-1.5 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500">
+                          <option value="KRW">KRW</option>
+                          <option value="USD">USD</option>
+                          <option value="EUR">EUR</option>
+                          <option value="JPY">JPY</option>
+                        </select>
+                      </div>
+                    </td>
+                    <td className="px-6 py-2 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button onClick={handleEditSave} className="p-1.5 text-white bg-indigo-500 hover:bg-indigo-600 rounded transition-colors" title="저장">
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setEditingId(null)} className="p-1.5 text-slate-500 bg-slate-200 hover:bg-slate-300 rounded transition-colors" title="취소">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              }
+
               return (
                 <tr key={acc.id} className="hover:bg-slate-50/50">
                   <td className="px-6 py-3 font-medium text-slate-700">{acc.bank}</td>
@@ -83,9 +144,14 @@ const AccountManagementPage = ({ composeAccounts, smartAccounts, onAddAccount, o
                     {acc.type} <span className={`ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${currencyColor}`}>{currency}</span>
                   </td>
                   <td className="px-6 py-3 text-center">
-                    <button onClick={() => handleDelete(acc.id, section)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center justify-center gap-1">
+                      <button onClick={() => handleEditClick(acc, section)} className="p-2 text-slate-300 hover:text-indigo-600 transition-colors" title="수정">
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(acc.id, section)} className="p-2 text-slate-300 hover:text-red-500 transition-colors" title="삭제">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               );
