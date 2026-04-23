@@ -37,8 +37,42 @@ const ForeignSchedulePage = ({
   // Exchange Form State
   const [exchangeData, setExchangeData] = useState({
     date: new Date().toLocaleDateString('en-CA'),
-    krwAmount: '', usdAmount: '', bank: '', desc: '', section: '스마트팩토리', type: 'BUY', currency: 'USD',
+    krwAmount: '', usdAmount: '', bank: '', desc: '', section: '컴포즈커피', type: 'BUY', currency: 'USD',
   });
+
+  const [editingExchangeId, setEditingExchangeId] = useState(null);
+  const [editExchangeData, setEditExchangeData] = useState({});
+
+  const handleEditExchangeClick = (item) => {
+    setEditingExchangeId(item.id);
+    setEditExchangeData({ 
+      ...item, 
+      krwAmount: Math.abs(item.krwAmount), 
+      usdAmount: Math.abs(item.usdAmount) 
+    });
+  };
+
+  const handleEditExchangeChange = (e) => {
+    setEditExchangeData({ ...editExchangeData, [e.target.name]: e.target.value });
+  };
+
+  const handleEditExchangeSave = async () => {
+    const krw = Math.abs(parseFloat(editExchangeData.krwAmount || 0));
+    const foreign = Math.abs(parseFloat(editExchangeData.usdAmount || 0));
+    if (krw === 0 || foreign === 0) return;
+
+    const rate = krw / foreign;
+    const finalKRW = editExchangeData.type === 'BUY' ? -krw : krw;
+    const finalForeign = editExchangeData.type === 'BUY' ? foreign : -foreign;
+
+    await onUpdateExchangeResult({
+      ...editExchangeData,
+      exchangeRate: rate,
+      krwAmount: finalKRW,
+      usdAmount: finalForeign
+    });
+    setEditingExchangeId(null);
+  };
 
   // Raw Bean Contract State
   const [contractData, setContractData] = useState({
@@ -108,7 +142,7 @@ const ForeignSchedulePage = ({
     });
     setExchangeData({
       date: new Date().toLocaleDateString('en-CA'),
-      krwAmount: '', usdAmount: '', bank: '', desc: '', section: '스마트팩토리', type: 'BUY', currency: 'USD'
+      krwAmount: '', usdAmount: '', bank: '', desc: '', section: '컴포즈커피', type: 'BUY', currency: 'USD'
     });
   };
 
@@ -353,6 +387,18 @@ const ForeignSchedulePage = ({
             </h3>
             <form onSubmit={handleAddExchange} className="grid grid-cols-1 md:grid-cols-6 gap-6">
               <div className="md:col-span-1">
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">법인</label>
+                <select 
+                  name="section" 
+                  value={exchangeData.section} 
+                  onChange={handleExchangeChange} 
+                  className="w-full text-sm font-black bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 outline-none focus:border-indigo-500"
+                >
+                  <option value="컴포즈커피">컴포즈커피</option>
+                  <option value="스마트팩토리">스마트팩토리</option>
+                </select>
+              </div>
+              <div className="md:col-span-1">
                 <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">구분</label>
                 <select 
                   name="type" 
@@ -389,12 +435,7 @@ const ForeignSchedulePage = ({
                 <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">외화 금액</label>
                 <input type="number" step="0.01" name="usdAmount" value={exchangeData.usdAmount} onChange={handleExchangeChange} placeholder="외화 금액" className="w-full text-sm font-black bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 outline-none focus:border-indigo-500" required />
               </div>
-              <div className="md:col-span-1 flex items-end">
-                <button type="submit" className="w-full bg-slate-900 text-white font-black py-4 rounded-xl hover:bg-slate-800 transition shadow-lg shadow-slate-100 active:scale-95 text-xs">
-                  기록 저장
-                </button>
-              </div>
-              <div className="md:col-span-6">
+              <div className="md:col-span-5">
                 <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">적요 / 비고 (Description)</label>
                 <input 
                   type="text" 
@@ -405,6 +446,11 @@ const ForeignSchedulePage = ({
                   className="w-full text-sm font-black bg-slate-50 border-2 border-slate-100 rounded-xl px-4 py-3 outline-none focus:border-indigo-500" 
                 />
               </div>
+              <div className="md:col-span-1 flex items-end">
+                <button type="submit" className="w-full h-[50px] bg-slate-900 text-white font-black py-3 rounded-xl hover:bg-slate-800 transition shadow-lg shadow-slate-100 active:scale-95 text-xs">
+                  기록 저장
+                </button>
+              </div>
             </form>
           </div>
 
@@ -414,6 +460,7 @@ const ForeignSchedulePage = ({
                 <thead className="bg-[#f8fafc] border-b text-slate-400 text-[10px] uppercase tracking-wider">
                   <tr>
                     <th className="px-8 py-4 border-r">일자</th>
+                    <th className="px-6 py-4 border-r text-center">법인</th>
                     <th className="px-6 py-4 border-r text-center">구분</th>
                     <th className="px-8 py-4 border-r text-right">KRW 금액</th>
                     <th className="px-8 py-4 border-r text-right">외화 금액 (환종)</th>
@@ -425,48 +472,104 @@ const ForeignSchedulePage = ({
                 <tbody className="divide-y divide-slate-100">
                   {filteredExchangeResults.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-8 py-20 text-center text-slate-300 italic">
+                      <td colSpan={8} className="px-8 py-20 text-center text-slate-300 italic">
                         이번 달 환전 내역이 없습니다.
                       </td>
                     </tr>
                   ) : (
-                    filteredExchangeResults.sort((a, b) => b.date.localeCompare(a.date)).map(e => (
-                      <tr key={e.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-8 py-4 border-r text-slate-500 font-mono">{e.date}</td>
-                        <td className="px-6 py-4 border-r text-center">
-                          <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black ${e.type === 'BUY' ? 'bg-indigo-50 text-indigo-600' : 'bg-rose-50 text-rose-600'}`}>
-                            {e.type === 'BUY' ? '구매' : '매도'}
-                          </span>
-                        </td>
-                        <td className="px-8 py-4 border-r text-right font-mono tabular-nums">
-                          {formatKRW(e.krwAmount)}
-                        </td>
-                        <td className="px-8 py-4 border-r text-right font-mono tabular-nums">
-                          <div className="flex flex-col">
-                            <span className={e.type === 'BUY' ? 'text-indigo-600' : 'text-rose-500'}>
-                              {e.currency === 'USD' ? formatUSD(Math.abs(e.usdAmount)) : 
-                               e.currency === 'JPY' ? `¥${Math.abs(e.usdAmount).toLocaleString()}` : 
-                               `€${Math.abs(e.usdAmount).toLocaleString()}`}
+                    filteredExchangeResults.sort((a, b) => b.date.localeCompare(a.date)).map(e => {
+                      if (editingExchangeId === e.id) {
+                        return (
+                          <tr key={e.id} className="bg-indigo-50/50 transition-colors">
+                            <td className="px-4 py-2 border-r">
+                              <input type="date" name="date" value={editExchangeData.date} onChange={handleEditExchangeChange} className="w-full text-xs font-bold bg-white border border-slate-200 rounded px-2 py-1 outline-none" />
+                            </td>
+                            <td className="px-4 py-2 border-r">
+                              <select name="section" value={editExchangeData.section} onChange={handleEditExchangeChange} className="w-full text-xs font-bold bg-white border border-slate-200 rounded px-2 py-1 outline-none">
+                                <option value="컴포즈커피">컴포즈</option>
+                                <option value="스마트팩토리">스마트</option>
+                              </select>
+                            </td>
+                            <td className="px-4 py-2 border-r">
+                              <select name="type" value={editExchangeData.type} onChange={handleEditExchangeChange} className="w-full text-xs font-bold bg-white border border-slate-200 rounded px-2 py-1 outline-none">
+                                <option value="BUY">구매</option>
+                                <option value="SELL">매도</option>
+                              </select>
+                            </td>
+                            <td className="px-4 py-2 border-r">
+                              <input type="number" name="krwAmount" value={editExchangeData.krwAmount} onChange={handleEditExchangeChange} className="w-full text-xs font-mono font-bold text-right bg-white border border-slate-200 rounded px-2 py-1 outline-none" />
+                            </td>
+                            <td className="px-4 py-2 border-r flex gap-1">
+                              <input type="number" step="0.01" name="usdAmount" value={editExchangeData.usdAmount} onChange={handleEditExchangeChange} className="w-2/3 text-xs font-mono font-bold text-right bg-white border border-slate-200 rounded px-2 py-1 outline-none" />
+                              <select name="currency" value={editExchangeData.currency} onChange={handleEditExchangeChange} className="w-1/3 text-xs font-bold bg-white border border-slate-200 rounded px-1 py-1 outline-none">
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                                <option value="JPY">JPY</option>
+                              </select>
+                            </td>
+                            <td className="px-4 py-2 border-r text-right font-mono text-slate-400">
+                              -
+                            </td>
+                            <td className="px-4 py-2 border-r">
+                              <input type="text" name="desc" value={editExchangeData.desc} onChange={handleEditExchangeChange} className="w-full text-xs font-bold bg-white border border-slate-200 rounded px-2 py-1 outline-none" />
+                            </td>
+                            <td className="px-4 py-2 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button onClick={handleEditExchangeSave} className="p-1.5 text-white bg-indigo-500 hover:bg-indigo-600 rounded transition-colors" title="저장">
+                                  <Check className="w-4 h-4" />
+                                </button>
+                                <button onClick={() => setEditingExchangeId(null)} className="p-1.5 text-slate-500 bg-slate-200 hover:bg-slate-300 rounded transition-colors" title="취소">
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return (
+                        <tr key={e.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-8 py-4 border-r text-slate-500 font-mono">{e.date}</td>
+                          <td className="px-6 py-4 border-r text-center font-bold text-slate-700">
+                            {e.section || '스마트팩토리'}
+                          </td>
+                          <td className="px-6 py-4 border-r text-center">
+                            <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black ${e.type === 'BUY' ? 'bg-indigo-50 text-indigo-600' : 'bg-rose-50 text-rose-600'}`}>
+                              {e.type === 'BUY' ? '구매' : '매도'}
                             </span>
-                            <span className="text-[9px] text-slate-300 uppercase">{e.currency || 'USD'}</span>
-                          </div>
-                        </td>
-                        <td className="px-8 py-4 border-r text-right font-mono text-slate-400">
-                          {(Math.abs(e.krwAmount) / Math.abs(e.usdAmount)).toFixed(2)} 원
-                        </td>
-                        <td className="px-8 py-4 border-r text-slate-600 max-w-[150px] truncate" title={e.desc}>
-                          {e.desc || '-'}
-                        </td>
-                        <td className="px-8 py-4 text-center">
-                          <button 
-                            onClick={() => onDeleteExchangeResult(e.id)} 
-                            className="p-2 text-slate-200 hover:text-red-500 transition-all hover:scale-110"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                          </td>
+                          <td className="px-8 py-4 border-r text-right font-mono tabular-nums">
+                            {formatKRW(e.krwAmount)}
+                          </td>
+                          <td className="px-8 py-4 border-r text-right font-mono tabular-nums">
+                            <div className="flex flex-col">
+                              <span className={e.type === 'BUY' ? 'text-indigo-600' : 'text-rose-500'}>
+                                {e.currency === 'USD' ? formatUSD(Math.abs(e.usdAmount)) : 
+                                 e.currency === 'JPY' ? `¥${Math.abs(e.usdAmount).toLocaleString()}` : 
+                                 `€${Math.abs(e.usdAmount).toLocaleString()}`}
+                              </span>
+                              <span className="text-[9px] text-slate-300 uppercase">{e.currency || 'USD'}</span>
+                            </div>
+                          </td>
+                          <td className="px-8 py-4 border-r text-right font-mono text-slate-400">
+                            {(Math.abs(e.krwAmount) / Math.abs(e.usdAmount)).toFixed(2)} 원
+                          </td>
+                          <td className="px-8 py-4 border-r text-slate-600 max-w-[150px] truncate" title={e.desc}>
+                            {e.desc || '-'}
+                          </td>
+                          <td className="px-8 py-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button onClick={() => handleEditExchangeClick(e)} className="p-2 text-slate-300 hover:text-indigo-600 transition-colors" title="수정">
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => onDeleteExchangeResult(e.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors" title="삭제">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
