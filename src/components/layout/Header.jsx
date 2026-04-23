@@ -63,7 +63,7 @@ const Header = ({
           <Menu className="w-6 h-6" />
         </button>
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Logo" className="w-8 h-8 lg:w-10 lg:h-10 object-contain drop-shadow-sm" />
+          <img src="https://upload.wikimedia.org/wikipedia/commons/2/23/Compose_Coffee_logo.svg" alt="Logo" className="w-8 h-8 lg:w-10 lg:h-10 object-contain drop-shadow-sm" />
           <h2 className="font-black text-slate-800 text-base lg:text-xl tracking-tighter truncate max-w-[120px] sm:max-w-[200px] lg:max-w-none">
             {getTitle()}
           </h2>
