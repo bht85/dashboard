@@ -45,12 +45,11 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView,
     <aside className={`fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-200 transform transition-all duration-300 ease-in-out shadow-xl lg:shadow-none ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-20 -translate-x-full lg:translate-x-0 flex flex-col'}`}>
       <div className="h-full flex flex-col">
         <div className={`pt-8 pb-6 text-center flex flex-col items-center overflow-hidden transition-all ${isSidebarOpen ? 'px-6' : 'px-2'}`}>
-          <div className={`bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-100 mb-4 transition-all duration-300 ${isSidebarOpen ? 'w-14 h-14' : 'w-10 h-10'}`}>
-            <TrendingUp className={`${isSidebarOpen ? 'w-8 h-8' : 'w-5 h-5'} text-white transition-all`} />
+          <div className={`mb-4 transition-all duration-300 ${isSidebarOpen ? 'w-16 h-16' : 'w-10 h-10'}`}>
+            <img src="/logo.png" alt="Compose Coffee" className="w-full h-full object-contain drop-shadow-md" />
           </div>
           {isSidebarOpen && (
             <div className="animate-in fade-in duration-300">
-              <h1 className="text-xl font-black tracking-tighter text-slate-900 uppercase">Compose</h1>
               <p className="text-[9px] text-slate-400 font-bold tracking-[0.2em] mt-1 whitespace-nowrap">TREASURY INTELLIGENCE</p>
             </div>
           )}
