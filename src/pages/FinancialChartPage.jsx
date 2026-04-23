@@ -9,11 +9,33 @@ import {
 } from 'lucide-react';
 import { formatKRW, formatUSD } from '../utils/formatters';
 
-const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }) => {
+const FinancialChartPage = ({ dailyStatuses = {}, withdrawals = [], masterCompose = [], masterSmart = [], recordDate, exchangeRate = 1 }) => {
   const [selectedMonth, setSelectedMonth] = useState(recordDate.substring(0, 7)); // "2026-03"
   const [selectedEntity, setSelectedEntity] = useState('ALL'); // ALL, 컴포즈, 스마트
   const [currencyMode, setCurrencyMode] = useState('KRW'); // KRW, USD
   const [excludeInternal, setExcludeInternal] = useState(true); // 내부 거래 제외 기본값 true
+
+  const allCompanyAccounts = useMemo(() => {
+    return new Set([
+      ...(masterCompose || []).map(a => String(a.no || '').replace(/[^0-9]/g, '')),
+      ...(masterSmart || []).map(a => String(a.no || '').replace(/[^0-9]/g, ''))
+    ]);
+  }, [masterCompose, masterSmart]);
+
+  const checkIsInternal = (w) => {
+    if (w.isInternal) return true;
+    const toAccount = String(w.account || w.toAccount || '').replace(/[^0-9]/g, '');
+    if (!toAccount) return false;
+    const isOurAccount = allCompanyAccounts.has(toAccount);
+    const internalPayeePatterns = [
+      '컴포즈커피', '스마트팩토리', '제이엠씨에프티', '컴포즈커피스마트', '컴포즈커피스마트팩토리',
+      '주식회사컴포즈커피', '주식회사스마트팩토리', '주식회사제이엠씨에프티', '주식회사컴포즈커피스마트', '주식회사컴포즈커피스마트팩토리',
+      '컴포즈커피(주)', '스마트팩토리(주)', '제이엠씨에프티(주)', '컴포즈커피스마트(주)', '컴포즈커피스마트팩토리(주)'
+    ];
+    const cleanPayee = String(w.payee || '').replace(/[\s()주식회사]/g, ''); 
+    const isInternalPayee = internalPayeePatterns.some(p => p.replace(/[\s()주식회사]/g, '') === cleanPayee);
+    return isOurAccount && isInternalPayee;
+  };
 
   // Available months from data
   const availableMonths = useMemo(() => {
@@ -49,55 +71,67 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
           }
         }, 0);
 
-        const dailyInflow = filteredDetails.reduce((s, i) => {
-          // 내부 거래 제외 로직 고도화
-          // 1. 전체 법인(ALL) 보기: 모든 내부 거래(법인 간 이동 포함) 제외
-          // 2. 특정 법인(컴포즈 or 스마트) 보기: 해당 법인 '내부'의 계좌 이동만 제외 (법인 간 입금은 외부 유입으로 처리)
-          if (excludeInternal) {
+        // 정밀한 내부 거래 제외 로직을 위해 해당 일자의 withdrawals 검색
+        let internalInflowSum = 0;
+        let internalOutflowSum = 0;
+        
+        if (excludeInternal) {
+          const dailyInternalTransfers = withdrawals.filter(w => w.paymentDate === date && checkIsInternal(w));
+          dailyInternalTransfers.forEach(w => {
+            const isUSD = w.isUSD || w.currency === 'USD';
+            const amount = Number(w.amount || 0);
+            const convertedAmount = isUSDMode ? (isUSD ? amount : amount / exchangeRate) : (isUSD ? amount * exchangeRate : amount);
+
+            const fromSection = w.section; // '컴포즈커피' or '스마트팩토리'
+            const toAcc = String(w.account || w.toAccount || '').replace(/[^0-9]/g, '');
+            const isToCompose = (masterCompose || []).some(a => String(a.no).replace(/[^0-9]/g, '') === toAcc);
+            const isToSmart = (masterSmart || []).some(a => String(a.no).replace(/[^0-9]/g, '') === toAcc);
+            const toSection = isToCompose ? '컴포즈커피' : (isToSmart ? '스마트팩토리' : 'UNKNOWN');
+
             if (selectedEntity === 'ALL') {
-              if (i.entity.includes('스마트') || i.group === '내부' || i.nickname.includes('내부')) return s;
+              internalOutflowSum += convertedAmount;
+              internalInflowSum += convertedAmount;
             } else {
-              // 진짜 '내부'라고 명시되거나 '환전' 내역인 경우 모두 제외 (자산의 총합에는 변동이 없는 내부 이동이므로)
-              if (i.group === '내부' || (i.nickname && (i.nickname.includes('내부') || i.nickname.includes('환전') || i.nickname.includes('자동이체')))) return s;
+              const targetEntity = selectedEntity === '컴포즈' ? '컴포즈커피' : '스마트팩토리';
+              if (fromSection === targetEntity && toSection === targetEntity) {
+                internalOutflowSum += convertedAmount;
+                internalInflowSum += convertedAmount;
+              }
             }
-          }
+          });
+        }
 
+        let rawDailyInflow = 0;
+        let rawDailyOutflow = 0;
+
+        filteredDetails.forEach(i => {
           const isUSD = i.currency === 'USD' || i.isUSD;
+          const deposits = Number(i.deposits || 0);
+          const withdrawalsNum = Number(i.withdrawals || 0);
+          
           if (isUSDMode) {
-             return s + (isUSD ? Number(i.deposits || 0) : Number(i.deposits || 0) / exchangeRate);
+            rawDailyInflow += (isUSD ? deposits : deposits / exchangeRate);
+            rawDailyOutflow += (isUSD ? withdrawalsNum : withdrawalsNum / exchangeRate);
           } else {
-             return s + (isUSD ? Number(i.deposits || 0) * exchangeRate : Number(i.deposits || 0));
+            rawDailyInflow += (isUSD ? deposits * exchangeRate : deposits);
+            rawDailyOutflow += (isUSD ? withdrawalsNum * exchangeRate : withdrawalsNum);
           }
-        }, 0);
+        });
 
-        const dailyOutflow = filteredDetails.reduce((s, i) => {
-          if (excludeInternal) {
-            if (selectedEntity === 'ALL') {
-              if (i.group === '내부' || i.nickname.includes('내부') || i.nickname.includes('자동이체')) return s;
-            } else {
-              // '내부' 계좌이동 및 '환전' 내역 제외
-              if (i.group === '내부' || (i.nickname && (i.nickname.includes('내부') || i.nickname.includes('환전') || i.nickname.includes('자동이체')))) return s;
-            }
-          }
-
-          const isUSD = i.currency === 'USD' || i.isUSD;
-          if (isUSDMode) {
-             return s + (isUSD ? Number(i.withdrawals || 0) : Number(i.withdrawals || 0) / exchangeRate);
-          } else {
-             return s + (isUSD ? Number(i.withdrawals || 0) * exchangeRate : Number(i.withdrawals || 0));
-          }
-        }, 0);
+        // 원본 거래 내역에서 차감 (음수가 되지 않도록 최소 0 보정)
+        const finalInflow = Math.max(0, rawDailyInflow - internalInflowSum);
+        const finalOutflow = Math.max(0, rawDailyOutflow - internalOutflowSum);
 
         return {
           name: date.split('-')[2] + '일',
           fullDate: date,
           balance: Math.floor(dailyTotal),
-          inflow: Math.floor(dailyInflow),
-          outflow: Math.floor(dailyOutflow),
-          net: Math.floor(dailyInflow - dailyOutflow)
+          inflow: Math.floor(finalInflow),
+          outflow: Math.floor(finalOutflow),
+          net: Math.floor(finalInflow - finalOutflow)
         };
       });
-  }, [dailyStatuses, selectedMonth, selectedEntity, currencyMode, exchangeRate, excludeInternal]);
+  }, [dailyStatuses, withdrawals, masterCompose, masterSmart, selectedMonth, selectedEntity, currencyMode, exchangeRate, excludeInternal]);
 
   // Calculate Beginning Balance (Opening balance of the month)
   const beginningBalance = useMemo(() => {
@@ -176,31 +210,54 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
         }
       }, 0);
 
-      const dayInflow = filteredDetails.reduce((s, i) => {
-        if (excludeInternal) {
-          if (selectedEntity === 'ALL') {
-            if (i.entity.includes('스마트') || i.group === '내부' || i.nickname.includes('내부')) return s;
-          } else {
-            if (i.group === '내부' || (i.nickname && (i.nickname.includes('내부') || i.nickname.includes('환전')))) return s;
-          }
-        }
-        const isUSD = i.currency === 'USD' || i.isUSD;
-        if (isUSDMode) return s + (isUSD ? Number(i.deposits || 0) : Number(i.deposits || 0) / exchangeRate);
-        else return s + (isUSD ? Number(i.deposits || 0) * exchangeRate : Number(i.deposits || 0));
-      }, 0);
+      let internalInflowSum = 0;
+      let internalOutflowSum = 0;
+      
+      if (excludeInternal) {
+        const dailyInternalTransfers = withdrawals.filter(w => w.paymentDate === date && checkIsInternal(w));
+        dailyInternalTransfers.forEach(w => {
+          const isUSD = w.isUSD || w.currency === 'USD';
+          const amount = Number(w.amount || 0);
+          const convertedAmount = isUSDMode ? (isUSD ? amount : amount / exchangeRate) : (isUSD ? amount * exchangeRate : amount);
 
-      const dayOutflow = filteredDetails.reduce((s, i) => {
-        if (excludeInternal) {
+          const fromSection = w.section;
+          const toAcc = String(w.account || w.toAccount || '').replace(/[^0-9]/g, '');
+          const isToCompose = (masterCompose || []).some(a => String(a.no).replace(/[^0-9]/g, '') === toAcc);
+          const isToSmart = (masterSmart || []).some(a => String(a.no).replace(/[^0-9]/g, '') === toAcc);
+          const toSection = isToCompose ? '컴포즈커피' : (isToSmart ? '스마트팩토리' : 'UNKNOWN');
+
           if (selectedEntity === 'ALL') {
-            if (i.group === '내부' || i.nickname.includes('내부')) return s;
+            internalOutflowSum += convertedAmount;
+            internalInflowSum += convertedAmount;
           } else {
-            if (i.group === '내부' || (i.nickname && (i.nickname.includes('내부') || i.nickname.includes('환전')))) return s;
+            const targetEntity = selectedEntity === '컴포즈' ? '컴포즈커피' : '스마트팩토리';
+            if (fromSection === targetEntity && toSection === targetEntity) {
+              internalOutflowSum += convertedAmount;
+              internalInflowSum += convertedAmount;
+            }
           }
-        }
+        });
+      }
+
+      let rawDailyInflow = 0;
+      let rawDailyOutflow = 0;
+
+      filteredDetails.forEach(i => {
         const isUSD = i.currency === 'USD' || i.isUSD;
-        if (isUSDMode) return s + (isUSD ? Number(i.withdrawals || 0) : Number(i.withdrawals || 0) / exchangeRate);
-        else return s + (isUSD ? Number(i.withdrawals || 0) * exchangeRate : Number(i.withdrawals || 0));
-      }, 0);
+        const deposits = Number(i.deposits || 0);
+        const withdrawalsNum = Number(i.withdrawals || 0);
+        
+        if (isUSDMode) {
+          rawDailyInflow += (isUSD ? deposits : deposits / exchangeRate);
+          rawDailyOutflow += (isUSD ? withdrawalsNum : withdrawalsNum / exchangeRate);
+        } else {
+          rawDailyInflow += (isUSD ? deposits * exchangeRate : deposits);
+          rawDailyOutflow += (isUSD ? withdrawalsNum * exchangeRate : withdrawalsNum);
+        }
+      });
+
+      const finalInflow = Math.max(0, rawDailyInflow - internalInflowSum);
+      const finalOutflow = Math.max(0, rawDailyOutflow - internalOutflowSum);
 
       if (!monthlyStats[monthStr]) {
         monthlyStats[monthStr] = { month: monthStr, balance: 0, inflow: 0, outflow: 0 };
@@ -209,8 +266,8 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
       // Update with the latest balance of the month
       monthlyStats[monthStr].balance = Math.floor(dayBalance);
       // Accumulate inflow/outflow
-      monthlyStats[monthStr].inflow += Math.floor(dayInflow);
-      monthlyStats[monthStr].outflow += Math.floor(dayOutflow);
+      monthlyStats[monthStr].inflow += Math.floor(finalInflow);
+      monthlyStats[monthStr].outflow += Math.floor(finalOutflow);
     });
 
     return Object.values(monthlyStats).map(d => ({
@@ -218,7 +275,7 @@ const FinancialChartPage = ({ dailyStatuses = {}, recordDate, exchangeRate = 1 }
         name: `${d.month.split('-')[0].substring(2)}.${d.month.split('-')[1]}`,
         fullName: `${d.month.split('-')[0]}년 ${d.month.split('-')[1]}월`
     }));
-  }, [dailyStatuses, selectedEntity, currencyMode, exchangeRate, excludeInternal]);
+  }, [dailyStatuses, withdrawals, masterCompose, masterSmart, selectedEntity, currencyMode, exchangeRate, excludeInternal]);
 
   const formatValue = (val) => currencyMode === 'KRW' ? formatKRW(val) : formatUSD(val);
 

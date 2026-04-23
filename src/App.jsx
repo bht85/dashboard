@@ -638,6 +638,9 @@ const App = () => {
       {currentView === 'analytics' && (
         <FinancialChartPage 
           dailyStatuses={dailyStatuses}
+          withdrawals={withdrawals}
+          masterCompose={composeAccounts}
+          masterSmart={smartAccounts}
           recordDate={selectedDate}
           exchangeRate={exchangeRate}
           exchangeRateEUR={exchangeRateEUR}
