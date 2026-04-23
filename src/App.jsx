@@ -106,6 +106,7 @@ const App = () => {
   const [rawBeanContracts, setRawBeanContracts] = useState([]); // 신규: 생두 계약 데이터
   const [corpCardUsage, setCorpCardUsage] = useState([]); // 신규: 법인카드 사용 내역
   const [corpCardBudget, setCorpCardBudget] = useState([]); // 신규: 법인카드 예산
+  const [fxDepositList, setFxDepositList] = useState([]); // 신규: 외화입금리스트
 
   // --- Real-time Firestore Sync ---
   useEffect(() => {
@@ -191,6 +192,12 @@ const App = () => {
         setRawBeanContracts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     }, logAndHandle("rawBeanContracts"));
 
+    // 10-1. FX Deposit List Sync (신규: 외화입금리스트)
+    const unsubFXDeposit = onSnapshot(collection(db, "fxDepositList"), (snapshot) => {
+        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        setFxDepositList(data.sort((a,b) => (b.invoiceSubmitDate || '').localeCompare(a.invoiceSubmitDate || '')));
+    }, logAndHandle("fxDepositList"));
+
     // 11. Corporate Card Usage Sync
     const unsubCorpUsage = onSnapshot(collection(db, "corpCardUsage"), (snapshot) => {
         setCorpCardUsage(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -232,7 +239,7 @@ const App = () => {
         setDailyStatuses(statuses);
     }, logAndHandle("dailyStatuses"));
 
-    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); unsubCashFlow(); unsubFXExchange(); unsubLoans(); unsubCoffee(); unsubCorpUsage(); unsubCorpBudget(); };
+    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); unsubCashFlow(); unsubFXExchange(); unsubLoans(); unsubCoffee(); unsubContracts(); unsubFXDeposit(); unsubCorpUsage(); unsubCorpBudget(); };
   }, [user]);
 
   // --- Firestore Update Wrappers ---
@@ -377,6 +384,23 @@ const App = () => {
   const deleteRawBeanContract = async (id) => {
     if (!id) return;
     await deleteDoc(doc(collection(db, "rawBeanContracts"), String(id)));
+  };
+
+  // --- 외화입금리스트 CRUD ---
+  const updateFXDeposit = async (data) => {
+    const docId = data.id ? String(data.id) : Date.now().toString();
+    console.log(`Updating FX Deposit: ${docId}`);
+    await setDoc(doc(collection(db, "fxDepositList"), docId), {
+      ...data,
+      id: docId,
+      updatedAt: new Date().toISOString()
+    });
+  };
+
+  const deleteFXDeposit = async (id) => {
+    if (!id) return;
+    console.log(`Deleting FX Deposit: ${id}`);
+    await deleteDoc(doc(collection(db, "fxDepositList"), String(id)));
   };
 
   const updateCorpCardUsage = async (data) => {
@@ -711,6 +735,9 @@ const App = () => {
           rawBeanContracts={rawBeanContracts}
           onUpdateRawBeanContract={updateRawBeanContract}
           onDeleteRawBeanContract={deleteRawBeanContract}
+          fxDepositList={fxDepositList}
+          onUpdateFXDeposit={updateFXDeposit}
+          onDeleteFXDeposit={deleteFXDeposit}
           onViewReport={(month) => {
             setReportMonth(month);
             setCurrentView('foreignReport');
