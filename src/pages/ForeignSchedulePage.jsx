@@ -159,6 +159,8 @@ const ForeignSchedulePage = ({
     year: '26', monthNumber: '04', price: '', isEditing: false, id: null
   });
 
+  const [showAllContracts, setShowAllContracts] = useState(false);
+
   // 유니크한 산지/공급업체 리스트 추출
   const uniqueOrigins = Array.from(new Set(rawBeanContracts.map(c => c.origin).filter(Boolean))).sort();
   const uniqueSuppliers = Array.from(new Set(rawBeanContracts.map(c => c.supplier).filter(Boolean))).sort();
@@ -310,6 +312,13 @@ const ForeignSchedulePage = ({
 
   const filteredSchedule = fxSchedule.filter(s => s.date.startsWith(selectedMonth)).sort((a, b) => a.date.localeCompare(b.date));
   const filteredExchangeResults = (Array.isArray(exchangeResults) ? exchangeResults : []).filter(e => e.date.startsWith(selectedMonth));
+
+  const displayContracts = showAllContracts 
+    ? [...rawBeanContracts].sort((a, b) => b.id - a.id)
+    : rawBeanContracts.filter(c => {
+        const paymentDate = `${c.paymentYear}-${String(c.paymentMonth).padStart(2, '0')}`;
+        return paymentDate >= selectedMonth;
+      }).sort((a, b) => b.id - a.id);
 
   return (
     <div className="animate-in slide-in-from-bottom-4 duration-500">
@@ -632,7 +641,7 @@ const ForeignSchedulePage = ({
                             </div>
                           </td>
                         </tr>
-                      );
+                      )
                     })
                   )}
                 </tbody>
@@ -698,7 +707,7 @@ const ForeignSchedulePage = ({
             </table>
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'beans' ? (
         <div className="space-y-6">
           {/* Main Contract Form */}
           <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 overflow-hidden relative">
@@ -891,7 +900,18 @@ const ForeignSchedulePage = ({
                 <h3 className="font-black text-slate-800 flex items-center gap-3 text-sm">
                     <List className="w-5 h-5 text-indigo-600" /> 등록된 생두 계약 히스토리
                 </h3>
-                <span className="text-[10px] font-black text-slate-300">Total {rawBeanContracts.length} Transactions</span>
+                <div className="flex items-center gap-6">
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                        <input 
+                            type="checkbox" 
+                            checked={showAllContracts} 
+                            onChange={(e) => setShowAllContracts(e.target.checked)}
+                            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-all cursor-pointer"
+                        />
+                        <span className="text-[10px] font-black text-slate-400 group-hover:text-indigo-600 transition-colors uppercase tracking-wider">전체 히스토리 보기</span>
+                    </label>
+                    <span className="text-[10px] font-black text-slate-300">Total {displayContracts.length} Transactions</span>
+                </div>
             </div>
             <div className="overflow-x-auto overflow-y-hidden">
               <table className="w-full text-left text-[11px] border-collapse whitespace-nowrap min-w-[1700px]">
@@ -911,7 +931,7 @@ const ForeignSchedulePage = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 text-slate-600">
-                  {rawBeanContracts.sort((a,b) => b.id - a.id).map((c) => {
+                  {displayContracts.map((c) => {
                     const unitPrice = c.isFixedPrice 
                       ? parseFloat(c.fixedPrice || 0)
                       : (parseFloat(c.index || 0) + parseFloat(c.differential || 0)) * 22.046 / 1000;
@@ -936,100 +956,10 @@ const ForeignSchedulePage = ({
                            </div>
                         </td>
                       </tr>
-                    );
+                    )
                   })}
                 </tbody>
               </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 생두 계약 리스트 모달 (송금 일정에서 데이터 불러오기용) */}
-      {showContractPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-           <div className="bg-white rounded-[2.5rem] w-full max-w-5xl max-h-[85vh] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
-              <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-indigo-700 text-white">
-                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shadow-inner">
-                        <Package className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-black tracking-tight">생두 계약 데이터 불러오기</h3>
-                        <p className="text-[10px] text-indigo-100 font-bold mt-1 uppercase tracking-widest">Select coffee contract for remittance</p>
-                    </div>
-                 </div>
-                 <button onClick={() => setShowContractPicker(false)} className="bg-white/10 hover:bg-white/20 p-3 rounded-2xl transition-all">
-                    <X className="w-6 h-6" />
-                 </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-10 bg-slate-50/50">
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {rawBeanContracts.sort((a,b) => b.id - a.id).map((c) => {
-                        const unitPrice = c.isFixedPrice 
-                          ? parseFloat(c.fixedPrice || 0)
-                          : (parseFloat(c.index || 0) + parseFloat(c.differential || 0)) * 22.046 / 1000;
-                        const amountUSD = unitPrice * parseFloat(c.weight || 0);
-                        return (
-                            <button 
-                                key={c.id} 
-                                onClick={() => loadContractToSchedule(c)}
-                                className="bg-white border-2 border-slate-100 text-left p-8 rounded-[2rem] hover:border-indigo-600 hover:shadow-2xl hover:shadow-indigo-600/10 transition-all group relative overflow-hidden"
-                            >
-                                <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
-                                    <div className="bg-indigo-600 text-white p-3 rounded-2xl shadow-lg">
-                                        <Plus className="w-5 h-5" />
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 mb-4">
-                                    <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-lg border border-indigo-100">{c.origin}</span>
-                                    <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">#{c.contractNo?.split('-').pop()}</span>
-                                    {c.isFixedPrice && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[8px] font-black rounded border border-emerald-100 ml-1">FIXED</span>}
-                                </div>
-                                <div className="text-xl font-black text-slate-800 mb-6 group-hover:text-indigo-600 transition-colors line-clamp-1">{c.supplier}</div>
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-end border-b border-slate-50 pb-4">
-                                         <span className="text-[10px] text-slate-400 font-black uppercase">Contract Total</span>
-                                         <span className="text-xl font-black text-slate-900 tabular-nums">${amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                    </div>
-                                    <div className="flex justify-between text-[11px]">
-                                        <span className="text-slate-400 font-bold">BATCH / PERIOD</span>
-                                        <span className="font-black text-slate-600">{c.installment} • {c.paymentYear}.{c.paymentMonth}</span>
-                                    </div>
-                                </div>
-                            </button>
-                        );
-                    })}
-                 </div>
-              </div>
-           </div>
-        </div>
-      )}
-
-      {showCalc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-[3rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-            <div className="px-10 py-10 border-b border-slate-50 flex justify-between items-center bg-slate-900 text-white">
-              <h3 className="text-xl font-black flex items-center gap-4">
-                <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center"><ArrowRightLeft className="w-6 h-6 text-indigo-400" /></div>
-                금액 산출기
-              </h3>
-              <button onClick={() => setShowCalc(false)} className="bg-white/10 hover:bg-white/20 p-2.5 rounded-2xl transition-all">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-10 space-y-8">
-              <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest px-1">월물 지수 선택</label><select value={calcData.indexId} onChange={e => setCalcData({...calcData, indexId: e.target.value})} className="w-full text-base font-black bg-slate-100/50 border-2 border-slate-100 rounded-2xl px-5 py-4 outline-none focus:border-indigo-500 transition-all">{<option value="">지수 선택</option>}{coffeeIndices.map(item => <option key={item.id} value={item.id}>{item.month} (지수: {item.price})</option>)}</select></div>
-              <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest px-1">총 수량 (KG)</label><input type="number" value={calcData.quantity} onChange={e => setCalcData({...calcData, quantity: e.target.value})} placeholder="ex) 19200" className="w-full text-base font-black bg-slate-100/50 border-2 border-slate-100 rounded-2xl px-5 py-4 outline-none focus:border-indigo-500 transition-all font-mono" /></div>
-              {calcData.indexId && calcData.quantity && (
-                  <div className="bg-indigo-600 p-8 rounded-[2rem] text-white shadow-2xl shadow-indigo-200 animate-in slide-in-from-top-2">
-                       <div className="text-[10px] text-indigo-200 font-black uppercase mb-2 tracking-widest">Calculated Result</div>
-                       <div className="text-4xl font-black tabular-nums tracking-tighter">
-                        ${(((coffeeIndices.find(c => String(c.id) === String(calcData.indexId))?.price + 50) * 22.046 / 1000) * parseFloat(calcData.quantity)).toLocaleString(undefined, {minimumFractionDigits: 2})}
-                       </div>
-                  </div>
-              )}
-              <button onClick={applyCalculation} disabled={!calcData.indexId || !calcData.quantity} className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl hover:bg-indigo-700 transition shadow-2xl shadow-indigo-200 disabled:opacity-50 disabled:shadow-none translate-y-2 mt-4">계획에 즉시 반영</button>
             </div>
           </div>
         </div>
@@ -1168,7 +1098,7 @@ const ForeignSchedulePage = ({
                             </div>
                           </td>
                         </tr>
-                      );
+                      )
                     })
                   )}
                 </tbody>
@@ -1177,6 +1107,96 @@ const ForeignSchedulePage = ({
           </div>
         </div>
       ) : null}
+
+      {/* 생두 계약 리스트 모달 (송금 일정에서 데이터 불러오기용) */}
+      {showContractPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+           <div className="bg-white rounded-[2.5rem] w-full max-w-5xl max-h-[85vh] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+              <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-indigo-700 text-white">
+                 <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shadow-inner">
+                        <Package className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-black tracking-tight">생두 계약 데이터 불러오기</h3>
+                        <p className="text-[10px] text-indigo-100 font-bold mt-1 uppercase tracking-widest">Select coffee contract for remittance</p>
+                    </div>
+                 </div>
+                 <button onClick={() => setShowContractPicker(false)} className="bg-white/10 hover:bg-white/20 p-3 rounded-2xl transition-all">
+                    <X className="w-6 h-6" />
+                 </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-10 bg-slate-50/50">
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {displayContracts.map((c) => {
+                        const unitPrice = c.isFixedPrice 
+                          ? parseFloat(c.fixedPrice || 0)
+                          : (parseFloat(c.index || 0) + parseFloat(c.differential || 0)) * 22.046 / 1000;
+                        const amountUSD = unitPrice * parseFloat(c.weight || 0);
+                        return (
+                            <button 
+                                key={c.id} 
+                                onClick={() => loadContractToSchedule(c)}
+                                className="bg-white border-2 border-slate-100 text-left p-8 rounded-[2rem] hover:border-indigo-600 hover:shadow-2xl hover:shadow-indigo-600/10 transition-all group relative overflow-hidden"
+                            >
+                                <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
+                                    <div className="bg-indigo-600 text-white p-3 rounded-2xl shadow-lg">
+                                        <Plus className="w-5 h-5" />
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-lg border border-indigo-100">{c.origin}</span>
+                                    <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">#{c.contractNo?.split('-').pop()}</span>
+                                    {c.isFixedPrice && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[8px] font-black rounded border border-emerald-100 ml-1">FIXED</span>}
+                                </div>
+                                <div className="text-xl font-black text-slate-800 mb-6 group-hover:text-indigo-600 transition-colors line-clamp-1">{c.supplier}</div>
+                                <div className="space-y-4">
+                                    <div className="flex justify-between items-end border-b border-slate-50 pb-4">
+                                         <span className="text-[10px] text-slate-400 font-black uppercase">Contract Total</span>
+                                         <span className="text-xl font-black text-slate-900 tabular-nums">${amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                    </div>
+                                    <div className="flex justify-between text-[11px]">
+                                        <span className="text-slate-400 font-bold">BATCH / PERIOD</span>
+                                        <span className="font-black text-slate-600">{c.installment} • {c.paymentYear}.{c.paymentMonth}</span>
+                                    </div>
+                                </div>
+                            </button>
+                        )
+                    })}
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {showCalc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-[3rem] w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="px-10 py-10 border-b border-slate-50 flex justify-between items-center bg-slate-900 text-white">
+              <h3 className="text-xl font-black flex items-center gap-4">
+                <div className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center"><ArrowRightLeft className="w-6 h-6 text-indigo-400" /></div>
+                금액 산출기
+              </h3>
+              <button onClick={() => setShowCalc(false)} className="bg-white/10 hover:bg-white/20 p-2.5 rounded-2xl transition-all">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-10 space-y-8">
+              <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest px-1">월물 지수 선택</label><select value={calcData.indexId} onChange={e => setCalcData({...calcData, indexId: e.target.value})} className="w-full text-base font-black bg-slate-100/50 border-2 border-slate-100 rounded-2xl px-5 py-4 outline-none focus:border-indigo-500 transition-all">{<option value="">지수 선택</option>}{coffeeIndices.map(item => <option key={item.id} value={item.id}>{item.month} (지수: {item.price})</option>)}</select></div>
+              <div><label className="block text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest px-1">총 수량 (KG)</label><input type="number" value={calcData.quantity} onChange={e => setCalcData({...calcData, quantity: e.target.value})} placeholder="ex. 19200" className="w-full text-base font-black bg-slate-100/50 border-2 border-slate-100 rounded-2xl px-5 py-4 outline-none focus:border-indigo-500 transition-all font-mono" /></div>
+              {calcData.indexId && calcData.quantity && (
+                  <div className="bg-indigo-600 p-8 rounded-[2rem] text-white shadow-2xl shadow-indigo-200 animate-in slide-in-from-top-2">
+                       <div className="text-[10px] text-indigo-200 font-black uppercase mb-2 tracking-widest">Calculated Result</div>
+                       <div className="text-4xl font-black tabular-nums tracking-tighter">
+                        ${(((coffeeIndices.find(c => String(c.id) === String(calcData.indexId))?.price + 50) * 22.046 / 1000) * parseFloat(calcData.quantity)).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                       </div>
+                  </div>
+              )}
+              <button onClick={applyCalculation} disabled={!calcData.indexId || !calcData.quantity} className="w-full bg-indigo-600 text-white font-black py-5 rounded-2xl hover:bg-indigo-700 transition shadow-2xl shadow-indigo-200 disabled:opacity-50 disabled:shadow-none translate-y-2 mt-4">계획에 즉시 반영</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
