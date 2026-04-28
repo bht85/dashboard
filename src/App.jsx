@@ -19,10 +19,24 @@ import LoanManagementPage from './pages/LoanManagementPage';
 import AuthPage from './pages/AuthPage';
 import ForeignReportPage from './pages/ForeignReportPage';
 import CorporateCardPage from './pages/CorporateCardPage';
+import FXDepositStandalone from './pages/FXDepositStandalone';
 import * as XLSX from 'xlsx';
 import { isExcludedAccount } from './utils/formatters';
 
 const App = () => {
+  // Hash-based routing: #/fx-deposit → standalone deposit page
+  const [isDepositRoute, setIsDepositRoute] = useState(window.location.hash === '#/fx-deposit');
+
+  useEffect(() => {
+    const handleHashChange = () => setIsDepositRoute(window.location.hash === '#/fx-deposit');
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  if (isDepositRoute) {
+    return <FXDepositStandalone />;
+  }
+
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState('dashboard');
