@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Globe, Plus, Trash2, ArrowRightLeft, Calendar, Edit2, Check, X, ChevronLeft, ChevronRight, Package, List, AlertCircle, Search, DollarSign, Printer, Download } from 'lucide-react';
 import { formatUSD, formatKRW } from '../utils/formatters';
 
@@ -160,6 +160,13 @@ const ForeignSchedulePage = ({
   });
 
   const [showAllContracts, setShowAllContracts] = useState(false);
+  const [selectedContractSupplierFilter, setSelectedContractSupplierFilter] = useState('ALL');
+
+  useEffect(() => {
+    if (!showContractPicker) {
+      setSelectedContractSupplierFilter('ALL');
+    }
+  }, [showContractPicker]);
 
   // 유니크한 산지/공급업체 리스트 추출
   const uniqueOrigins = Array.from(new Set(rawBeanContracts.map(c => c.origin).filter(Boolean))).sort();
@@ -1109,65 +1116,116 @@ const ForeignSchedulePage = ({
       ) : null}
 
       {/* 생두 계약 리스트 모달 (송금 일정에서 데이터 불러오기용) */}
-      {showContractPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
-           <div className="bg-white rounded-[2.5rem] w-full max-w-5xl max-h-[85vh] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
-              <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-indigo-700 text-white">
-                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shadow-inner">
-                        <Package className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-black tracking-tight">생두 계약 데이터 불러오기</h3>
-                        <p className="text-[10px] text-indigo-100 font-bold mt-1 uppercase tracking-widest">Select coffee contract for remittance</p>
-                    </div>
-                 </div>
-                 <button onClick={() => setShowContractPicker(false)} className="bg-white/10 hover:bg-white/20 p-3 rounded-2xl transition-all">
-                    <X className="w-6 h-6" />
-                 </button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-10 bg-slate-50/50">
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {displayContracts.map((c) => {
-                        const unitPrice = c.isFixedPrice 
-                          ? parseFloat(c.fixedPrice || 0)
-                          : (parseFloat(c.index || 0) + parseFloat(c.differential || 0)) * 22.046 / 1000;
-                        const amountUSD = unitPrice * parseFloat(c.weight || 0);
-                        return (
-                            <button 
-                                key={c.id} 
-                                onClick={() => loadContractToSchedule(c)}
-                                className="bg-white border-2 border-slate-100 text-left p-8 rounded-[2rem] hover:border-indigo-600 hover:shadow-2xl hover:shadow-indigo-600/10 transition-all group relative overflow-hidden"
-                            >
-                                <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
-                                    <div className="bg-indigo-600 text-white p-3 rounded-2xl shadow-lg">
-                                        <Plus className="w-5 h-5" />
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 mb-4">
-                                    <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-lg border border-indigo-100">{c.origin}</span>
-                                    <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">#{c.contractNo?.split('-').pop()}</span>
-                                    {c.isFixedPrice && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[8px] font-black rounded border border-emerald-100 ml-1">FIXED</span>}
-                                </div>
-                                <div className="text-xl font-black text-slate-800 mb-6 group-hover:text-indigo-600 transition-colors line-clamp-1">{c.supplier}</div>
-                                <div className="space-y-4">
-                                    <div className="flex justify-between items-end border-b border-slate-50 pb-4">
-                                         <span className="text-[10px] text-slate-400 font-black uppercase">Contract Total</span>
-                                         <span className="text-xl font-black text-slate-900 tabular-nums">${amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                                    </div>
-                                    <div className="flex justify-between text-[11px]">
-                                        <span className="text-slate-400 font-bold">BATCH / PERIOD</span>
-                                        <span className="font-black text-slate-600">{c.installment} • {c.paymentYear}.{c.paymentMonth}</span>
-                                    </div>
-                                </div>
-                            </button>
-                        )
-                    })}
-                 </div>
-              </div>
-           </div>
-        </div>
-      )}
+      {showContractPicker && (() => {
+        const availableSuppliersInPicker = Array.from(new Set(displayContracts.map(c => c.supplier).filter(Boolean))).sort();
+        const filteredContractsForPicker = displayContracts.filter(c => {
+          if (selectedContractSupplierFilter === 'ALL') return true;
+          return c.supplier === selectedContractSupplierFilter;
+        });
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+             <div className="bg-white rounded-[2.5rem] w-full max-w-5xl max-h-[85vh] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300">
+                <div className="px-10 py-8 border-b border-slate-100 flex justify-between items-center bg-indigo-700 text-white">
+                   <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shadow-inner">
+                          <Package className="w-6 h-6 text-white" />
+                      </div>
+                      <div>
+                          <h3 className="text-xl font-black tracking-tight">생두 계약 데이터 불러오기</h3>
+                          <p className="text-[10px] text-indigo-100 font-bold mt-1 uppercase tracking-widest">Select coffee contract for remittance</p>
+                      </div>
+                   </div>
+                   <button onClick={() => setShowContractPicker(false)} className="bg-white/10 hover:bg-white/20 p-3 rounded-2xl transition-all">
+                      <X className="w-6 h-6" />
+                   </button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-10 bg-slate-50/50">
+                   {/* 공급업체 필터 UI */}
+                   <div className="mb-8 flex flex-col gap-3 bg-white p-6 rounded-[2rem] border-2 border-slate-100 shadow-sm">
+                      <div className="flex items-center gap-2 text-slate-400">
+                         <Search className="w-4 h-4 text-indigo-600" />
+                         <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">공급업체 필터 (Supplier Filter)</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                         <button
+                            onClick={() => setSelectedContractSupplierFilter('ALL')}
+                            className={`px-4 py-2 rounded-2xl text-xs font-black transition-all duration-200 ${
+                               selectedContractSupplierFilter === 'ALL'
+                                 ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100 scale-[1.02]'
+                                 : 'bg-slate-50 text-slate-600 border-2 border-slate-50 hover:border-slate-200 hover:bg-slate-100 active:scale-95'
+                            }`}
+                         >
+                            전체 ({displayContracts.length})
+                         </button>
+                         {availableSuppliersInPicker.map(s => {
+                            const count = displayContracts.filter(c => c.supplier === s).length;
+                            return (
+                               <button
+                                  key={s}
+                                  onClick={() => setSelectedContractSupplierFilter(s)}
+                                  className={`px-4 py-2 rounded-2xl text-xs font-black transition-all duration-200 ${
+                                     selectedContractSupplierFilter === s
+                                       ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100 scale-[1.02]'
+                                       : 'bg-slate-50 text-slate-600 border-2 border-slate-50 hover:border-slate-200 hover:bg-slate-100 active:scale-95'
+                                  }`}
+                               >
+                                  {s} ({count})
+                               </button>
+                            );
+                         })}
+                      </div>
+                   </div>
+
+                   {filteredContractsForPicker.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2rem] border-2 border-dashed border-slate-200 p-8 text-center">
+                         <Package className="w-12 h-12 text-slate-300 mb-4" />
+                         <p className="text-sm font-black text-slate-400">선택한 공급업체의 계약 데이터가 없습니다.</p>
+                      </div>
+                   ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                         {filteredContractsForPicker.map((c) => {
+                             const unitPrice = c.isFixedPrice 
+                               ? parseFloat(c.fixedPrice || 0)
+                               : (parseFloat(c.index || 0) + parseFloat(c.differential || 0)) * 22.046 / 1000;
+                             const amountUSD = unitPrice * parseFloat(c.weight || 0);
+                             return (
+                                 <button 
+                                     key={c.id} 
+                                     onClick={() => loadContractToSchedule(c)}
+                                     className="bg-white border-2 border-slate-100 text-left p-8 rounded-[2rem] hover:border-indigo-600 hover:shadow-2xl hover:shadow-indigo-600/10 transition-all group relative overflow-hidden active:scale-95"
+                                 >
+                                     <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
+                                         <div className="bg-indigo-600 text-white p-3 rounded-2xl shadow-lg">
+                                             <Plus className="w-5 h-5" />
+                                         </div>
+                                     </div>
+                                     <div className="flex items-center gap-2 mb-4">
+                                         <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-lg border border-indigo-100">{c.origin}</span>
+                                         <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">#{c.contractNo?.split('-').pop()}</span>
+                                         {c.isFixedPrice && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[8px] font-black rounded border border-emerald-100 ml-1">FIXED</span>}
+                                     </div>
+                                     <div className="text-xl font-black text-slate-800 mb-6 group-hover:text-indigo-600 transition-colors line-clamp-1">{c.supplier}</div>
+                                     <div className="space-y-4">
+                                         <div className="flex justify-between items-end border-b border-slate-50 pb-4">
+                                              <span className="text-[10px] text-slate-400 font-black uppercase">Contract Total</span>
+                                              <span className="text-xl font-black text-slate-900 tabular-nums">${amountUSD.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                         </div>
+                                         <div className="flex justify-between text-[11px]">
+                                             <span className="text-slate-400 font-bold">BATCH / PERIOD</span>
+                                             <span className="font-black text-slate-600">{c.installment} • {c.paymentYear}.{c.paymentMonth}</span>
+                                         </div>
+                                     </div>
+                                 </button>
+                             )
+                         })}
+                      </div>
+                   )}
+                </div>
+             </div>
+          </div>
+        );
+      })()}
 
       {showCalc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
