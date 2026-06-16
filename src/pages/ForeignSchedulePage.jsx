@@ -355,7 +355,7 @@ const ForeignSchedulePage = ({
         </div>
 
         <button 
-          onClick={() => onViewReport(selectedMonth)}
+          onClick={() => onViewReport(selectedMonth, activeTab)}
           className="flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl text-xs font-black shadow-lg shadow-slate-100 hover:bg-slate-800 transition-all active:scale-95"
         >
           <Printer className="w-3.5 h-3.5" />

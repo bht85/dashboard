@@ -45,6 +45,7 @@ const App = () => {
   const [exchangeRateEUR, setExchangeRateEUR] = useState(1620); // EUR/KRW
   const [exchangeRateJPY, setExchangeRateJPY] = useState(10); // JPY/KRW (per 1 JPY)
   const [reportMonth, setReportMonth] = useState(""); // YYYY-MM for reports
+  const [reportTab, setReportTab] = useState("schedule"); // 'schedule' or 'exchange' or 'beans'
 
   // --- Auth State Sync ---
   useEffect(() => {
@@ -752,8 +753,10 @@ const App = () => {
           fxDepositList={fxDepositList}
           onUpdateFXDeposit={updateFXDeposit}
           onDeleteFXDeposit={deleteFXDeposit}
-          onViewReport={(month) => {
+          onViewReport={(month, tab) => {
             setReportMonth(month);
+            const rTab = tab === 'beans' ? 'beans' : tab === 'exchange' ? 'exchange' : 'schedule';
+            setReportTab(rTab);
             setCurrentView('foreignReport');
           }}
         />
@@ -820,9 +823,12 @@ const App = () => {
         <ForeignReportPage 
           selectedMonth={reportMonth || selectedDate.substring(0, 7)}
           fxSchedule={fxSchedule}
+          exchangeResults={fxExchangeResults}
+          rawBeanContracts={rawBeanContracts}
           exchangeRate={exchangeRate}
           exchangeRateEUR={exchangeRateEUR}
           exchangeRateJPY={exchangeRateJPY}
+          defaultTab={reportTab}
           onBack={() => setCurrentView('foreign')}
         />
       )}
