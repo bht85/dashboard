@@ -42,7 +42,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView,
   ];
 
   return (
-    <aside className={`fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-200 transform transition-all duration-300 ease-in-out shadow-xl lg:shadow-none ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-20 -translate-x-full lg:translate-x-0 flex flex-col'}`}>
+    <aside className={`fixed inset-y-0 left-0 z-50 bg-white border-r border-slate-200 transform transition-all duration-300 ease-in-out shadow-xl lg:shadow-none print:hidden ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-20 -translate-x-full lg:translate-x-0 flex flex-col'}`}>
       <div className="h-full flex flex-col">
         <div className={`pt-8 pb-6 text-center flex flex-col items-center overflow-hidden transition-all ${isSidebarOpen ? 'px-6' : 'px-2'}`}>
           <div className={`mb-4 transition-all duration-300 ${isSidebarOpen ? 'w-16 h-16' : 'w-10 h-10'}`}>

@@ -6,7 +6,7 @@ const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, on
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
 
   return (
-    <div className="flex min-h-screen bg-[#f8fafc] text-slate-900 font-sans overflow-x-hidden">
+    <div className="flex min-h-screen bg-[#f8fafc] text-slate-900 font-sans overflow-x-hidden print:bg-white print:min-h-0">
       <Sidebar 
         isSidebarOpen={isSidebarOpen} 
         setIsSidebarOpen={setIsSidebarOpen}
@@ -18,18 +18,18 @@ const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, on
       {/* Mobile Overlay */}
       {!isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 lg:hidden opacity-0 pointer-events-none transition-opacity duration-300"
+          className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 lg:hidden opacity-0 pointer-events-none transition-opacity duration-300 print:hidden"
           onClick={() => setIsSidebarOpen(true)}
         ></div>
       )}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden opacity-100 transition-opacity duration-300"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden opacity-100 transition-opacity duration-300 print:hidden"
           onClick={() => setIsSidebarOpen(false)}
         ></div>
       )}
 
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out print:ml-0 ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
         <Header 
           isSidebarOpen={isSidebarOpen} 
           setIsSidebarOpen={setIsSidebarOpen} 
@@ -40,13 +40,13 @@ const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, on
           user={user}
         />
 
-        <main className="flex-1 p-4 lg:p-12 overflow-y-auto max-w-full overflow-x-hidden">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 p-4 lg:p-12 overflow-y-auto max-w-full overflow-x-hidden print:p-0 print:overflow-visible">
+          <div className="max-w-7xl mx-auto print:max-w-none print:p-0 print:m-0">
             {children}
           </div>
         </main>
 
-        <footer className="px-12 py-6 bg-white border-t border-slate-100 flex justify-between items-center text-[10px] font-black text-slate-400 tracking-widest uppercase">
+        <footer className="px-12 py-6 bg-white border-t border-slate-100 flex justify-between items-center text-[10px] font-black text-slate-400 tracking-widest uppercase print:hidden">
           <p>© 2026 COMPOSE TREASURY HUB</p>
           <div className="flex gap-8 items-center">
             <span className="text-indigo-600">Enterprise Edition v2.4</span>

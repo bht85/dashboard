@@ -46,7 +46,7 @@
   }
 
   /* 웹 앱 전체 숨김 (Portal로 렌더된 PrintReport는 #root 바깥이라 영향 없음) */
-  #root {
+  body:has(#print-report-root) #root {
     display: none !important;
   }
 
