@@ -156,6 +156,10 @@ const ForeignReportPage = ({
     }
   });
 
+  const tableGrandTotalUSD = origins.reduce((sum, origin) => {
+    return sum + Object.values(originMonthlyStats[origin]).reduce((innerSum, m) => innerSum + m.usd, 0);
+  }, 0);
+
   const ReportTable = ({ headers, children }) => (
     <div className="mb-8">
       <table className="w-full text-[11px] border-collapse border-2 border-slate-800">
@@ -519,68 +523,75 @@ const ForeignReportPage = ({
                         </table>
                     </div>
                 </section>
- 
-                <section className="mb-10 page-break-before">
+
+                <section className="mb-10">
                     <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center gap-2">
                         <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">3</span>
-                        상세 생두 구매 계약 리스트
+                        산지(Origin)별 월별 외화 지급액 (USD)
                     </h2>
-                    <ReportTable 
-                        headers={[
-                            { label: '지급시기', width: '8%' },
-                            { label: '산지/공급업체', align: 'left', width: '20%' },
-                            { label: '계약번호/차수', width: '16%' },
-                            { label: '중량 (KG)', align: 'right', width: '10%' },
-                            { label: '단가 (USD/KG)', align: 'right', width: '11%' },
-                            { label: '외화 금액', align: 'right', width: '15%' },
-                            { label: '원화 환산액 (원)', align: 'right', width: '20%' }
-                        ]}
-                    >
-                        {yearlyContracts.length > 0 ? (
-                            yearlyContracts.map((c, i) => {
-                                const unitPrice = c.isFixedPrice 
-                                    ? Number(c.fixedPrice || 0)
-                                    : (Number(c.index || 0) + Number(c.differential || 0)) * 22.046 / 1000;
-                                const amountUSD = unitPrice * Number(c.weight || 0);
-                                const amountKRW = amountUSD * Number(c.planExchangeRate || exchangeRate);
-                                
-                                return (
-                                    <tr key={i} className="divide-x divide-slate-400 hover:bg-slate-50 transition-colors">
-                                        <td className="px-2 py-2 text-center font-mono">
-                                            {c.paymentYear}/{String(c.paymentMonth).padStart(2, '0')}
-                                        </td>
-                                        <td className="px-2 py-2 text-left font-black text-slate-800">
-                                            <div className="font-bold">{c.origin}</div>
-                                            <div className="text-[9px] text-slate-400">{c.supplier}</div>
-                                        </td>
-                                        <td className="px-2 py-2 text-center font-bold font-mono">
-                                            <div>{c.contractNo || '-'}</div>
-                                            <div className="text-[9px] text-slate-400">
-                                                {c.installment ? `${c.installment}차` : '-'} ({c.containerCount || 0} CTN)
-                                            </div>
-                                        </td>
-                                        <td className="px-2 py-2 text-right font-black text-slate-800 font-mono">
-                                            {Number(c.weight || 0).toLocaleString()}
-                                        </td>
-                                        <td className="px-2 py-2 text-right font-black text-slate-600 font-mono">
-                                            ${unitPrice.toFixed(4)}
-                                        </td>
-                                        <td className="px-2 py-2 text-right font-black text-indigo-600 font-mono">
-                                            {formatUSD(amountUSD)}
-                                        </td>
-                                        <td className="px-2 py-2 text-right font-black text-slate-900 font-mono">
-                                            {Math.floor(amountKRW).toLocaleString()}
-                                        </td>
+                    <div className="overflow-x-auto print:overflow-visible">
+                        <table className="w-full text-[9px] border-collapse border-2 border-slate-800 text-center font-mono">
+                            <thead className="bg-slate-100/80">
+                                <tr className="divide-x divide-slate-800 border-b-2 border-slate-800 text-[9px] font-black text-slate-900">
+                                    <th className="px-1 py-1.5 font-black text-left" style={{ width: '13%' }}>산지 (Origin)</th>
+                                    {Array.from({ length: 12 }).map((_, i) => (
+                                        <th key={i} className="px-0.5 py-1.5 font-black" style={{ width: '6.5%' }}>{i + 1}월</th>
+                                    ))}
+                                    <th className="px-1 py-1.5 font-black" style={{ width: '9%' }}>소계</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-400">
+                                {origins.length > 0 ? (
+                                    <>
+                                        {origins.map((origin) => {
+                                            const totalUSDForOrigin = Object.values(originMonthlyStats[origin]).reduce((sum, m) => sum + m.usd, 0);
+
+                                            return (
+                                                <tr key={origin} className="divide-x divide-slate-400 hover:bg-slate-50 transition-colors font-bold text-slate-800">
+                                                    <td className="px-1 py-1.5 text-left font-sans text-slate-900">{origin}</td>
+                                                    {Array.from({ length: 12 }).map((_, i) => {
+                                                        const mStr = String(i + 1).padStart(2, '0');
+                                                        const stats = originMonthlyStats[origin][mStr];
+                                                        const usd = stats.usd;
+                                                        return (
+                                                            <td key={mStr} className={`px-0.5 py-1.5 ${usd > 0 ? 'text-indigo-600 font-black' : 'text-slate-300'}`}>
+                                                                {usd > 0 ? Math.round(usd).toLocaleString() : '-'}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                    <td className="px-1 py-1.5 text-slate-900 font-black bg-slate-50/50">
+                                                        {totalUSDForOrigin > 0 ? Math.round(totalUSDForOrigin).toLocaleString() : '-'}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {/* Monthly Subtotals Row */}
+                                        <tr className="divide-x divide-slate-800 border-t-2 border-slate-800 bg-slate-100 font-black text-slate-900">
+                                            <td className="px-1 py-2 text-left font-sans">소계 (월별)</td>
+                                            {Array.from({ length: 12 }).map((_, i) => {
+                                                const mStr = String(i + 1).padStart(2, '0');
+                                                const monthlyTotal = origins.reduce((sum, origin) => sum + (originMonthlyStats[origin]?.[mStr]?.usd || 0), 0);
+                                                return (
+                                                    <td key={mStr} className="px-0.5 py-2 text-indigo-700">
+                                                        {monthlyTotal > 0 ? Math.round(monthlyTotal).toLocaleString() : '-'}
+                                                    </td>
+                                                );
+                                            })}
+                                            <td className="px-1 py-2 text-rose-600 font-black bg-slate-200/50">
+                                                {tableGrandTotalUSD > 0 ? Math.round(tableGrandTotalUSD).toLocaleString() : '-'}
+                                            </td>
+                                        </tr>
+                                    </>
+                                ) : (
+                                    <tr>
+                                        <td colSpan={14} className="px-2 py-8 text-center text-slate-300 font-bold italic">계약 내역이 없습니다.</td>
                                     </tr>
-                                );
-                            })
-                        ) : (
-                            <tr>
-                                <td colSpan={7} className="px-2 py-20 text-center text-slate-300 font-bold italic">계약 내역이 존재하지 않습니다.</td>
-                            </tr>
-                        )}
-                    </ReportTable>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </section>
+
             </>
         )}
 
