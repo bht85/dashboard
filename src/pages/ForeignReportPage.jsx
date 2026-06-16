@@ -223,7 +223,7 @@ const ForeignReportPage = ({
       </div>
 
       {/* Page Content */}
-      <div id="report-content" className="max-w-[210mm] min-h-[297mm] mx-auto bg-white p-[20mm] shadow-2xl print:shadow-none print:p-0">
+      <div id="report-content" className="max-w-[210mm] min-h-[297mm] mx-auto bg-white p-[20mm] shadow-2xl print:shadow-none print:p-[10mm]">
         
         {/* Report Header */}
         <div className="text-center mb-12 relative">
@@ -623,7 +623,7 @@ const ForeignReportPage = ({
         @media print {
           @page {
             size: A4 portrait !important;
-            margin: 15mm !important;
+            margin: 10mm !important;
           }
           #root {
             display: block !important;
@@ -659,7 +659,7 @@ const ForeignReportPage = ({
             width: 100% !important;
             max-width: none !important;
             margin: 0 !important;
-            padding: 0 !important;
+            padding: 10mm !important;
           }
           button, .print\\:hidden {
             display: none !important;
