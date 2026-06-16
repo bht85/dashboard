@@ -160,6 +160,10 @@ const ForeignReportPage = ({
     return sum + Object.values(originMonthlyStats[origin]).reduce((innerSum, m) => innerSum + m.usd, 0);
   }, 0);
 
+  const tableGrandTotalWeight = origins.reduce((sum, origin) => {
+    return sum + Object.values(originMonthlyStats[origin]).reduce((innerSum, m) => innerSum + m.weight, 0);
+  }, 0);
+
   const ReportTable = ({ headers, children }) => (
     <div className="mb-8">
       <table className="w-full text-[11px] border-collapse border-2 border-slate-800">
@@ -527,7 +531,7 @@ const ForeignReportPage = ({
                 <section className="mb-10">
                     <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center gap-2">
                         <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">3</span>
-                        산지(Origin)별 월별 외화 지급액 (USD)
+                        산지(Origin)별 월별 외화 지급액 (천 USD)
                     </h2>
                     <div className="overflow-x-auto print:overflow-visible">
                         <table className="w-full text-[9px] border-collapse border-2 border-slate-800 text-center font-mono">
@@ -545,6 +549,7 @@ const ForeignReportPage = ({
                                     <>
                                         {origins.map((origin) => {
                                             const totalUSDForOrigin = Object.values(originMonthlyStats[origin]).reduce((sum, m) => sum + m.usd, 0);
+                                            const displayRowTotal = totalUSDForOrigin > 0 ? Math.round(totalUSDForOrigin / 1000) : null;
 
                                             return (
                                                 <tr key={origin} className="divide-x divide-slate-400 hover:bg-slate-50 transition-colors font-bold text-slate-800">
@@ -553,14 +558,15 @@ const ForeignReportPage = ({
                                                         const mStr = String(i + 1).padStart(2, '0');
                                                         const stats = originMonthlyStats[origin][mStr];
                                                         const usd = stats.usd;
+                                                        const displayVal = usd > 0 ? Math.round(usd / 1000) : null;
                                                         return (
                                                             <td key={mStr} className={`px-0.5 py-1.5 ${usd > 0 ? 'text-indigo-600 font-black' : 'text-slate-300'}`}>
-                                                                {usd > 0 ? Math.round(usd).toLocaleString() : '-'}
+                                                                {displayVal !== null ? displayVal.toLocaleString() : '-'}
                                                             </td>
                                                         );
                                                     })}
                                                     <td className="px-1 py-1.5 text-slate-900 font-black bg-slate-50/50">
-                                                        {totalUSDForOrigin > 0 ? Math.round(totalUSDForOrigin).toLocaleString() : '-'}
+                                                        {displayRowTotal !== null ? displayRowTotal.toLocaleString() : '-'}
                                                     </td>
                                                 </tr>
                                             );
@@ -571,14 +577,86 @@ const ForeignReportPage = ({
                                             {Array.from({ length: 12 }).map((_, i) => {
                                                 const mStr = String(i + 1).padStart(2, '0');
                                                 const monthlyTotal = origins.reduce((sum, origin) => sum + (originMonthlyStats[origin]?.[mStr]?.usd || 0), 0);
+                                                const displayMonthlyTotal = monthlyTotal > 0 ? Math.round(monthlyTotal / 1000) : null;
                                                 return (
                                                     <td key={mStr} className="px-0.5 py-2 text-indigo-700">
-                                                        {monthlyTotal > 0 ? Math.round(monthlyTotal).toLocaleString() : '-'}
+                                                        {displayMonthlyTotal !== null ? displayMonthlyTotal.toLocaleString() : '-'}
                                                     </td>
                                                 );
                                             })}
                                             <td className="px-1 py-2 text-rose-600 font-black bg-slate-200/50">
-                                                {tableGrandTotalUSD > 0 ? Math.round(tableGrandTotalUSD).toLocaleString() : '-'}
+                                                {tableGrandTotalUSD > 0 ? Math.round(tableGrandTotalUSD / 1000).toLocaleString() : '-'}
+                                            </td>
+                                        </tr>
+                                    </>
+                                ) : (
+                                    <tr>
+                                        <td colSpan={14} className="px-2 py-8 text-center text-slate-300 font-bold italic">계약 내역이 없습니다.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section className="mb-10">
+                    <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center gap-2">
+                        <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">4</span>
+                        산지(Origin)별 월별 계약 중량 (천 kg)
+                    </h2>
+                    <div className="overflow-x-auto print:overflow-visible">
+                        <table className="w-full text-[9px] border-collapse border-2 border-slate-800 text-center font-mono">
+                            <thead className="bg-slate-100/80">
+                                <tr className="divide-x divide-slate-800 border-b-2 border-slate-800 text-[9px] font-black text-slate-900">
+                                    <th className="px-1 py-1.5 font-black text-left" style={{ width: '13%' }}>산지 (Origin)</th>
+                                    {Array.from({ length: 12 }).map((_, i) => (
+                                        <th key={i} className="px-0.5 py-1.5 font-black" style={{ width: '6.5%' }}>{i + 1}월</th>
+                                    ))}
+                                    <th className="px-1 py-1.5 font-black" style={{ width: '9%' }}>소계</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-400">
+                                {origins.length > 0 ? (
+                                    <>
+                                        {origins.map((origin) => {
+                                            const totalWeightForOrigin = Object.values(originMonthlyStats[origin]).reduce((sum, m) => sum + m.weight, 0);
+                                            const displayRowTotal = totalWeightForOrigin > 0 ? Math.round(totalWeightForOrigin / 1000) : null;
+
+                                            return (
+                                                <tr key={origin} className="divide-x divide-slate-400 hover:bg-slate-50 transition-colors font-bold text-slate-800">
+                                                    <td className="px-1 py-1.5 text-left font-sans text-slate-900">{origin}</td>
+                                                    {Array.from({ length: 12 }).map((_, i) => {
+                                                        const mStr = String(i + 1).padStart(2, '0');
+                                                        const stats = originMonthlyStats[origin][mStr];
+                                                        const weight = stats.weight;
+                                                        const displayVal = weight > 0 ? Math.round(weight / 1000) : null;
+                                                        return (
+                                                            <td key={mStr} className={`px-0.5 py-1.5 ${weight > 0 ? 'text-indigo-600 font-black' : 'text-slate-300'}`}>
+                                                                {displayVal !== null ? displayVal.toLocaleString() : '-'}
+                                                            </td>
+                                                        );
+                                                    })}
+                                                    <td className="px-1 py-1.5 text-slate-900 font-black bg-slate-50/50">
+                                                        {displayRowTotal !== null ? displayRowTotal.toLocaleString() : '-'}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {/* Monthly Subtotals Row */}
+                                        <tr className="divide-x divide-slate-800 border-t-2 border-slate-800 bg-slate-100 font-black text-slate-900">
+                                            <td className="px-1 py-2 text-left font-sans">소계 (월별)</td>
+                                            {Array.from({ length: 12 }).map((_, i) => {
+                                                const mStr = String(i + 1).padStart(2, '0');
+                                                const monthlyTotalWeight = origins.reduce((sum, origin) => sum + (originMonthlyStats[origin]?.[mStr]?.weight || 0), 0);
+                                                const displayMonthlyTotal = monthlyTotalWeight > 0 ? Math.round(monthlyTotalWeight / 1000) : null;
+                                                return (
+                                                    <td key={mStr} className="px-0.5 py-2 text-indigo-700">
+                                                        {displayMonthlyTotal !== null ? displayMonthlyTotal.toLocaleString() : '-'}
+                                                    </td>
+                                                );
+                                            })}
+                                            <td className="px-1 py-2 text-rose-600 font-black bg-slate-200/50">
+                                                {tableGrandTotalWeight > 0 ? Math.round(tableGrandTotalWeight / 1000).toLocaleString() : '-'}
                                             </td>
                                         </tr>
                                     </>
@@ -614,6 +692,7 @@ const ForeignReportPage = ({
                 ) : (
                     <ul className="text-[10px] text-slate-400 space-y-1 ml-4 list-disc">
                         <li>본 보고서는 등록된 {year}년도 지급분 생두 계약 데이터를 기준으로 작성되었습니다.</li>
+                        <li>외화 지급액 및 계약 중량 표의 수치는 천 단위(천 USD, 천 kg)로 반올림하여 표시되었습니다.</li>
                         <li>원화 환산액 = 총 계약 금액 (USD) * 기안 환율 (KRW).</li>
                         <li>시장가 연동 계약의 경우 산정 단가는 적용 시점의 인덱스 지수와 디퍼런셜 합산가 기준입니다.</li>
                     </ul>
