@@ -6,7 +6,7 @@ const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, on
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
 
   return (
-    <div className="flex min-h-screen bg-[#f8fafc] text-slate-900 font-sans overflow-x-hidden print:bg-white print:min-h-0">
+    <div className="flex min-h-screen bg-[#f8fafc] text-slate-900 font-sans overflow-x-hidden print:bg-white print:min-h-0 print:block">
       <Sidebar 
         isSidebarOpen={isSidebarOpen} 
         setIsSidebarOpen={setIsSidebarOpen}
@@ -29,7 +29,7 @@ const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, on
         ></div>
       )}
 
-      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out print:ml-0 ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out print:ml-0 print:block ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
         <Header 
           isSidebarOpen={isSidebarOpen} 
           setIsSidebarOpen={setIsSidebarOpen} 
@@ -40,8 +40,8 @@ const Layout = ({ currentView, setCurrentView, selectedDate, setSelectedDate, on
           user={user}
         />
 
-        <main className="flex-1 p-4 lg:p-12 overflow-y-auto max-w-full overflow-x-hidden print:p-0 print:overflow-visible">
-          <div className="max-w-7xl mx-auto print:max-w-none print:p-0 print:m-0">
+        <main className="flex-1 p-4 lg:p-12 overflow-y-auto max-w-full overflow-x-hidden print:p-0 print:overflow-visible print:block">
+          <div className="max-w-7xl mx-auto print:max-w-none print:p-0 print:m-0 print:block">
             {children}
           </div>
         </main>

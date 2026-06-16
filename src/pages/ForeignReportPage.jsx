@@ -473,7 +473,7 @@ const ForeignReportPage = ({
                         <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span>
                         산지(Origin)별 월별 평균 계약 단가 (USD/KG)
                     </h2>
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto print:overflow-visible">
                         <table className="w-full text-[9px] border-collapse border-2 border-slate-800 text-center font-mono">
                             <thead className="bg-slate-100/80">
                                 <tr className="divide-x divide-slate-800 border-b-2 border-slate-800 text-[9px] font-black text-slate-900">
@@ -663,6 +663,10 @@ const ForeignReportPage = ({
           }
           button, .print\\:hidden {
             display: none !important;
+          }
+          tr {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
           .page-break-before {
             page-break-before: always !important;

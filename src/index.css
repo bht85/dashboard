@@ -62,6 +62,12 @@
     height: auto !important;
     position: relative !important;
   }
+
+  /* 테이블 행이 페이지 경계선에서 짤리는 현상 방지 */
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
 }
 
 /* 화면에서 PDF 보고서 영역 숨김 */
