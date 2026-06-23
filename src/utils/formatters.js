@@ -39,19 +39,32 @@ export const calculateTotal = (accounts, _masterLists = null) => {
 
 export const isExcludedAccount = (accountData) => {
   if (!accountData) return false;
-  
-  // Convert object to a single string for pattern matching
-  // This captures keys like 'no', 'account', 'nickname', 'note', 'bank', etc.
-  const rawData = JSON.stringify(accountData);
-  const normalized = rawData.replace(/[\s-]/g, ''); // Remove spaces and dashes
-  
-  // Specific pension account markers
+
+  // ⚠️ 중요: 숫자 필드(잔액, 입출금액 등)는 검색 대상에서 제외해야 합니다.
+  // 예) 잔액 199,048,252원 → '48252' 마커와 오탐지 발생 가능
+  // 계좌 식별용 문자열 필드만 추출하여 검색합니다.
+  const identifierFields = [
+    accountData.no,
+    accountData.account,
+    accountData.nickname,
+    accountData.type,
+    accountData.bank,
+    accountData.group,
+    accountData.note,
+    accountData.label,
+  ].filter(Boolean).map(v => String(v));
+
+  const joinedRaw = identifierFields.join('|');
+  const joinedNormalized = joinedRaw.replace(/[\s-]/g, '');
+
+  // 퇴직연금신탁 / 특정 계좌번호 기반 마커
+  // ✅ 계좌번호 전체 패턴 사용 → 잔액 숫자와 충돌 없음
   const markers = [
     '퇴직연금신탁',
-    '71452',
-    '48252',
-    '10291017771452'
+    '10291017771452', // 퇴직연금 계좌 (컴포즈)
+    '10291016808252', // 특정금전신탁 계좌 (스마트팩토리 102-910168-08252)
+    '910168',         // 위 계좌의 고유 식별자
   ];
-  
-  return markers.some(m => rawData.includes(m) || normalized.includes(m));
+
+  return markers.some(m => joinedRaw.includes(m) || joinedNormalized.includes(m));
 };

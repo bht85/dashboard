@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Layout from './components/layout/Layout';
 import { db, auth } from './firebase';
-import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy } from 'firebase/firestore'; 
+import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy, writeBatch } from 'firebase/firestore'; 
 import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect } from 'react';
 import DashboardPage from './pages/DashboardPage';
@@ -18,6 +18,7 @@ import CashPLPage from './pages/CashPLPage';
 import LoanManagementPage from './pages/LoanManagementPage';
 import AuthPage from './pages/AuthPage';
 import ForeignReportPage from './pages/ForeignReportPage';
+import CostManagementPage from './pages/CostManagementPage';
 import CorporateCardPage from './pages/CorporateCardPage';
 import FXDepositStandalone from './pages/FXDepositStandalone';
 import * as XLSX from 'xlsx';
@@ -122,6 +123,9 @@ const App = () => {
   const [corpCardUsage, setCorpCardUsage] = useState([]); // 신규: 법인카드 사용 내역
   const [corpCardBudget, setCorpCardBudget] = useState([]); // 신규: 법인카드 예산
   const [fxDepositList, setFxDepositList] = useState([]); // 신규: 외화입금리스트
+  const [inventoryReceipts, setInventoryReceipts] = useState([]); // 신규: 입고 기록 (FIFO 로트)
+  const [monthlyInventoryData, setMonthlyInventoryData] = useState([]); // 신규: 월별 재고 현황
+  const [costSettings, setCostSettings] = useState({}); // 신규: 원가관리 설정
 
   // --- Real-time Firestore Sync ---
   useEffect(() => {
@@ -139,8 +143,10 @@ const App = () => {
       const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       setComposeAccounts(data.filter(a => {
           if (!a) return false;
-          const vals = Object.values(a).map(v => String(v).replace(/[\s-]/g, ''));
-          const isPension = vals.some(v => v.includes('퇴직연금신탁') || v.includes('71452') || v.includes('48252') || v.includes('10291017771452'));
+          // ⚠️ 식별 필드만 검색 (잔액 등 숫자 필드 제외 → 오탐지 방지)
+          const idStr = [a.no, a.type, a.nickname, a.bank, a.label, a.note]
+            .filter(Boolean).map(v => String(v).replace(/[\s-]/g, '')).join('|');
+          const isPension = idStr.includes('퇴직연금신탁') || idStr.includes('10291017771452') || idStr.includes('10291016808252') || idStr.includes('910168');
           return !isPension;
       }));
     }, logAndHandle("composeAccounts"));
@@ -149,8 +155,10 @@ const App = () => {
       const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       setSmartAccounts(data.filter(a => {
           if (!a) return false;
-          const vals = Object.values(a).map(v => String(v).replace(/[\s-]/g, ''));
-          const isPension = vals.some(v => v.includes('퇴직연금신탁') || v.includes('71452') || v.includes('48252') || v.includes('10291017771452'));
+          // ⚠️ 식별 필드만 검색 (잔액 등 숫자 필드 제외 → 오탐지 방지)
+          const idStr = [a.no, a.type, a.nickname, a.bank, a.label, a.note]
+            .filter(Boolean).map(v => String(v).replace(/[\s-]/g, '')).join('|');
+          const isPension = idStr.includes('퇴직연금신탁') || idStr.includes('10291017771452') || idStr.includes('10291016808252') || idStr.includes('910168');
           return !isPension;
       }));
     }, logAndHandle("smartAccounts"));
@@ -213,6 +221,24 @@ const App = () => {
         setFxDepositList(data.sort((a,b) => (b.invoiceSubmitDate || '').localeCompare(a.invoiceSubmitDate || '')));
     }, logAndHandle("fxDepositList"));
 
+    // 13. Inventory Receipts Sync (원가관리: 입고 기록)
+    const unsubInventoryReceipts = onSnapshot(collection(db, "inventoryReceipts"), (snapshot) => {
+        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        setInventoryReceipts(data.sort((a,b) => (a.receiptDate || '').localeCompare(b.receiptDate || '') || (a.lotNumber || 0) - (b.lotNumber || 0)));
+    }, logAndHandle("inventoryReceipts"));
+
+    // 14. Monthly Inventory Sync (원가관리: 월별 재고)
+    const unsubMonthlyInv = onSnapshot(collection(db, "monthlyInventory"), (snapshot) => {
+        setMonthlyInventoryData(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, logAndHandle("monthlyInventory"));
+
+    // 15. Cost Settings Sync (원가관리: 설정)
+    const unsubCostSettings = onSnapshot(collection(db, "costSettings"), (snapshot) => {
+        if (snapshot.docs.length > 0) {
+            setCostSettings({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
+        }
+    }, logAndHandle("costSettings"));
+
     // 11. Corporate Card Usage Sync
     const unsubCorpUsage = onSnapshot(collection(db, "corpCardUsage"), (snapshot) => {
         setCorpCardUsage(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -237,9 +263,11 @@ const App = () => {
             // Apply THE MOST aggressive filter right here
             data.details = data.details.filter(item => {
                 if (!item) return false;
-                // Double redundant check to be absolutely sure
-                const entries = Object.values(item).map(v => String(v).replace(/[\s-]/g, ''));
-                const isPension = entries.some(v => v.includes('퇴직연금신탁') || v.includes('71452') || v.includes('48252') || v.includes('10291017771452'));
+                // ⚠️ 식별 필드만 검색해야 합니다 (잔액 등 숫자 필드가 마커와 충돌하면 오탐지 발생)
+                // Object.values 전체 검색 → 계좌 식별 필드만 검색으로 변경
+                const idStr = [item.account, item.nickname, item.type, item.bank, item.no, item.group]
+                  .filter(Boolean).map(v => String(v).replace(/[\s-]/g, '')).join('|');
+                const isPension = idStr.includes('퇴직연금신탁') || idStr.includes('10291017771452') || idStr.includes('10291016808252') || idStr.includes('910168');
                 return !isPension;
             });
             
@@ -254,7 +282,7 @@ const App = () => {
         setDailyStatuses(statuses);
     }, logAndHandle("dailyStatuses"));
 
-    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); unsubCashFlow(); unsubFXExchange(); unsubLoans(); unsubCoffee(); unsubContracts(); unsubFXDeposit(); unsubCorpUsage(); unsubCorpBudget(); };
+    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); unsubCashFlow(); unsubFXExchange(); unsubLoans(); unsubCoffee(); unsubContracts(); unsubFXDeposit(); unsubCorpUsage(); unsubCorpBudget(); unsubInventoryReceipts(); unsubMonthlyInv(); unsubCostSettings(); };
   }, [user]);
 
   // --- Firestore Update Wrappers ---
@@ -490,6 +518,73 @@ const App = () => {
     await setDoc(doc(collection(db, "dailyIssues"), date), { 
       content, 
       updatedAt: new Date().toISOString() 
+    });
+  };
+
+  // --- 원가관리 CRUD ---
+  const updateInventoryReceipt = async (data) => {
+    const docId = data.id ? String(data.id) : Date.now().toString();
+    console.log(`Updating Inventory Receipt: ${docId}`);
+    await setDoc(doc(collection(db, "inventoryReceipts"), docId), {
+      ...data,
+      id: docId,
+      updatedAt: new Date().toISOString()
+    });
+  };
+
+  const deleteInventoryReceipt = async (id) => {
+    if (!id) return;
+    console.log(`Deleting Inventory Receipt: ${id}`);
+    await deleteDoc(doc(collection(db, "inventoryReceipts"), String(id)));
+  };
+
+  const bulkAddInventoryReceipts = async (receipts) => {
+    try {
+      const CHUNK_SIZE = 400; // 500 limit, keep it safe at 400
+      for (let i = 0; i < receipts.length; i += CHUNK_SIZE) {
+        const chunk = receipts.slice(i, i + CHUNK_SIZE);
+        const batch = writeBatch(db);
+        chunk.forEach((data) => {
+          const docId = data.id ? String(data.id) : Date.now().toString() + Math.random().toString(36).substr(2, 5);
+          const docRef = doc(collection(db, "inventoryReceipts"), docId);
+          batch.set(docRef, {
+            ...data,
+            id: docId,
+            updatedAt: new Date().toISOString()
+          });
+        });
+        await batch.commit();
+        console.log(`Successfully committed chunk of ${chunk.length} receipts`);
+      }
+      console.log(`Bulk added ${receipts.length} total inventory receipts`);
+    } catch (error) {
+      console.error("Error bulk adding inventory receipts:", error);
+      throw error;
+    }
+  };
+
+  const updateMonthlyInventory = async (data) => {
+    const docId = data.id ? String(data.id) : `${data.month}_${data.category}_${data.itemName}`;
+    console.log(`Updating Monthly Inventory: ${docId}`);
+    await setDoc(doc(collection(db, "monthlyInventory"), docId), {
+      ...data,
+      id: docId,
+      updatedAt: new Date().toISOString()
+    });
+  };
+
+  const deleteMonthlyInventory = async (id) => {
+    if (!id) return;
+    console.log(`Deleting Monthly Inventory: ${id}`);
+    await deleteDoc(doc(collection(db, "monthlyInventory"), String(id)));
+  };
+
+  const updateCostSettingsDoc = async (data) => {
+    const docId = data.id || 'default';
+    console.log(`Updating Cost Settings: ${docId}`);
+    await setDoc(doc(collection(db, "costSettings"), docId), {
+      ...data,
+      updatedAt: new Date().toISOString()
     });
   };
 
@@ -843,6 +938,23 @@ const App = () => {
           onUpdateBudget={updateCorpCardBudget}
           onBulkUpdateBudget={bulkUpdateCorpCardBudget}
           selectedDate={selectedDate}
+        />
+      )}
+
+      {currentView === 'costManagement' && (
+        <CostManagementPage
+          rawBeanContracts={rawBeanContracts}
+          inventoryReceipts={inventoryReceipts}
+          monthlyInventory={monthlyInventoryData}
+          costSettings={costSettings}
+          fxSchedule={fxSchedule}
+          exchangeRate={exchangeRate}
+          onUpdateReceipt={updateInventoryReceipt}
+          onDeleteReceipt={deleteInventoryReceipt}
+          onBulkAddReceipt={bulkAddInventoryReceipts}
+          onUpdateMonthlyInventory={updateMonthlyInventory}
+          onDeleteMonthlyInventory={deleteMonthlyInventory}
+          onUpdateCostSettings={updateCostSettingsDoc}
         />
       )}
 
