@@ -146,7 +146,7 @@ const App = () => {
           // ⚠️ 식별 필드만 검색 (잔액 등 숫자 필드 제외 → 오탐지 방지)
           const idStr = [a.no, a.type, a.nickname, a.bank, a.label, a.note]
             .filter(Boolean).map(v => String(v).replace(/[\s-]/g, '')).join('|');
-          const isPension = idStr.includes('퇴직연금신탁') || idStr.includes('10291017771452') || idStr.includes('10291016808252') || idStr.includes('910168');
+          const isPension = idStr.includes('퇴직연금신탁') || idStr.includes('10291017771452');
           return !isPension;
       }));
     }, logAndHandle("composeAccounts"));
@@ -158,7 +158,7 @@ const App = () => {
           // ⚠️ 식별 필드만 검색 (잔액 등 숫자 필드 제외 → 오탐지 방지)
           const idStr = [a.no, a.type, a.nickname, a.bank, a.label, a.note]
             .filter(Boolean).map(v => String(v).replace(/[\s-]/g, '')).join('|');
-          const isPension = idStr.includes('퇴직연금신탁') || idStr.includes('10291017771452') || idStr.includes('10291016808252') || idStr.includes('910168');
+          const isPension = idStr.includes('퇴직연금신탁') || idStr.includes('10291017771452');
           return !isPension;
       }));
     }, logAndHandle("smartAccounts"));
@@ -267,7 +267,7 @@ const App = () => {
                 // Object.values 전체 검색 → 계좌 식별 필드만 검색으로 변경
                 const idStr = [item.account, item.nickname, item.type, item.bank, item.no, item.group]
                   .filter(Boolean).map(v => String(v).replace(/[\s-]/g, '')).join('|');
-                const isPension = idStr.includes('퇴직연금신탁') || idStr.includes('10291017771452') || idStr.includes('10291016808252') || idStr.includes('910168');
+                const isPension = idStr.includes('퇴직연금신탁') || idStr.includes('10291017771452');
                 return !isPension;
             });
             

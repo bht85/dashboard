@@ -57,13 +57,11 @@ export const isExcludedAccount = (accountData) => {
   const joinedRaw = identifierFields.join('|');
   const joinedNormalized = joinedRaw.replace(/[\s-]/g, '');
 
-  // 퇴직연금신탁 / 특정 계좌번호 기반 마커
-  // ✅ 계좌번호 전체 패턴 사용 → 잔액 숫자와 충돌 없음
+  // 퇴직연금신탁 계좌만 제외 (계좌번호 전체 패턴 사용 → 잔액 숫자와 충돌 없음)
+  // ⚠️ 주의: 102-910168-08252 (특정금전신탁)은 정상 업로드 대상 계좌이므로 제외하지 않음
   const markers = [
     '퇴직연금신탁',
-    '10291017771452', // 퇴직연금 계좌 (컴포즈)
-    '10291016808252', // 특정금전신탁 계좌 (스마트팩토리 102-910168-08252)
-    '910168',         // 위 계좌의 고유 식별자
+    '10291017771452', // 퇴직연금신탁 계좌 (컴포즈)
   ];
 
   return markers.some(m => joinedRaw.includes(m) || joinedNormalized.includes(m));
