@@ -12,7 +12,8 @@ import {
   CalendarPlus,
   ListFilter,
   Landmark,
-  CreditCard
+  CreditCard,
+  Coffee
 } from 'lucide-react';
 
 const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView, user }) => {
@@ -27,6 +28,7 @@ const Sidebar = ({ isSidebarOpen, setIsSidebarOpen, currentView, setCurrentView,
     { id: 'loans', label: '금융 관리', icon: Landmark },
     { id: 'corpCard', label: '법인카드', icon: CreditCard },
     { id: 'foreign', label: '외화 송금', icon: Globe },
+    { id: 'costManagement', label: '원가관리', icon: Coffee },
     { id: 'accounts', label: '계좌 관리', icon: Settings },
     { id: 'cashStatus', label: '일일 자금 업로드', icon: Receipt },
   ];
