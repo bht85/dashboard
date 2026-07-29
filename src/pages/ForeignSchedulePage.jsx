@@ -84,6 +84,24 @@ const ForeignSchedulePage = ({
   };
   const [editingScheduleId, setEditingScheduleId] = useState(null);
   const [editScheduleData, setEditScheduleData] = useState({});
+
+  const handleEditScheduleClick = (item) => {
+    setEditingScheduleId(item.id);
+    setEditScheduleData({ ...item });
+  };
+
+  const handleEditScheduleChange = (e) => {
+    setEditScheduleData({ ...editScheduleData, [e.target.name]: e.target.value });
+  };
+
+  const handleEditScheduleSave = async () => {
+    await onUpdateSchedule({
+      ...editScheduleData,
+      amount: parseFloat(editScheduleData.amount) || 0
+    });
+    setEditingScheduleId(null);
+  };
+
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -392,7 +410,65 @@ const ForeignSchedulePage = ({
                   <tr><th className="px-8 py-4 border-r uppercase tracking-wider">지급예정일</th><th className="px-8 py-4 border-r uppercase tracking-wider">거래처</th><th className="px-8 py-4 border-r text-right uppercase tracking-wider">금액 (외화)</th><th className="px-8 py-4 border-r text-right text-indigo-600 uppercase tracking-wider">환산 금액 (KRW)</th><th className="px-8 py-4 border-r uppercase tracking-wider">상태</th><th className="px-8 py-4 text-center uppercase tracking-wider">작업</th></tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-600">
-                  {filteredSchedule.map(s => <tr key={s.id} className="hover:bg-slate-50 transition-all font-black text-slate-900"><td className="px-8 py-4 border-r">{s.date}</td><td className="px-8 py-4 border-r">{s.client}</td><td className="px-8 py-4 border-r text-right text-blue-600">{formatUSD(s.amount)}</td><td className="px-8 py-4 border-r text-right text-indigo-900 bg-indigo-50/10">{formatKRW(s.amount * exchangeRate)}</td><td className="px-8 py-4 border-r"><span className={`px-2 py-0.5 rounded-full text-[9px] ${s.status === '송금 완료(집행)' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>{s.status}</span></td><td className="px-8 py-4 text-center"><button onClick={() => onDeleteSchedule(s.id)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-4 h-4" /></button></td></tr>)}
+                  {filteredSchedule.map(s => {
+                    if (editingScheduleId === s.id) {
+                      return (
+                        <tr key={s.id} className="bg-indigo-50/50 transition-colors">
+                          <td className="px-4 py-2 border-r">
+                            <input type="date" name="date" value={editScheduleData.date} onChange={handleEditScheduleChange} className="w-full text-xs font-bold bg-white border border-slate-200 rounded px-2 py-1 outline-none" />
+                          </td>
+                          <td className="px-4 py-2 border-r">
+                            <input type="text" name="client" value={editScheduleData.client} onChange={handleEditScheduleChange} className="w-full text-xs font-bold bg-white border border-slate-200 rounded px-2 py-1 outline-none" />
+                          </td>
+                          <td className="px-4 py-2 border-r text-right">
+                            <input type="number" step="0.01" name="amount" value={editScheduleData.amount} onChange={handleEditScheduleChange} className="w-full text-xs font-mono font-bold text-right bg-white border border-slate-200 rounded px-2 py-1 outline-none" />
+                          </td>
+                          <td className="px-4 py-2 border-r text-right text-indigo-900 bg-indigo-50/10">
+                            {formatKRW((editScheduleData.amount || 0) * exchangeRate)}
+                          </td>
+                          <td className="px-4 py-2 border-r">
+                            <select name="status" value={editScheduleData.status} onChange={handleEditScheduleChange} className="w-full text-xs font-bold bg-white border border-slate-200 rounded px-2 py-1 outline-none">
+                              <option value="지출결의 미확인">지출결의 미확인</option>
+                              <option value="지출결의 확인">지출결의 확인</option>
+                              <option value="송금 완료(집행)">송금 완료(집행)</option>
+                            </select>
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button onClick={handleEditScheduleSave} className="p-1.5 text-white bg-indigo-500 hover:bg-indigo-600 rounded transition-colors" title="저장">
+                                <Check className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => setEditingScheduleId(null)} className="p-1.5 text-slate-500 bg-slate-200 hover:bg-slate-300 rounded transition-colors" title="취소">
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+
+                    return (
+                      <tr key={s.id} className="hover:bg-slate-50 transition-all font-black text-slate-900">
+                        <td className="px-8 py-4 border-r">{s.date}</td>
+                        <td className="px-8 py-4 border-r">{s.client}</td>
+                        <td className="px-8 py-4 border-r text-right text-blue-600">{formatUSD(s.amount)}</td>
+                        <td className="px-8 py-4 border-r text-right text-indigo-900 bg-indigo-50/10">{formatKRW(s.amount * exchangeRate)}</td>
+                        <td className="px-8 py-4 border-r">
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] ${s.status === '송금 완료(집행)' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>{s.status}</span>
+                        </td>
+                        <td className="px-8 py-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button onClick={() => handleEditScheduleClick(s)} className="p-2 text-slate-300 hover:text-indigo-600 transition-colors" title="수정">
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => onDeleteSchedule(s.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors" title="삭제">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
