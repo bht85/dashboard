@@ -179,6 +179,7 @@ const ForeignSchedulePage = ({
 
   const [showAllContracts, setShowAllContracts] = useState(false);
   const [selectedContractSupplierFilter, setSelectedContractSupplierFilter] = useState('ALL');
+  const [contractSort, setContractSort] = useState({ key: 'id', order: 'desc' });
 
   useEffect(() => {
     if (!showContractPicker) {
@@ -338,12 +339,31 @@ const ForeignSchedulePage = ({
   const filteredSchedule = fxSchedule.filter(s => s.date.startsWith(selectedMonth)).sort((a, b) => a.date.localeCompare(b.date));
   const filteredExchangeResults = (Array.isArray(exchangeResults) ? exchangeResults : []).filter(e => e.date.startsWith(selectedMonth));
 
-  const displayContracts = showAllContracts 
-    ? [...rawBeanContracts].sort((a, b) => b.id - a.id)
+  const sortContracts = (contracts) => {
+    return [...contracts].sort((a, b) => {
+      if (contractSort.key === 'payment') {
+        const dateA = `${a.paymentYear}-${String(a.paymentMonth).padStart(2, '0')}`;
+        const dateB = `${b.paymentYear}-${String(b.paymentMonth).padStart(2, '0')}`;
+        if (dateA === dateB) return contractSort.order === 'asc' ? a.id - b.id : b.id - a.id;
+        return contractSort.order === 'asc' ? dateA.localeCompare(dateB) : dateB.localeCompare(dateA);
+      }
+      return contractSort.order === 'asc' ? a.id - b.id : b.id - a.id;
+    });
+  };
+
+  const displayContracts = sortContracts(showAllContracts 
+    ? rawBeanContracts
     : rawBeanContracts.filter(c => {
         const paymentDate = `${c.paymentYear}-${String(c.paymentMonth).padStart(2, '0')}`;
         return paymentDate >= selectedMonth;
-      }).sort((a, b) => b.id - a.id);
+      }));
+
+  const handleContractSort = (key) => {
+    setContractSort(prev => ({
+      key,
+      order: prev.key === key && prev.order === 'asc' ? 'desc' : 'asc'
+    }));
+  };
 
   return (
     <div className="animate-in slide-in-from-bottom-4 duration-500">
@@ -1004,7 +1024,15 @@ const ForeignSchedulePage = ({
                     <th className="px-8 py-5 border-r bg-white sticky left-[140px] z-20">Supplier</th>
                     <th className="px-8 py-5 border-r">Contract No.</th>
                     <th className="px-6 py-5 border-r text-center">Batch</th>
-                    <th className="px-6 py-5 border-r text-center">Payment</th>
+                    <th className="px-6 py-5 border-r text-center cursor-pointer hover:bg-slate-100 transition-colors select-none" onClick={() => handleContractSort('payment')}>
+                      <div className="flex items-center justify-center gap-1">
+                        Payment
+                        <div className="flex flex-col">
+                          <span className={`text-[8px] leading-[6px] ${contractSort.key === 'payment' && contractSort.order === 'asc' ? 'text-indigo-600' : 'text-slate-300'}`}>▲</span>
+                          <span className={`text-[8px] leading-[6px] ${contractSort.key === 'payment' && contractSort.order === 'desc' ? 'text-indigo-600' : 'text-slate-300'}`}>▼</span>
+                        </div>
+                      </div>
+                    </th>
                     <th className="px-8 py-5 border-r">Matches</th>
                     <th className="px-8 py-5 border-r text-center text-indigo-600 bg-indigo-50/20 font-black">Diff</th>
                     <th className="px-6 py-5 border-r text-center">Total Index</th>
