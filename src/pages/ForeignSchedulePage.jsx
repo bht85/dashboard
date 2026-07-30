@@ -177,7 +177,7 @@ const ForeignSchedulePage = ({
     year: '26', monthNumber: '04', price: '', isEditing: false, id: null
   });
 
-  const [contractPaymentFilter, setContractPaymentFilter] = useState('CURRENT_MONTH');
+  const [showAllContracts, setShowAllContracts] = useState(false);
   const [selectedContractSupplierFilter, setSelectedContractSupplierFilter] = useState('ALL');
   const [contractSort, setContractSort] = useState({ key: 'id', order: 'desc' });
 
@@ -351,20 +351,12 @@ const ForeignSchedulePage = ({
     });
   };
 
-  const displayContracts = sortContracts(rawBeanContracts.filter(c => {
-    if (contractPaymentFilter === 'ALL') return true;
-    
-    const paymentDate = `${c.paymentYear}-${String(c.paymentMonth).padStart(2, '0')}`;
-    const selectedYear = selectedMonth.split('-')[0];
-    
-    if (contractPaymentFilter === 'CURRENT_MONTH') {
-      return paymentDate === selectedMonth;
-    }
-    if (contractPaymentFilter === 'CURRENT_YEAR') {
-      return c.paymentYear === selectedYear;
-    }
-    return true;
-  }));
+  const displayContracts = sortContracts(showAllContracts 
+    ? rawBeanContracts
+    : rawBeanContracts.filter(c => {
+        const paymentDate = `${c.paymentYear}-${String(c.paymentMonth).padStart(2, '0')}`;
+        return paymentDate >= selectedMonth;
+      }));
 
   const handleContractSort = (key) => {
     setContractSort(prev => ({
@@ -1012,15 +1004,15 @@ const ForeignSchedulePage = ({
                     <List className="w-5 h-5 text-indigo-600" /> 등록된 생두 계약 히스토리
                 </h3>
                 <div className="flex items-center gap-6">
-                    <select
-                        value={contractPaymentFilter}
-                        onChange={(e) => setContractPaymentFilter(e.target.value)}
-                        className="text-xs font-black text-slate-600 bg-white border-2 border-slate-100 rounded-lg px-3 py-1.5 outline-none focus:border-indigo-500 transition-colors cursor-pointer shadow-sm"
-                    >
-                        <option value="CURRENT_MONTH">조회월 ({selectedMonth})</option>
-                        <option value="CURRENT_YEAR">조회연도 ({selectedMonth.split('-')[0]}년 전체)</option>
-                        <option value="ALL">전체 내역</option>
-                    </select>
+                    <label className="flex items-center gap-2 cursor-pointer group">
+                        <input 
+                            type="checkbox" 
+                            checked={showAllContracts} 
+                            onChange={(e) => setShowAllContracts(e.target.checked)}
+                            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-all cursor-pointer"
+                        />
+                        <span className="text-[10px] font-black text-slate-400 group-hover:text-indigo-600 transition-colors uppercase tracking-wider">전체 히스토리 보기</span>
+                    </label>
                     <span className="text-[10px] font-black text-slate-300">Total {displayContracts.length} Transactions</span>
                 </div>
             </div>

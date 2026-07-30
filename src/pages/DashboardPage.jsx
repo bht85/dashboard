@@ -137,16 +137,21 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
       };
     } else {
       // 예측(Projection) 모드: 전일 종가 기반으로 오늘 지출 및 내부 유입 반영
-      const accountWithdrawals = dailyWithdrawals.filter(w => 
-        String(w.fromAccount || '').replace(/[^0-9]/g, '') === String(d.account).replace(/[^0-9]/g, '')
-      );
+      const accountWithdrawals = dailyWithdrawals.filter(w => {
+        const isSameAccount = String(w.fromAccount || '').replace(/[^0-9]/g, '') === String(d.account).replace(/[^0-9]/g, '');
+        const wCurrency = w.currency || (w.isUSD ? 'USD' : 'KRW');
+        const dCurrency = d.currency || 'KRW';
+        return isSameAccount && wCurrency === dCurrency;
+      });
       const todayWithdrawSum = accountWithdrawals.reduce((sum, w) => sum + w.amount, 0);
       
       // 내부 입금(송입) 계산: 받는 사람 계좌(toAccount)가 현재 내 계좌(d.account)와 일치하는 내부 거래
       const accountInflows = dailyWithdrawals.filter(w => {
         const normalizedTo = String(w.account || w.toAccount || '').replace(/[^0-9]/g, '');
         const normalizedMine = String(d.account).replace(/[^0-9]/g, '');
-        return normalizedTo === normalizedMine && checkIsInternal(w);
+        const wCurrency = w.currency || (w.isUSD ? 'USD' : 'KRW');
+        const dCurrency = d.currency || 'KRW';
+        return normalizedTo === normalizedMine && checkIsInternal(w) && wCurrency === dCurrency;
       });
       const todayInflowSum = accountInflows.reduce((sum, w) => sum + w.amount, 0);
       
