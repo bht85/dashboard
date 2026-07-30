@@ -50,15 +50,16 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   };
   
   // 1. 해당 날짜 또는 가장 최근 과거의 시재 현황 데이터 추출 (Running Balance 기반)
-  const getBaseStatus = () => {
-    // 1순위: 선택한 날짜의 확정 데이터가 있으면 그대로 사용
-    if (dailyStatuses[selectedDate]) {
-      return { status: dailyStatuses[selectedDate], isFinal: true, sourceDate: selectedDate };
+  const getBaseStatusForEntity = (entityKeyword) => {
+    // 1순위: 선택한 날짜에 해당 법인의 확정 데이터가 있으면 그대로 사용
+    const currentStatus = dailyStatuses[selectedDate];
+    if (currentStatus && currentStatus.details && currentStatus.details.some(d => d.entity.includes(entityKeyword))) {
+      return { status: currentStatus, isFinal: true, sourceDate: selectedDate };
     }
     
-    // 2순위: 선택한 날짜 이전의 가장 최신 시재를 찾아 시작점으로 삼음 (Projection 모드)
+    // 2순위: 선택한 날짜 이전의 가장 최신 시재(해당 법인 데이터 포함)를 찾아 시작점으로 삼음 (Projection 모드)
     const pastDates = Object.keys(dailyStatuses)
-      .filter(d => d < selectedDate)
+      .filter(d => d < selectedDate && dailyStatuses[d] && dailyStatuses[d].details && dailyStatuses[d].details.some(item => item.entity.includes(entityKeyword)))
       .sort((a, b) => b.localeCompare(a));
       
     if (pastDates.length > 0) {
@@ -68,36 +69,48 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
     return { status: null, isFinal: false, sourceDate: null };
   };
 
-  const { status: baseStatus, isFinal, sourceDate } = getBaseStatus();
-  const statusDetails = (baseStatus?.details || []).filter(d => !isExcludedAccount(d));
+  const composeBase = getBaseStatusForEntity('컴포즈');
+  const smartBase = getBaseStatusForEntity('스마트');
 
-  // --- 계좌 중복 제거 로직 (동일 계좌번호 + 통화가 여러 행일 경우 합산) ---
-  const deduplicatedStatusDetails = Object.values(statusDetails.reduce((acc, d) => {
-    const accNo = String(d.account).replace(/[^0-9]/g, '');
-    const currency = d.currency || 'KRW';
-    const key = `${accNo}_${currency}`;
-    
-    if (!acc[key]) {
-      acc[key] = { ...d };
-    } else {
-      // 이미 존재하는 계좌면 잔액 및 입출금액 합산
-      acc[key].totalBalance = (acc[key].totalBalance || 0) + (d.totalBalance || 0);
-      acc[key].prevBalance = (acc[key].prevBalance || 0) + (d.prevBalance || 0);
-      acc[key].deposits = (acc[key].deposits || 0) + (d.deposits || 0);
-      acc[key].withdrawals = (acc[key].withdrawals || 0) + (d.withdrawals || 0);
-    }
-    return acc;
-  }, {}));
+  // 공통 isFinal은 화면 상단 프린트나 기타 조건부 렌더링용으로 (하나라도 확정되어 있으면 true)
+  const isFinal = composeBase.isFinal || smartBase.isFinal;
+  // sourceDate (이전일)
+  const sourceDate = composeBase.sourceDate || smartBase.sourceDate;
+
+  const getDeduplicatedDetails = (statusDetails) => {
+    return Object.values(statusDetails.reduce((acc, d) => {
+      const accNo = String(d.account).replace(/[^0-9]/g, '');
+      const currency = d.currency || 'KRW';
+      const key = `${accNo}_${currency}`;
+      
+      if (!acc[key]) {
+        acc[key] = { ...d };
+      } else {
+        // 이미 존재하는 계좌면 잔액 및 입출금액 합산
+        acc[key].totalBalance = (acc[key].totalBalance || 0) + (d.totalBalance || 0);
+        acc[key].prevBalance = (acc[key].prevBalance || 0) + (d.prevBalance || 0);
+        acc[key].deposits = (acc[key].deposits || 0) + (d.deposits || 0);
+        acc[key].withdrawals = (acc[key].withdrawals || 0) + (d.withdrawals || 0);
+      }
+      return acc;
+    }, {}));
+  };
+
+  const composeStatusDetails = (composeBase.status?.details || []).filter(d => !isExcludedAccount(d) && d.entity.includes('컴포즈'));
+  const deduplicatedComposeDetails = getDeduplicatedDetails(composeStatusDetails);
+  
+  const smartStatusDetails = (smartBase.status?.details || []).filter(d => !isExcludedAccount(d) && d.entity.includes('스마트'));
+  const deduplicatedSmartDetails = getDeduplicatedDetails(smartStatusDetails);
 
   // 2. 현재 선택된 날짜의 지출 내역 필터링 (Projection 및 로우 데이터용)
   const dailyWithdrawals = withdrawals.filter(w => w.paymentDate === selectedDate);
 
   // 엑셀 데이터를 테이블 형식으로 매핑하는 헬퍼
-  const mapStatusToAccount = (d) => {
+  const mapStatusToAccount = (d, entityIsFinal) => {
     const currency = d.currency || 'KRW';
     const isUSD = currency === 'USD';
 
-    if (isFinal) {
+    if (entityIsFinal) {
       // 확정 리포트 모드: 업로드된 수치 그대로 표시. 
       // 만약 엑셀 양식 문제로 입출금액이 0이지만 잔액이 변동되었다면 차액을 통해 입출금액을 역산하여 보정 (외화 계좌 대응)
       let finalWithdrawals = d.withdrawals || 0;
@@ -153,13 +166,13 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
   };
 
   // 법인별 데이터 필터링 및 매핑
-  const composeAccounts = (deduplicatedStatusDetails.length > 0 
-    ? deduplicatedStatusDetails.filter(d => d.entity.includes('컴포즈')).map(mapStatusToAccount)
+  const composeAccounts = (deduplicatedComposeDetails.length > 0 
+    ? deduplicatedComposeDetails.map(d => mapStatusToAccount(d, composeBase.isFinal))
     : masterCompose.filter(acc => !isExcludedAccount(acc)).map(a => ({ ...a, balance: 0, withdraw: 0, internal: 0, final: 0 }))
   ).filter(acc => acc.balance !== 0 || acc.withdraw !== 0 || acc.internal !== 0 || acc.final !== 0);
 
-  const smartAccounts = (deduplicatedStatusDetails.length > 0 
-    ? deduplicatedStatusDetails.filter(d => d.entity.includes('스마트')).map(mapStatusToAccount)
+  const smartAccounts = (deduplicatedSmartDetails.length > 0 
+    ? deduplicatedSmartDetails.map(d => mapStatusToAccount(d, smartBase.isFinal))
     : masterSmart.filter(acc => !isExcludedAccount(acc)).map(a => ({ ...a, balance: 0, withdraw: 0, internal: 0, final: 0 }))
   ).filter(acc => acc.balance !== 0 || acc.withdraw !== 0 || acc.internal !== 0 || acc.final !== 0);
 
@@ -453,12 +466,12 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
         {/* 1. 컴포즈커피 섹션 */}
         <section>
           <FinancialTable 
-            title={`1. 컴포즈커피 계좌 현황 (${isFinal ? '확정 리포트' : `기초 잔액: ${sourceDate || '없음'} 기반 예측치`})`} 
+            title={`1. 컴포즈커피 계좌 현황 (${composeBase.isFinal ? '확정 리포트' : `기초 잔액: ${composeBase.sourceDate || '없음'} 기반 예측치`})`} 
             accounts={composeAccounts} 
             totals={composeTotal} 
             icon={Building2} 
           />
-          {composeAccounts.length === 0 && !isFinal && (
+          {composeAccounts.length === 0 && !composeBase.isFinal && (
             <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center mb-6">
               <p className="text-slate-400 font-bold mb-2">시재 확정 내역이 없어 현재 실시간 대시보드가 활성화되지 않았습니다.</p>
               <p className="text-xs text-slate-300">[자금 시재 현황] 메뉴에서 전일 최종 시재를 업로드하시면 실시간 잔액 예측이 시작됩니다.</p>
@@ -476,7 +489,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
             </div>
             <div className="lg:col-span-2 bg-white border border-slate-200 rounded-lg p-5 flex flex-col justify-center">
               <h4 className="text-xs font-bold text-indigo-600 mb-3 flex items-center gap-2">
-                <FileText className="w-3.5 h-3.5 opacity-70" /> {isFinal ? '업로드된 세부 내역' : '금일 예정 지출 상세'}
+                <FileText className="w-3.5 h-3.5 opacity-70" /> {composeBase.isFinal ? '업로드된 세부 내역' : '금일 예정 지출 상세'}
               </h4>
               {composeWithdrawals.length > 0 ? (
                 <div className="space-y-3 overflow-y-auto pr-2" style={{ maxHeight: '310px' }}>
@@ -505,12 +518,12 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
         {/* 2. 스마트팩토리 섹션 */}
         <section>
           <FinancialTable 
-            title={`2. 스마트팩토리 계좌 현황 (${isFinal ? '확정 리포트' : `기초 잔액: ${sourceDate || '없음'} 기반 예측치`})`} 
+            title={`2. 스마트팩토리 계좌 현황 (${smartBase.isFinal ? '확정 리포트' : `기초 잔액: ${smartBase.sourceDate || '없음'} 기반 예측치`})`} 
             accounts={smartAccounts} 
             totals={smartTotal} 
             icon={Factory} 
           />
-          {smartAccounts.length === 0 && !isFinal && (
+          {smartAccounts.length === 0 && !smartBase.isFinal && (
             <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center mb-6">
               <p className="text-slate-400 font-bold mb-2">시재 확정 내역이 없어 현재 실시간 대시보드가 활성화되지 않았습니다.</p>
               <p className="text-xs text-slate-300">[자금 시재 현황] 메뉴에서 전일 최종 시재를 업로드하시면 실시간 잔액 예측이 시작됩니다.</p>
@@ -529,7 +542,7 @@ const DashboardPage = ({ selectedDate, composeAccounts: masterCompose, smartAcco
             
             <div className="lg:col-span-1 bg-white border border-slate-200 rounded-lg p-5 flex flex-col">
               <h4 className="text-xs font-bold text-emerald-600 mb-3 flex items-center gap-2">
-                <FileText className="w-3.5 h-3.5 opacity-70" /> {isFinal ? '업로드된 세부 내역' : '금일 예정 지출 상세'}
+                <FileText className="w-3.5 h-3.5 opacity-70" /> {smartBase.isFinal ? '업로드된 세부 내역' : '금일 예정 지출 상세'}
               </h4>
               {smartWithdrawals.length > 0 ? (
                 <div className="space-y-3 overflow-y-auto pr-2" style={{ maxHeight: '310px' }}>
