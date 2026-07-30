@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle2, AlertCircle, Database, ArrowRight, Loader2, Landmark, Calendar } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, Database, ArrowRight, Loader2, Landmark, Calendar, Trash2 } from 'lucide-react';
 import { formatKRW, formatUSD, isExcludedAccount } from '../utils/formatters';
 import * as XLSX from 'xlsx';
 
@@ -118,6 +118,30 @@ const CashStatusPage = ({
       }
     };
     reader.readAsBinaryString(file);
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`정말로 ${recordDate}의 ${activeEntity} 업로드 데이터를 삭제하시겠습니까?`)) return;
+
+    const currentStatus = dailyStatuses[recordDate];
+    if (!currentStatus) return;
+
+    // 1. 기존 데이터에서 현재 선택된 법인의 데이터만 제거
+    const otherDetails = (currentStatus.details || []).filter(d => 
+      !d.entity || !(d.entity.includes(activeEntity) || activeEntity.includes(d.entity))
+    );
+
+    const statusData = {
+      inflow: otherDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.deposits : 0), 0),
+      outflow: otherDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.withdrawals : 0), 0),
+      totalBalance: otherDetails.reduce((s, i) => s + (i.currency === 'KRW' ? i.totalBalance : 0), 0),
+      netChange: otherDetails.reduce((s, i) => s + (i.currency === 'KRW' ? (i.deposits - i.withdrawals) : 0), 0),
+      details: otherDetails
+    };
+
+    // DB worker call (App.jsx -> saveDailyStatus)
+    await setDailyStatuses(recordDate, statusData);
+    alert(`${recordDate}의 ${activeEntity} 데이터가 삭제되었습니다.`);
   };
 
   const handleSave = async () => {
@@ -307,9 +331,18 @@ const CashStatusPage = ({
                   </div>
                 </div>
               ) : (
-                <div className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-indigo-100 flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
-                  Finalized Data
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={handleDelete}
+                    className="flex items-center gap-1.5 text-rose-500 hover:text-rose-600 hover:bg-rose-50 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors border border-transparent hover:border-rose-100"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    현재 법인 데이터 삭제
+                  </button>
+                  <div className="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border border-indigo-100 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
+                    Finalized Data
+                  </div>
                 </div>
               )}
             </div>
