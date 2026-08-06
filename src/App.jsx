@@ -814,7 +814,7 @@ const App = () => {
           exchangeRateJPY={exchangeRateJPY}
         />
       )}
-      {currentView === 'accountMapping' && (['jiin0723@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email?.toLowerCase()) ? (
+      {currentView === 'accountMapping' && (['ds.jang@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email?.toLowerCase()) ? (
         <AccountMappingPage 
           withdrawals={withdrawals}
           selectedDate={selectedDate}
@@ -867,7 +867,7 @@ const App = () => {
         />
       )}
       {/* Simulation & Event (Restricted Access) */}
-      {currentView === 'cashFlow' && (['jiin0723@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email?.toLowerCase()) ? (
+      {currentView === 'cashFlow' && (['ds.jang@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email?.toLowerCase()) ? (
         <CashFlowPage 
           cashFlowSchedules={cashFlowSchedules}
           onUpdateSchedule={updateCashFlowSchedule}
@@ -879,7 +879,7 @@ const App = () => {
         />
       ) : <div className="p-20 text-center font-black text-slate-400">접근 권한이 없습니다. (Test Period)</div>)}
       
-      {currentView === 'loans' && (['jiin0723@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email?.toLowerCase()) ? (
+      {currentView === 'loans' && (['ds.jang@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email?.toLowerCase()) ? (
         <LoanManagementPage 
           loans={loans}
           onUpdateLoan={updateLoan}
@@ -890,7 +890,7 @@ const App = () => {
         />
       ) : <div className="p-20 text-center font-black text-slate-400">접근 권한이 없습니다. (Test Period)</div>)}
       
-      {currentView === 'cashEvent' && (['jiin0723@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email?.toLowerCase()) ? (
+      {currentView === 'cashEvent' && (['ds.jang@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email?.toLowerCase()) ? (
         <CashEventPage 
           cashFlowSchedules={cashFlowSchedules}
           onUpdateSchedule={updateCashFlowSchedule}
@@ -900,7 +900,7 @@ const App = () => {
         />
       ) : <div className="p-20 text-center font-black text-slate-400">접근 권한이 없습니다. (Test Period)</div>)}
 
-      {currentView === 'cashPL' && (['jiin0723@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email?.toLowerCase()) ? (
+      {currentView === 'cashPL' && (['ds.jang@composecoffee.co.kr', 'kth@composecoffee.co.kr', 'choihy@composecoffee.co.kr'].includes(user?.email?.toLowerCase()) ? (
         <CashPLPage
           withdrawals={withdrawals}
           dailyStatuses={dailyStatuses}
