@@ -13,7 +13,8 @@ const ALLOWED_EMAILS = [
   'kth@composecoffee.co.kr',
   'choihy@composecoffee.co.kr',
   'daisy@composecoffee.co.kr',
-  'smin@composecoffee.co.kr'
+  'smin@composecoffee.co.kr',
+  'lee_mh@composecoffee.co.kr'
 ];
 
 const AuthPage = () => {
@@ -32,7 +33,8 @@ const AuthPage = () => {
     setLoading(true);
 
     // Whitelist check
-    if (!ALLOWED_EMAILS.includes(email.toLowerCase())) {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!ALLOWED_EMAILS.includes(cleanEmail)) {
         if (!isLogin) {
             setError('등록된 아이디만 회원 가입이 가능합니다.');
         } else {
@@ -42,12 +44,11 @@ const AuthPage = () => {
         return;
     }
 
-
     try {
       if (isLogin) {
-        await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, email.trim(), password);
       } else {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
         await updateProfile(userCredential.user, { displayName });
       }
     } catch (err) {
