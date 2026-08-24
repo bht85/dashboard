@@ -14,7 +14,8 @@ const ALLOWED_EMAILS = [
   'choihy@composecoffee.co.kr',
   'daisy@composecoffee.co.kr',
   'smin@composecoffee.co.kr',
-  'lee_mh@composecoffee.co.kr'
+  'lee_mh@composecoffee.co.kr',
+  'chois1314@composecoffee.co.kr'
 ];
 
 const AuthPage = () => {
