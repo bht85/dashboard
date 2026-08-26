@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { formatUSD, formatKRW, formatForeign } from '../utils/formatters';
-import { Printer, ChevronLeft, Calendar, ArrowRightLeft, Package } from 'lucide-react';
+import { Printer, ChevronLeft, Calendar, ArrowRightLeft, Package, Activity } from 'lucide-react';
 
 const ForeignReportPage = ({ 
   selectedMonth,
@@ -331,6 +331,12 @@ const ForeignReportPage = ({
             className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'beans' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
             <Package className="w-3.5 h-3.5 text-indigo-500" /> 생두 계약 보고서
+          </button>
+          <button 
+            onClick={() => setActiveTab('variation')} 
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'variation' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          >
+            <Activity className="w-3.5 h-3.5 text-rose-500" /> 변동 분석 보고서
           </button>
         </div>
 
