@@ -202,10 +202,15 @@ const ForeignReportPage = ({
 
   const contractTotals = yearlyContracts.reduce((acc, c) => {
     let w = 0;
-    if (c.invoiceWeight !== undefined && c.invoiceWeight !== null) {
-        w = (c.invoiceWeight === '' || String(c.invoiceWeight).trim() === '') ? 0 : (Number(c.invoiceWeight) || 0);
+    const isCancelled = String(c.actualUSD || '').includes('양도') || String(c.actualUSD || '').includes('취소') || 
+                        String(c.actualKRW || '').includes('양도') || String(c.actualKRW || '').includes('취소');
+    
+    if (isCancelled) {
+        w = 0;
     } else {
-        w = Number(c.weight || 0);
+        const invoiceW = parseFloat(c.invoiceWeight);
+        const contractW = parseFloat(c.weight || 0) || 0;
+        w = (!isNaN(invoiceW) && invoiceW > 0) ? invoiceW : contractW;
     }
     
     // 취소된 계약(중량 0)은 집계에서 제외
