@@ -420,8 +420,8 @@ const ForeignSchedulePage = ({
     setShowCalc(false);
   };
 
-  const filteredSchedule = fxSchedule.filter(s => s.date.startsWith(selectedMonth)).sort((a, b) => a.date.localeCompare(b.date));
-  const filteredExchangeResults = (Array.isArray(exchangeResults) ? exchangeResults : []).filter(e => e.date.startsWith(selectedMonth));
+  const filteredSchedule = fxSchedule.filter(s => s.date && typeof s.date === 'string' && s.date.startsWith(selectedMonth)).sort((a, b) => a.date.localeCompare(b.date));
+  const filteredExchangeResults = (Array.isArray(exchangeResults) ? exchangeResults : []).filter(e => e.date && typeof e.date === 'string' && e.date.startsWith(selectedMonth));
 
   const sortContracts = (contracts) => {
     return [...contracts].sort((a, b) => {

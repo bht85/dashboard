@@ -17,7 +17,7 @@ const ForeignReportPage = ({
   onUpdateSnapshotDate
 }) => {
   const [activeTab, setActiveTab] = useState(defaultTab); // 'schedule', 'exchange', or 'beans'
-  const [year, month] = selectedMonth.split('-');
+  const [year, month] = (typeof selectedMonth === 'string' && selectedMonth.includes('-') ? selectedMonth : new Date().toISOString().substring(0, 7)).split('-');
   const [selectedCurrIndex, setSelectedCurrIndex] = useState(0);
   const [selectedPrevIndex, setSelectedPrevIndex] = useState(-1);
 
