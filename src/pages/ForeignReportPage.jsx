@@ -65,8 +65,9 @@ const ForeignReportPage = ({
       acc[key].weight += w;
       acc[key].usd += usdAmount;
       acc[key].krw += krwAmount;
-      if (!curr.isFixedPrice) {
-        acc[key].indexSum += parseFloat(curr.index) || 0;
+      const idxVal = parseFloat(curr.index);
+      if (!isNaN(idxVal) && idxVal > 0) {
+        acc[key].indexSum += idxVal;
         acc[key].count += 1;
       }
       return acc;
@@ -79,7 +80,7 @@ const ForeignReportPage = ({
     const d = new Date(iso);
     return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 기준`;
   };
-  const currDateStr = latestSnapshots[0] ? formatSnapDate(latestSnapshots[0].createdAt) : '현재 데이터';
+  const currDateStr = latestSnapshots[0] ? formatSnapDate(latestSnapshots[0].createdAt) : formatSnapDate(new Date().toISOString());
   const prevDateStr = latestSnapshots[1] ? formatSnapDate(latestSnapshots[1].createdAt) : '비교 대상 없음(1회차)';
   
   const currentAgg = aggregateBeans(currentSnapData);
@@ -793,7 +794,7 @@ const ForeignReportPage = ({
                         <table className="w-full text-xs text-left">
                             <thead className="bg-slate-100 border-b-2 border-slate-900 font-black text-slate-800 text-[10px]">
                                 <tr>
-                                    <th className="px-3 py-2 border-r-2 border-slate-900 text-center">지급월</th>
+                                    <th className="px-2 py-2 border-r-2 border-slate-900 text-center">월</th>
                                     <th className="px-3 py-2 border-r border-slate-300 text-right">수량 (KG)</th>
                                     <th className="px-3 py-2 border-r border-slate-300 text-right">외화 합계 (USD)</th>
                                     <th className="px-3 py-2 border-r border-slate-300 text-right">원화 합계 (KRW)</th>
