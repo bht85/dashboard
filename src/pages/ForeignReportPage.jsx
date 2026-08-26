@@ -16,11 +16,13 @@ const ForeignReportPage = ({
 }) => {
   const [activeTab, setActiveTab] = useState(defaultTab); // 'schedule', 'exchange', or 'beans'
   const [year, month] = selectedMonth.split('-');
+  const [selectedCurrIndex, setSelectedCurrIndex] = useState(0);
+  const [selectedPrevIndex, setSelectedPrevIndex] = useState(1);
 
   // --- Beans Variation Logic ---
-  const latestSnapshots = [...rawBeanSnapshots].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 2);
-  const currentSnapData = latestSnapshots[0]?.data || rawBeanContracts || [];
-  const prevSnapData = latestSnapshots[1]?.data || [];
+  const sortedSnapshots = [...rawBeanSnapshots].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const currentSnapData = sortedSnapshots[selectedCurrIndex]?.data || rawBeanContracts || [];
+  const prevSnapData = sortedSnapshots[selectedPrevIndex]?.data || [];
 
   const aggregateBeans = (data) => {
     return data.reduce((acc, curr) => {
@@ -85,8 +87,8 @@ const ForeignReportPage = ({
     const d = new Date(iso);
     return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 기준`;
   };
-  const currDateStr = latestSnapshots[0] ? formatSnapDateShort(latestSnapshots[0].createdAt) : formatSnapDateShort(new Date().toISOString());
-  const prevDateStr = latestSnapshots[1] ? formatSnapDateShort(latestSnapshots[1].createdAt) : '비교 대상 없음';
+  const currDateStr = sortedSnapshots[selectedCurrIndex] ? formatSnapDateShort(sortedSnapshots[selectedCurrIndex].createdAt) : formatSnapDateShort(new Date().toISOString());
+  const prevDateStr = sortedSnapshots[selectedPrevIndex] ? formatSnapDateShort(sortedSnapshots[selectedPrevIndex].createdAt) : '비교 대상 없음';
   
   const currentAgg = aggregateBeans(currentSnapData);
   const prevAgg = aggregateBeans(prevSnapData);
@@ -802,8 +804,28 @@ const ForeignReportPage = ({
                            <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">1</span>
                            대금 지급월 기준 주간 변동 분석 (전주 대비)
                         </div>
-                        <div className="text-[11px] font-black bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 tracking-tight">
-                          <span className="text-rose-600">[{prevDateStr}]</span> vs <span className="text-indigo-600">[{currDateStr}]</span>
+                        <div className="flex items-center gap-2 text-[11px] font-black bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 tracking-tight">
+                          <select 
+                             value={selectedPrevIndex} 
+                             onChange={(e) => setSelectedPrevIndex(Number(e.target.value))}
+                             className="bg-transparent text-rose-600 outline-none cursor-pointer hover:bg-slate-200 rounded px-1 text-right print:appearance-none print:bg-transparent"
+                          >
+                             {sortedSnapshots.length === 0 && <option value={1}>비교 대상 없음</option>}
+                             {sortedSnapshots.map((s, i) => (
+                                 <option key={'p'+i} value={i}>[{formatSnapDateShort(s.createdAt)}]</option>
+                             ))}
+                          </select>
+                          <span>vs</span>
+                          <select 
+                             value={selectedCurrIndex} 
+                             onChange={(e) => setSelectedCurrIndex(Number(e.target.value))}
+                             className="bg-transparent text-indigo-600 outline-none cursor-pointer hover:bg-slate-200 rounded px-1 print:appearance-none print:bg-transparent"
+                          >
+                             {sortedSnapshots.length === 0 && <option value={0}>[{formatSnapDateShort(new Date().toISOString())}]</option>}
+                             {sortedSnapshots.map((s, i) => (
+                                 <option key={'c'+i} value={i}>[{formatSnapDateShort(s.createdAt)}]</option>
+                             ))}
+                          </select>
                         </div>
                     </h2>
                     <div className="border-2 border-slate-900 overflow-hidden">
