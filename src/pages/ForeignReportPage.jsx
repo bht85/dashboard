@@ -25,6 +25,7 @@ const ForeignReportPage = ({
   const prevSnapData = sortedSnapshots[selectedPrevIndex]?.data || [];
 
   const aggregateBeans = (data) => {
+    if (!Array.isArray(data)) return data || {}; // Already aggregated (compressed snapshot)
     return data.reduce((acc, curr) => {
       // Clean non-numeric characters (e.g. "2025년", "5월" -> "2025", "05")
       const rawYear = String(curr.paymentYear || new Date().getFullYear()).replace(/[^0-9]/g, '');

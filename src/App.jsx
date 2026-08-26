@@ -470,9 +470,40 @@ const App = () => {
       // 3. Save snapshot
       const createdAt = customDate ? new Date(customDate).toISOString() : new Date().toISOString();
       const snapshotId = Date.now().toString();
+      
+      // Compress snapshot to avoid 1MB Firestore limit
+      const aggregated = contracts.reduce((acc, curr) => {
+          const mStr = `${curr.paymentYear}-${String(curr.paymentMonth).padStart(2, '0')}`;
+          if (!acc[mStr]) acc[mStr] = { weight: 0, usd: 0, krw: 0, indexSum: 0, count: 0 };
+          
+          if (curr.invoiceWeight === '' || String(curr.invoiceWeight).trim() === '') return acc;
+          const w = parseFloat(curr.invoiceWeight || curr.weight || 0);
+          
+          let usdAmount = parseFloat(curr.actualUSD);
+          let krwAmount = parseFloat(curr.actualKRW);
+          if (isNaN(usdAmount) || usdAmount === 0) {
+              const unitPrice = curr.isFixedPrice ? (parseFloat(curr.fixedPrice) || 0) : ((parseFloat(curr.index) || 0) + (parseFloat(curr.differential) || 0)) * 22.046 / 1000;
+              usdAmount = w * unitPrice;
+          }
+          if (isNaN(krwAmount) || krwAmount === 0) {
+              krwAmount = usdAmount * parseFloat(curr.planExchangeRate || 1450);
+          }
+          acc[mStr].weight += w;
+          acc[mStr].usd += usdAmount;
+          acc[mStr].krw += krwAmount;
+          
+          const idxVal = parseFloat(curr.index);
+          if (!isNaN(idxVal) && idxVal > 0) {
+            acc[mStr].indexSum += idxVal;
+            acc[mStr].count += 1;
+          }
+          return acc;
+      }, {});
+
       await setDoc(doc(collection(db, "rawBeanSnapshots"), snapshotId), {
          createdAt,
-         data: contracts
+         data: aggregated,
+         isAggregated: true
       });
     } catch (error) {
       console.error("Batch update error:", error);
