@@ -7,6 +7,7 @@ const ForeignReportPage = ({
   fxSchedule = [],
   exchangeResults = [],
   rawBeanContracts = [],
+  rawBeanSnapshots = [],
   exchangeRate = 1450,
   exchangeRateEUR = 1580,
   exchangeRateJPY = 10,
@@ -15,6 +16,45 @@ const ForeignReportPage = ({
 }) => {
   const [activeTab, setActiveTab] = useState(defaultTab); // 'schedule', 'exchange', or 'beans'
   const [year, month] = selectedMonth.split('-');
+
+  // --- Beans Variation Logic ---
+  const latestSnapshots = [...rawBeanSnapshots].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 2);
+  const currentSnapData = latestSnapshots[0]?.data || rawBeanContracts || [];
+  const prevSnapData = latestSnapshots[1]?.data || [];
+
+  const aggregateBeans = (data) => {
+    return data.reduce((acc, curr) => {
+      const pYear = curr.paymentYear || String(new Date().getFullYear());
+      const pMonth = curr.paymentMonth ? String(curr.paymentMonth).padStart(2, '0') : '01';
+      const key = pYear + '-' + pMonth;
+      if (!acc[key]) acc[key] = { weight: 0, usd: 0, krw: 0, indexSum: 0, count: 0 };
+      
+      const w = parseFloat(curr.weight) || 0;
+      let unitPrice = 0;
+      if (curr.isFixedPrice) {
+        unitPrice = parseFloat(curr.fixedPrice) || 0;
+      } else {
+        unitPrice = ((parseFloat(curr.index) || 0) + (parseFloat(curr.differential) || 0)) * 22.046 / 1000;
+      }
+      
+      const usdAmount = w * unitPrice;
+      const krwAmount = usdAmount * parseFloat(curr.planExchangeRate || exchangeRate);
+
+      acc[key].weight += w;
+      acc[key].usd += usdAmount;
+      acc[key].krw += krwAmount;
+      if (!curr.isFixedPrice) {
+        acc[key].indexSum += parseFloat(curr.index) || 0;
+        acc[key].count += 1;
+      }
+      return acc;
+    }, {});
+  };
+
+  const currentAgg = aggregateBeans(currentSnapData);
+  const prevAgg = aggregateBeans(prevSnapData);
+  const allBeanMonths = Array.from(new Set([...Object.keys(currentAgg), ...Object.keys(prevAgg)])).sort();
+
   const formattedMonth = `${year}년 ${month}월`;
   const formattedYear = `${year}년도`;
 
@@ -663,6 +703,81 @@ const ForeignReportPage = ({
                                 ) : (
                                     <tr>
                                         <td colSpan={14} className="px-2 py-8 text-center text-slate-300 font-bold italic">계약 내역이 없습니다.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+
+                {/* 2. 주간 변동 분석 */}
+                <section className="mb-10 print:break-before-page">
+                    <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                           <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span>
+                           대금 지급월 기준 주간 변동 분석 (전주 대비)
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-normal">
+                          기준: {latestSnapshots[0] ? new Date(latestSnapshots[0].createdAt).toLocaleDateString() : '최근'} vs {latestSnapshots[1] ? new Date(latestSnapshots[1].createdAt).toLocaleDateString() : '이전'}
+                        </div>
+                    </h2>
+                    <div className="border-2 border-slate-900 overflow-hidden">
+                        <table className="w-full text-xs text-left">
+                            <thead className="bg-slate-100 border-b-2 border-slate-900 font-black text-slate-800 text-[10px]">
+                                <tr>
+                                    <th className="px-3 py-2 border-r-2 border-slate-900 text-center">지급월</th>
+                                    <th className="px-3 py-2 border-r border-slate-300 text-right">수량 (KG)</th>
+                                    <th className="px-3 py-2 border-r border-slate-300 text-right">외화 합계 (USD)</th>
+                                    <th className="px-3 py-2 border-r border-slate-300 text-right">원화 합계 (KRW)</th>
+                                    <th className="px-3 py-2 text-right">평균 커피지수 (C/LB)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {allBeanMonths.length > 0 ? allBeanMonths.map(mStr => {
+                                    const c = currentAgg[mStr] || { weight: 0, usd: 0, krw: 0, indexSum: 0, count: 0 };
+                                    const p = prevAgg[mStr] || { weight: 0, usd: 0, krw: 0, indexSum: 0, count: 0 };
+                                    
+                                    const diffWeight = c.weight - p.weight;
+                                    const diffUsd = c.usd - p.usd;
+                                    const diffKrw = c.krw - p.krw;
+                                    
+                                    const cAvgIdx = c.count > 0 ? (c.indexSum / c.count) : 0;
+                                    const pAvgIdx = p.count > 0 ? (p.indexSum / p.count) : 0;
+                                    const diffIdx = cAvgIdx - pAvgIdx;
+
+                                    const renderDiff = (val, isIdx = false) => {
+                                        if (Math.abs(val) < 0.01) return <span className="text-slate-300 ml-2 text-[9px]">-</span>;
+                                        const sign = val > 0 ? '▲' : '▼';
+                                        const color = val > 0 ? 'text-rose-600' : 'text-blue-600';
+                                        const vStr = isIdx ? Math.abs(val).toFixed(2) : Math.abs(Math.round(val)).toLocaleString();
+                                        return <span className={`ml-2 text-[9px] font-black ${color}`}>{sign} {vStr}</span>;
+                                    };
+
+                                    return (
+                                        <tr key={mStr} className="border-b border-slate-200 hover:bg-slate-50">
+                                            <td className="px-3 py-2 border-r-2 border-slate-900 text-center font-bold text-slate-700">{mStr}</td>
+                                            <td className="px-3 py-2 border-r border-slate-300 text-right font-mono">
+                                                <span className="text-slate-900 font-bold">{Math.round(c.weight).toLocaleString()}</span>
+                                                {renderDiff(diffWeight)}
+                                            </td>
+                                            <td className="px-3 py-2 border-r border-slate-300 text-right font-mono">
+                                                <span className="text-slate-900 font-bold">{Math.round(c.usd).toLocaleString()}</span>
+                                                {renderDiff(diffUsd)}
+                                            </td>
+                                            <td className="px-3 py-2 border-r border-slate-300 text-right font-mono">
+                                                <span className="text-slate-900 font-bold">{Math.round(c.krw).toLocaleString()}</span>
+                                                {renderDiff(diffKrw)}
+                                            </td>
+                                            <td className="px-3 py-2 text-right font-mono">
+                                                <span className="text-slate-900 font-bold">{cAvgIdx > 0 ? cAvgIdx.toFixed(2) : '-'}</span>
+                                                {renderDiff(diffIdx, true)}
+                                            </td>
+                                        </tr>
+                                    );
+                                }) : (
+                                    <tr>
+                                        <td colSpan={5} className="px-3 py-8 text-center text-slate-400 font-bold italic">비교할 주간 변동 데이터가 없습니다.</td>
                                     </tr>
                                 )}
                             </tbody>

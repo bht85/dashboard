@@ -119,7 +119,8 @@ const App = () => {
   const [fxExchangeResults, setFxExchangeResults] = useState([]); // 신규: 외화 환전 결과 데이터
   const [loans, setLoans] = useState([]); // 신규: 금융 관리 (대여금) 데이터
   const [coffeeIndices, setCoffeeIndices] = useState([]); // 신규: 커피 지수(월물) 데이터
-  const [rawBeanContracts, setRawBeanContracts] = useState([]); // 신규: 생두 계약 데이터
+  const [rawBeanContracts, setRawBeanContracts] = useState([]);
+  const [rawBeanSnapshots, setRawBeanSnapshots] = useState([]); // 신규: 생두 계약 데이터
   const [corpCardUsage, setCorpCardUsage] = useState([]); // 신규: 법인카드 사용 내역
   const [corpCardBudget, setCorpCardBudget] = useState([]); // 신규: 법인카드 예산
   const [fxDepositList, setFxDepositList] = useState([]); // 신규: 외화입금리스트
@@ -859,6 +860,7 @@ const App = () => {
           onUpdateCoffeeIndex={updateCoffeeIndex}
           onDeleteCoffeeIndex={deleteCoffeeIndex}
           rawBeanContracts={rawBeanContracts}
+          rawBeanSnapshots={rawBeanSnapshots}
           onUpdateRawBeanContract={updateRawBeanContract}
           onDeleteRawBeanContract={deleteRawBeanContract}
           onBatchUpdateRawBeanContracts={batchUpdateRawBeanContracts}
