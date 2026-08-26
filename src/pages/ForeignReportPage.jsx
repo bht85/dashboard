@@ -24,8 +24,11 @@ const ForeignReportPage = ({
 
   const aggregateBeans = (data) => {
     return data.reduce((acc, curr) => {
-      const pYear = curr.paymentYear || String(new Date().getFullYear());
-      const pMonth = curr.paymentMonth ? String(curr.paymentMonth).padStart(2, '0') : '01';
+      // Clean non-numeric characters (e.g. "2025년", "5월" -> "2025", "05")
+      const rawYear = String(curr.paymentYear || new Date().getFullYear()).replace(/[^0-9]/g, '');
+      const rawMonth = String(curr.paymentMonth || '1').replace(/[^0-9]/g, '');
+      const pYear = rawYear.length === 4 ? rawYear : String(new Date().getFullYear());
+      const pMonth = rawMonth.padStart(2, '0');
       const key = pYear + '-' + pMonth;
       if (!acc[key]) acc[key] = { weight: 0, usd: 0, krw: 0, indexSum: 0, count: 0 };
       
@@ -62,7 +65,10 @@ const ForeignReportPage = ({
   
   const currentAgg = aggregateBeans(currentSnapData);
   const prevAgg = aggregateBeans(prevSnapData);
-  const allBeanMonths = Array.from(new Set([...Object.keys(currentAgg), ...Object.keys(prevAgg)])).sort();
+  // Filter by the currently selected year (e.g. '2026') so it doesn't show all years at once
+  const allBeanMonths = Array.from(new Set([...Object.keys(currentAgg), ...Object.keys(prevAgg)]))
+    .filter(k => k.startsWith(year + '-'))
+    .sort();
 
   const formattedMonth = `${year}년 ${month}월`;
   const formattedYear = `${year}년도`;
@@ -152,10 +158,14 @@ const ForeignReportPage = ({
   // --- 3. 생두 계약 데이터 처리 ---
   // 선택한 연도의 생두 계약만 필터링 (paymentYear 기준)
   const yearlyContracts = (Array.isArray(rawBeanContracts) ? rawBeanContracts : [])
-    .filter(c => c.paymentYear === year)
+    .filter(c => String(c.paymentYear || '').replace(/[^0-9]/g, '') === year)
     .sort((a, b) => {
-      const dateA = `${a.paymentYear}-${String(a.paymentMonth).padStart(2, '0')}`;
-      const dateB = `${b.paymentYear}-${String(b.paymentMonth).padStart(2, '0')}`;
+      const yA = String(a.paymentYear || '').replace(/[^0-9]/g, '');
+      const mA = String(a.paymentMonth || '1').replace(/[^0-9]/g, '').padStart(2, '0');
+      const yB = String(b.paymentYear || '').replace(/[^0-9]/g, '');
+      const mB = String(b.paymentMonth || '1').replace(/[^0-9]/g, '').padStart(2, '0');
+      const dateA = `${yA}-${mA}`;
+      const dateB = `${yB}-${mB}`;
       return dateA.localeCompare(dateB);
     });
 
@@ -189,7 +199,7 @@ const ForeignReportPage = ({
   yearlyContracts.forEach(c => {
     const origin = c.origin;
     if (!origin) return;
-    const monthNum = Number(c.paymentMonth);
+    const monthNum = Number(String(c.paymentMonth || '').replace(/[^0-9]/g, ''));
     if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) return;
     const mStr = String(monthNum).padStart(2, '0');
     
@@ -725,7 +735,7 @@ const ForeignReportPage = ({
                     <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                            <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span>
-                           대금 지급월 기준 주간 변동 분석 (전주 대비)
+                           대금 지급월 기준 주간 변동 분석 ({year}년도 전주 대비)
                         </div>
                         <div className="text-[11px] font-black bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 tracking-tight">
                           <span className="text-rose-600">[{prevDateStr}]</span> 대비 <span className="text-indigo-600">[{currDateStr}]</span> 변동 분석
