@@ -480,26 +480,33 @@ const App = () => {
           const mStr = `${curr.paymentYear}-${String(curr.paymentMonth).padStart(2, '0')}`;
           if (!acc[mStr]) acc[mStr] = { weight: 0, usd: 0, krw: 0, indexSum: 0, count: 0 };
           
-          // Use invoiceWeight if available and not empty, otherwise fallback to weight.
-          // If the user wants to completely exclude a contract (e.g. refund/transfer), they should set weight to 0 or delete the row.
-          const wStr = String(curr.invoiceWeight || '').trim();
-          let w = 0;
-          if (wStr !== '') {
-              w = parseFloat(wStr);
-          } else {
-              w = parseFloat(curr.weight || 0);
-          }
-          if (isNaN(w) || w === 0) return acc;
+          // invoiceWeight이 명시적으로 비어있는 경우 = 환불/양도로 제외된 계약 → 건너뜀
+          // invoiceWeight이 아예 없거나 정의 안 된 경우 = 계약수량(weight)으로 대체
+          const hasInvoiceWeightField = curr.invoiceWeight !== undefined && curr.invoiceWeight !== null;
+          if (hasInvoiceWeightField && String(curr.invoiceWeight).trim() === '') return acc;
           
-          let usdAmount = parseFloat(curr.actualUSD);
-          let krwAmount = parseFloat(curr.actualKRW);
-          if (isNaN(usdAmount) || usdAmount === 0) {
-              const unitPrice = curr.isFixedPrice ? (parseFloat(curr.fixedPrice) || 0) : ((parseFloat(curr.index) || 0) + (parseFloat(curr.differential) || 0)) * 22.046 / 1000;
+          // 수량 결정: invoiceWeight → weight 순으로 fallback
+          const w = parseFloat(curr.invoiceWeight || curr.weight || 0) || 0;
+          
+          // USD/KRW 결정: 실제 송금액 우선, 없으면 단가 × 수량으로 계산
+          let usdAmount = parseFloat(curr.actualUSD) || 0;
+          let krwAmount = parseFloat(curr.actualKRW) || 0;
+          
+          if (usdAmount === 0 && w > 0) {
+              const idx = parseFloat(curr.index) || 0;
+              const diff = parseFloat(curr.differential) || 0;
+              const unitPrice = curr.isFixedPrice
+                  ? (parseFloat(curr.fixedPrice) || 0)
+                  : (idx + diff) * 22.046 / 1000;
               usdAmount = w * unitPrice;
           }
-          if (isNaN(krwAmount) || krwAmount === 0) {
-              krwAmount = usdAmount * parseFloat(curr.planExchangeRate || 1450);
+          if (krwAmount === 0 && usdAmount > 0) {
+              krwAmount = usdAmount * (parseFloat(curr.planExchangeRate) || 1450);
           }
+          
+          // 수량도 0이고 금액도 0이면 건너뜀 (완전히 비어있는 행)
+          if (w === 0 && usdAmount === 0) return acc;
+          
           acc[mStr].weight += w;
           acc[mStr].usd += usdAmount;
           acc[mStr].krw += krwAmount;
