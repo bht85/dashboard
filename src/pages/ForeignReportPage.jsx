@@ -75,13 +75,18 @@ const ForeignReportPage = ({
   };
 
 
+  const formatSnapDateShort = (iso) => {
+    if(!iso) return null;
+    const d = new Date(iso);
+    return `${String(d.getFullYear()).slice(2)}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+  };
   const formatSnapDate = (iso) => {
     if(!iso) return null;
     const d = new Date(iso);
     return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 기준`;
   };
-  const currDateStr = latestSnapshots[0] ? formatSnapDate(latestSnapshots[0].createdAt) : formatSnapDate(new Date().toISOString());
-  const prevDateStr = latestSnapshots[1] ? formatSnapDate(latestSnapshots[1].createdAt) : '비교 대상 없음(1회차)';
+  const currDateStr = latestSnapshots[0] ? formatSnapDateShort(latestSnapshots[0].createdAt) : formatSnapDateShort(new Date().toISOString());
+  const prevDateStr = latestSnapshots[1] ? formatSnapDateShort(latestSnapshots[1].createdAt) : '비교 대상 없음';
   
   const currentAgg = aggregateBeans(currentSnapData);
   const prevAgg = aggregateBeans(prevSnapData);
@@ -784,10 +789,10 @@ const ForeignReportPage = ({
                     <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                            <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span>
-                           대금 지급월 기준 주간 변동 분석 ({year}년도 전주 대비)
+                           주간 변동 분석 (전주 대비)
                         </div>
                         <div className="text-[11px] font-black bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 tracking-tight">
-                          <span className="text-rose-600">[{prevDateStr}]</span> 대비 <span className="text-indigo-600">[{currDateStr}]</span> 변동 분석
+                          <span className="text-rose-600">[{prevDateStr}]</span> vs <span className="text-indigo-600">[{currDateStr}]</span>
                         </div>
                     </h2>
                     <div className="border-2 border-slate-900 overflow-hidden">
@@ -824,7 +829,7 @@ const ForeignReportPage = ({
 
                                     return (
                                         <tr key={mStr} className="border-b border-slate-200 hover:bg-slate-50">
-                                            <td className="px-3 py-2 border-r-2 border-slate-900 text-center font-bold text-slate-700">{mStr}</td>
+                                            <td className="px-3 py-2 border-r-2 border-slate-900 text-center font-bold text-slate-700">{parseInt(mStr.split('-')[1], 10)}월</td>
                                             <td className="px-3 py-2 border-r border-slate-300 text-right font-mono">
                                                 <span className="text-slate-900 font-bold">{Math.round(c.weight).toLocaleString()}</span>
                                                 {renderDiff(diffWeight)}
