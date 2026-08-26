@@ -387,10 +387,20 @@ const ForeignSchedulePage = ({
   };
 
   const loadContractToSchedule = (contract) => {
-    const unitPrice = contract.isFixedPrice 
-      ? parseFloat(contract.fixedPrice || 0)
-      : (parseFloat(contract.index || 0) + parseFloat(contract.differential || 0)) * 22.046 / 1000;
-    const amountUSD = unitPrice * parseFloat(contract.weight || 0);
+    let amountUSD = parseFloat(contract.actualUSD);
+    if (isNaN(amountUSD) || amountUSD === 0) {
+        let weight = 0;
+        if (contract.invoiceWeight !== undefined && contract.invoiceWeight !== null) {
+            weight = (contract.invoiceWeight === '' || String(contract.invoiceWeight).trim() === '') ? 0 : (parseFloat(contract.invoiceWeight) || 0);
+        } else {
+            weight = parseFloat(contract.weight || 0);
+        }
+        
+        const unitPrice = contract.isFixedPrice 
+          ? parseFloat(contract.fixedPrice || 0)
+          : (parseFloat(contract.index || 0) + parseFloat(contract.differential || 0)) * 22.046 / 1000;
+        amountUSD = unitPrice * weight;
+    }
     setScheduleData({
         ...scheduleData,
         client: contract.supplier,
@@ -1375,10 +1385,20 @@ const ForeignSchedulePage = ({
                    ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                          {filteredContractsForPicker.map((c) => {
-                             const unitPrice = c.isFixedPrice 
-                               ? parseFloat(c.fixedPrice || 0)
-                               : (parseFloat(c.index || 0) + parseFloat(c.differential || 0)) * 22.046 / 1000;
-                             const amountUSD = unitPrice * parseFloat(c.weight || 0);
+                             let amountUSD = parseFloat(c.actualUSD);
+                             if (isNaN(amountUSD) || amountUSD === 0) {
+                                 let weight = 0;
+                                 if (c.invoiceWeight !== undefined && c.invoiceWeight !== null) {
+                                     weight = (c.invoiceWeight === '' || String(c.invoiceWeight).trim() === '') ? 0 : (parseFloat(c.invoiceWeight) || 0);
+                                 } else {
+                                     weight = parseFloat(c.weight || 0);
+                                 }
+                                 
+                                 const unitPrice = c.isFixedPrice 
+                                   ? parseFloat(c.fixedPrice || 0)
+                                   : (parseFloat(c.index || 0) + parseFloat(c.differential || 0)) * 22.046 / 1000;
+                                 amountUSD = unitPrice * weight;
+                             }
                              return (
                                  <button 
                                      key={c.id} 
