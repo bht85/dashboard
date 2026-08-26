@@ -531,6 +531,50 @@ const App = () => {
     }
   };
 
+  // 현재 rawBeanContracts 상태로 스냅샷 재생성 (재업로드 없이 날짜만 지정해서 저장)
+  const saveSnapshotFromCurrentData = async (customDate) => {
+    try {
+      const { doc, collection, setDoc } = await import('firebase/firestore');
+      const contracts = rawBeanContracts;
+      if (!contracts || contracts.length === 0) {
+        alert('현재 로딩된 생두 계약 데이터가 없습니다.');
+        return;
+      }
+      const createdAt = customDate ? new Date(customDate).toISOString() : new Date().toISOString();
+      const snapshotId = Date.now().toString();
+      const aggregated = contracts.reduce((acc, curr) => {
+          const mStr = `${curr.paymentYear}-${String(curr.paymentMonth).padStart(2, '0')}`;
+          if (!acc[mStr]) acc[mStr] = { weight: 0, usd: 0, krw: 0, indexSum: 0, count: 0 };
+          const hasInvoiceWeightField = curr.invoiceWeight !== undefined && curr.invoiceWeight !== null;
+          if (hasInvoiceWeightField && String(curr.invoiceWeight).trim() === '') return acc;
+          const w = parseFloat(curr.invoiceWeight || curr.weight || 0) || 0;
+          let usdAmount = parseFloat(curr.actualUSD) || 0;
+          let krwAmount = parseFloat(curr.actualKRW) || 0;
+          if (usdAmount === 0 && w > 0) {
+              const idx = parseFloat(curr.index) || 0;
+              const diff = parseFloat(curr.differential) || 0;
+              const unitPrice = curr.isFixedPrice ? (parseFloat(curr.fixedPrice) || 0) : (idx + diff) * 22.046 / 1000;
+              usdAmount = w * unitPrice;
+          }
+          if (krwAmount === 0 && usdAmount > 0) {
+              krwAmount = usdAmount * (parseFloat(curr.planExchangeRate) || 1450);
+          }
+          if (w === 0 && usdAmount === 0) return acc;
+          acc[mStr].weight += w;
+          acc[mStr].usd += usdAmount;
+          acc[mStr].krw += krwAmount;
+          const idxVal = parseFloat(curr.index);
+          if (!isNaN(idxVal) && idxVal > 0) { acc[mStr].indexSum += idxVal; acc[mStr].count += 1; }
+          return acc;
+      }, {});
+      await setDoc(doc(collection(db, 'rawBeanSnapshots'), snapshotId), { createdAt, data: aggregated, isAggregated: true });
+      alert((customDate || '오늘') + ' 기준 스냅샷이 저장되었습니다!');
+    } catch(e) {
+      alert('스냅샷 저장 중 오류: ' + e.message);
+    }
+  };
+
+
   // --- 외화입금리스트 CRUD ---
   const updateFXDeposit = async (data) => {
     const docId = data.id ? String(data.id) : Date.now().toString();
@@ -1050,6 +1094,7 @@ const App = () => {
                   alert("날짜 변경 중 오류가 발생했습니다: " + e.message);
               }
           }}
+          onSaveSnapshot={saveSnapshotFromCurrentData}
         />
       )}
 

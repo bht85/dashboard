@@ -14,7 +14,8 @@ const ForeignReportPage = ({
   defaultTab = 'schedule',
   onBack,
   onDeleteSnapshot,
-  onUpdateSnapshotDate
+  onUpdateSnapshotDate,
+  onSaveSnapshot
 }) => {
   const [activeTab, setActiveTab] = useState(defaultTab); // 'schedule', 'exchange', or 'beans'
   const [year, month] = (typeof selectedMonth === 'string' && selectedMonth.includes('-') ? selectedMonth : new Date().toISOString().substring(0, 7)).split('-');
@@ -896,7 +897,20 @@ const ForeignReportPage = ({
 
                 {/* 2. 누적 업로드 기록 요약 */}
                 <section className="mb-10 print:break-before-page">
-                    <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center gap-2">
+                    <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center gap-3 print:hidden">
+                        <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span>
+                        기준일자별 전체 누적 합계 흐름 ({year}년도)
+                        <button
+                            onClick={() => {
+                                const d = window.prompt('저장할 기준일자를 입력하세요 (예: 2026-08-13)', new Date().toISOString().substring(0,10));
+                                if (d && onSaveSnapshot) onSaveSnapshot(d);
+                            }}
+                            className="ml-auto text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"
+                        >
+                            + 현재 데이터로 스냅샷 저장
+                        </button>
+                    </h2>
+                    <h2 className="text-sm font-black text-slate-900 mb-4 hidden print:flex items-center gap-2">
                         <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span>
                         기준일자별 전체 누적 합계 흐름 ({year}년도)
                     </h2>
