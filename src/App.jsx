@@ -477,7 +477,11 @@ const App = () => {
       
       // Compress snapshot to avoid 1MB Firestore limit
       const aggregated = contracts.reduce((acc, curr) => {
-          const mStr = `${curr.paymentYear}-${String(curr.paymentMonth).padStart(2, '0')}`;
+          const rawYear = String(curr.paymentYear || new Date().getFullYear()).replace(/[^0-9]/g, '');
+          const rawMonth = String(curr.paymentMonth || '1').replace(/[^0-9]/g, '');
+          const y = rawYear.length === 4 ? rawYear : (rawYear.length === 2 ? `20${rawYear}` : new Date().getFullYear());
+          const m = rawMonth.padStart(2, '0');
+          const mStr = `${y}-${m}`;
           if (!acc[mStr]) acc[mStr] = { weight: 0, usd: 0, krw: 0, indexSum: 0, count: 0 };
           
           // 수량 결정: invoiceWeight(인보이스중량)이 숫자값이면 우선 사용, 없으면 계약수량(weight)으로 대체
@@ -541,7 +545,11 @@ const App = () => {
       const createdAt = customDate ? new Date(customDate).toISOString() : new Date().toISOString();
       const snapshotId = Date.now().toString();
       const aggregated = contracts.reduce((acc, curr) => {
-          const mStr = `${curr.paymentYear}-${String(curr.paymentMonth).padStart(2, '0')}`;
+          const rawYear = String(curr.paymentYear || new Date().getFullYear()).replace(/[^0-9]/g, '');
+          const rawMonth = String(curr.paymentMonth || '1').replace(/[^0-9]/g, '');
+          const y = rawYear.length === 4 ? rawYear : (rawYear.length === 2 ? `20${rawYear}` : new Date().getFullYear());
+          const m = rawMonth.padStart(2, '0');
+          const mStr = `${y}-${m}`;
           if (!acc[mStr]) acc[mStr] = { weight: 0, usd: 0, krw: 0, indexSum: 0, count: 0 };
           const invoiceW = parseFloat(curr.invoiceWeight);
           const contractW = parseFloat(curr.weight || 0) || 0;

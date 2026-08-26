@@ -887,9 +887,7 @@ const ForeignReportPage = ({
                                     );
                                 }) : (
                                     <tr>
-                                        <td colSpan={5} className="px-3 py-8 text-left text-slate-400 font-mono text-[8px] break-all">
-                                            RAW DATA DEBUG (len: {rawBeanContracts?.length}): {JSON.stringify(rawBeanContracts?.slice(0, 1))}
-                                        </td>
+                                        <td colSpan={5} className="px-3 py-8 text-center text-slate-400 font-bold italic">비교할 주간 변동 데이터가 없습니다.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -909,7 +907,7 @@ const ForeignReportPage = ({
                             }}
                             className="ml-auto text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"
                         >
-                            + 데이터로 스냅샷 저장 (v3)
+                            + 데이터로 스냅샷 저장 (최종)
                         </button>
                     </h2>
                     <h2 className="text-sm font-black text-slate-900 mb-4 hidden print:flex items-center gap-2">
