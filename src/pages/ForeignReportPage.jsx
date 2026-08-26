@@ -890,6 +890,85 @@ const ForeignReportPage = ({
                         </table>
                     </div>
                 </section>
+
+                {/* 2. 누적 업로드 기록 요약 */}
+                <section className="mb-10 print:break-before-page">
+                    <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center gap-2">
+                        <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span>
+                        기준일자별 전체 누적 합계 흐름 ({year}년도)
+                    </h2>
+                    <div className="border-2 border-slate-900 overflow-hidden">
+                        <table className="w-full text-xs text-left">
+                            <thead className="bg-slate-100 border-b-2 border-slate-900 font-black text-slate-800 text-[10px]">
+                                <tr>
+                                    <th className="px-3 py-2 border-r-2 border-slate-900 text-center">기준일자</th>
+                                    <th className="px-3 py-2 border-r border-slate-300 text-right">총 수량 (KG)</th>
+                                    <th className="px-3 py-2 border-r border-slate-300 text-right">총 외화 합계 (USD)</th>
+                                    <th className="px-3 py-2 text-right">총 원화 합계 (KRW)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sortedSnapshots.map((snap, idx) => {
+                                    const snapAgg = aggregateBeans(snap.data || []);
+                                    let totalW = 0, totalU = 0, totalK = 0;
+                                    Object.keys(snapAgg).filter(k => k.startsWith(year + '-')).forEach(k => {
+                                        totalW += snapAgg[k].weight;
+                                        totalU += snapAgg[k].usd;
+                                        totalK += snapAgg[k].krw;
+                                    });
+                                    
+                                    // Calculate diff from the previous (older) snapshot
+                                    let diffW = 0, diffU = 0, diffK = 0;
+                                    if (idx < sortedSnapshots.length - 1) {
+                                        const olderSnapAgg = aggregateBeans(sortedSnapshots[idx + 1].data || []);
+                                        let olderW = 0, olderU = 0, olderK = 0;
+                                        Object.keys(olderSnapAgg).filter(k => k.startsWith(year + '-')).forEach(k => {
+                                            olderW += olderSnapAgg[k].weight;
+                                            olderU += olderSnapAgg[k].usd;
+                                            olderK += olderSnapAgg[k].krw;
+                                        });
+                                        diffW = totalW - olderW;
+                                        diffU = totalU - olderU;
+                                        diffK = totalK - olderK;
+                                    }
+
+                                    const renderDiff = (val) => {
+                                        if (Math.abs(val) < 0.01 || idx === sortedSnapshots.length - 1) return null;
+                                        const sign = val > 0 ? '▲' : '▼';
+                                        const color = val > 0 ? 'text-rose-600' : 'text-blue-600';
+                                        return <span className={`ml-2 text-[9px] font-black ${color}`}>{sign} {Math.abs(Math.round(val)).toLocaleString()}</span>;
+                                    };
+
+                                    return (
+                                        <tr key={snap.createdAt} className={`border-b border-slate-200 hover:bg-slate-50 ${idx === 0 ? 'bg-indigo-50/30' : ''}`}>
+                                            <td className="px-3 py-2 border-r-2 border-slate-900 text-center font-bold text-slate-700">
+                                                {formatSnapDateShort(snap.createdAt)}
+                                                {idx === 0 && <span className="ml-2 px-1.5 py-0.5 bg-indigo-600 text-white text-[8px] rounded">최신</span>}
+                                            </td>
+                                            <td className="px-3 py-2 border-r border-slate-300 text-right font-mono">
+                                                <span className="text-slate-900 font-bold">{Math.round(totalW).toLocaleString()}</span>
+                                                {renderDiff(diffW)}
+                                            </td>
+                                            <td className="px-3 py-2 border-r border-slate-300 text-right font-mono">
+                                                <span className="text-slate-900 font-bold">{Math.round(totalU).toLocaleString()}</span>
+                                                {renderDiff(diffU)}
+                                            </td>
+                                            <td className="px-3 py-2 text-right font-mono">
+                                                <span className="text-slate-900 font-bold">{Math.round(totalK).toLocaleString()}</span>
+                                                {renderDiff(diffK)}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                                {sortedSnapshots.length === 0 && (
+                                    <tr>
+                                        <td colSpan={4} className="px-3 py-8 text-center text-slate-400 font-bold italic">기록된 업로드 히스토리가 없습니다.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </>
         ) : null}
 
