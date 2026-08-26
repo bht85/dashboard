@@ -1009,11 +1009,32 @@ const App = () => {
           fxSchedule={fxSchedule}
           exchangeResults={fxExchangeResults}
           rawBeanContracts={rawBeanContracts}
+          rawBeanSnapshots={rawBeanSnapshots}
           exchangeRate={exchangeRate}
           exchangeRateEUR={exchangeRateEUR}
           exchangeRateJPY={exchangeRateJPY}
           defaultTab={reportTab}
           onBack={() => setCurrentView('foreign')}
+          onDeleteSnapshot={async (id) => {
+              const { doc, deleteDoc } = await import('firebase/firestore');
+              if (window.confirm("이 히스토리 내역을 정말 삭제하시겠습니까? (삭제된 내역은 복구할 수 없습니다)")) {
+                  try {
+                      await deleteDoc(doc(db, "rawBeanSnapshots", id));
+                      alert("삭제되었습니다.");
+                  } catch(e) {
+                      alert("삭제 중 오류가 발생했습니다: " + e.message);
+                  }
+              }
+          }}
+          onUpdateSnapshotDate={async (id, newDateISO) => {
+              const { doc, updateDoc } = await import('firebase/firestore');
+              try {
+                  await updateDoc(doc(db, "rawBeanSnapshots", id), { createdAt: newDateISO });
+                  alert("날짜가 변경되었습니다.");
+              } catch(e) {
+                  alert("날짜 변경 중 오류가 발생했습니다: " + e.message);
+              }
+          }}
         />
       )}
 

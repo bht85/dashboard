@@ -963,7 +963,7 @@ const ForeignReportPage = ({
                                 })}
                                 {sortedSnapshots.length === 0 && (
                                     <tr>
-                                        <td colSpan={4} className="px-3 py-8 text-center text-slate-400 font-bold italic">기록된 업로드 히스토리가 없습니다.</td>
+                                        <td colSpan={5} className="px-3 py-8 text-center text-slate-400 font-bold italic">기록된 업로드 히스토리가 없습니다.</td>
                                     </tr>
                                 )}
                             </tbody>
