@@ -480,13 +480,11 @@ const App = () => {
           const mStr = `${curr.paymentYear}-${String(curr.paymentMonth).padStart(2, '0')}`;
           if (!acc[mStr]) acc[mStr] = { weight: 0, usd: 0, krw: 0, indexSum: 0, count: 0 };
           
-          // invoiceWeight이 명시적으로 비어있는 경우 = 환불/양도로 제외된 계약 → 건너뜀
-          // invoiceWeight이 아예 없거나 정의 안 된 경우 = 계약수량(weight)으로 대체
-          const hasInvoiceWeightField = curr.invoiceWeight !== undefined && curr.invoiceWeight !== null;
-          if (hasInvoiceWeightField && String(curr.invoiceWeight).trim() === '') return acc;
-          
-          // 수량 결정: invoiceWeight → weight 순으로 fallback
-          const w = parseFloat(curr.invoiceWeight || curr.weight || 0) || 0;
+          // 수량 결정: invoiceWeight(인보이스중량)이 숫자값이면 우선 사용, 없으면 계약수량(weight)으로 대체
+          // invoiceWeight이 '' 이어도 계약수량이 있으면 무조건 사용 (아직 인보이스 미발행인 계약)
+          const invoiceW = parseFloat(curr.invoiceWeight);
+          const contractW = parseFloat(curr.weight || 0) || 0;
+          const w = (!isNaN(invoiceW) && invoiceW > 0) ? invoiceW : contractW;
           
           // USD/KRW 결정: 실제 송금액 우선, 없으면 단가 × 수량으로 계산
           let usdAmount = parseFloat(curr.actualUSD) || 0;
@@ -545,9 +543,9 @@ const App = () => {
       const aggregated = contracts.reduce((acc, curr) => {
           const mStr = `${curr.paymentYear}-${String(curr.paymentMonth).padStart(2, '0')}`;
           if (!acc[mStr]) acc[mStr] = { weight: 0, usd: 0, krw: 0, indexSum: 0, count: 0 };
-          const hasInvoiceWeightField = curr.invoiceWeight !== undefined && curr.invoiceWeight !== null;
-          if (hasInvoiceWeightField && String(curr.invoiceWeight).trim() === '') return acc;
-          const w = parseFloat(curr.invoiceWeight || curr.weight || 0) || 0;
+          const invoiceW = parseFloat(curr.invoiceWeight);
+          const contractW = parseFloat(curr.weight || 0) || 0;
+          const w = (!isNaN(invoiceW) && invoiceW > 0) ? invoiceW : contractW;
           let usdAmount = parseFloat(curr.actualUSD) || 0;
           let krwAmount = parseFloat(curr.actualKRW) || 0;
           if (usdAmount === 0 && w > 0) {
