@@ -51,6 +51,15 @@ const ForeignReportPage = ({
     }, {});
   };
 
+
+  const formatSnapDate = (iso) => {
+    if(!iso) return null;
+    const d = new Date(iso);
+    return `${d.getFullYear()}년 ${d.getMonth()+1}월 ${d.getDate()}일 기준`;
+  };
+  const currDateStr = latestSnapshots[0] ? formatSnapDate(latestSnapshots[0].createdAt) : '현재 데이터';
+  const prevDateStr = latestSnapshots[1] ? formatSnapDate(latestSnapshots[1].createdAt) : '비교 대상 없음(1회차)';
+  
   const currentAgg = aggregateBeans(currentSnapData);
   const prevAgg = aggregateBeans(prevSnapData);
   const allBeanMonths = Array.from(new Set([...Object.keys(currentAgg), ...Object.keys(prevAgg)])).sort();
@@ -718,8 +727,8 @@ const ForeignReportPage = ({
                            <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span>
                            대금 지급월 기준 주간 변동 분석 (전주 대비)
                         </div>
-                        <div className="text-[10px] text-slate-400 font-normal">
-                          기준: {latestSnapshots[0] ? new Date(latestSnapshots[0].createdAt).toLocaleDateString() : '최근'} vs {latestSnapshots[1] ? new Date(latestSnapshots[1].createdAt).toLocaleDateString() : '이전'}
+                        <div className="text-[11px] font-black bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 tracking-tight">
+                          <span className="text-rose-600">[{prevDateStr}]</span> 대비 <span className="text-indigo-600">[{currDateStr}]</span> 변동 분석
                         </div>
                     </h2>
                     <div className="border-2 border-slate-900 overflow-hidden">
