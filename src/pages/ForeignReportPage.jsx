@@ -12,7 +12,9 @@ const ForeignReportPage = ({
   exchangeRateEUR = 1580,
   exchangeRateJPY = 10,
   defaultTab = 'schedule',
-  onBack
+  onBack,
+  onDeleteSnapshot,
+  onUpdateSnapshotDate
 }) => {
   const [activeTab, setActiveTab] = useState(defaultTab); // 'schedule', 'exchange', or 'beans'
   const [year, month] = selectedMonth.split('-');
@@ -905,7 +907,8 @@ const ForeignReportPage = ({
                                     <th className="px-3 py-2 border-r-2 border-slate-900 text-center">기준일자</th>
                                     <th className="px-3 py-2 border-r border-slate-300 text-right">총 수량 (KG)</th>
                                     <th className="px-3 py-2 border-r border-slate-300 text-right">총 외화 합계 (USD)</th>
-                                    <th className="px-3 py-2 text-right">총 원화 합계 (KRW)</th>
+                                    <th className="px-3 py-2 border-r border-slate-300 text-right">총 원화 합계 (KRW)</th>
+                                    <th className="px-3 py-2 text-center">관리</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -917,16 +920,16 @@ const ForeignReportPage = ({
                                         totalU += snapAgg[k].usd;
                                         totalK += snapAgg[k].krw;
                                     });
-                                    
+
                                     // Calculate diff from the previous (older) snapshot
                                     let diffW = 0, diffU = 0, diffK = 0;
                                     if (idx < sortedSnapshots.length - 1) {
-                                        const olderSnapAgg = aggregateBeans(sortedSnapshots[idx + 1].data || []);
+                                        const olderAgg = aggregateBeans(sortedSnapshots[idx + 1].data || []);
                                         let olderW = 0, olderU = 0, olderK = 0;
-                                        Object.keys(olderSnapAgg).filter(k => k.startsWith(year + '-')).forEach(k => {
-                                            olderW += olderSnapAgg[k].weight;
-                                            olderU += olderSnapAgg[k].usd;
-                                            olderK += olderSnapAgg[k].krw;
+                                        Object.keys(olderAgg).filter(k => k.startsWith(year + '-')).forEach(k => {
+                                            olderW += olderAgg[k].weight;
+                                            olderU += olderAgg[k].usd;
+                                            olderK += olderAgg[k].krw;
                                         });
                                         diffW = totalW - olderW;
                                         diffU = totalU - olderU;
@@ -941,7 +944,7 @@ const ForeignReportPage = ({
                                     };
 
                                     return (
-                                        <tr key={snap.createdAt} className={`border-b border-slate-200 hover:bg-slate-50 ${idx === 0 ? 'bg-indigo-50/30' : ''}`}>
+                                        <tr key={snap.id || snap.createdAt + idx} className={`border-b border-slate-200 hover:bg-slate-50 ${idx === 0 ? 'bg-indigo-50/30' : ''}`}>
                                             <td className="px-3 py-2 border-r-2 border-slate-900 text-center font-bold text-slate-700">
                                                 {formatSnapDateShort(snap.createdAt)}
                                                 {idx === 0 && <span className="ml-2 px-1.5 py-0.5 bg-indigo-600 text-white text-[8px] rounded">최신</span>}
@@ -954,9 +957,27 @@ const ForeignReportPage = ({
                                                 <span className="text-slate-900 font-bold">{Math.round(totalU).toLocaleString()}</span>
                                                 {renderDiff(diffU)}
                                             </td>
-                                            <td className="px-3 py-2 text-right font-mono">
+                                            <td className="px-3 py-2 border-r border-slate-300 text-right font-mono">
                                                 <span className="text-slate-900 font-bold">{Math.round(totalK).toLocaleString()}</span>
                                                 {renderDiff(diffK)}
+                                            </td>
+                                            <td className="px-3 py-2 text-center print:hidden">
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <button
+                                                        onClick={() => {
+                                                            const newDate = window.prompt('날짜 변경 (예: 2026-08-21)', snap.createdAt.substring(0,10));
+                                                            if (newDate && onUpdateSnapshotDate) {
+                                                                try { onUpdateSnapshotDate(snap.id, new Date(newDate).toISOString()); }
+                                                                catch(e) { alert('잘못된 날짜 형식입니다.'); }
+                                                            }
+                                                        }}
+                                                        className="text-[10px] bg-slate-100 text-slate-600 hover:bg-slate-200 px-2 py-1 rounded"
+                                                    >변경</button>
+                                                    <button
+                                                        onClick={() => onDeleteSnapshot && onDeleteSnapshot(snap.id)}
+                                                        className="text-[10px] bg-red-50 text-red-500 hover:bg-red-100 px-2 py-1 rounded"
+                                                    >삭제</button>
+                                                </div>
                                             </td>
                                         </tr>
                                     );
