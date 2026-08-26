@@ -17,12 +17,12 @@ const ForeignReportPage = ({
   const [activeTab, setActiveTab] = useState(defaultTab); // 'schedule', 'exchange', or 'beans'
   const [year, month] = selectedMonth.split('-');
   const [selectedCurrIndex, setSelectedCurrIndex] = useState(0);
-  const [selectedPrevIndex, setSelectedPrevIndex] = useState(1);
+  const [selectedPrevIndex, setSelectedPrevIndex] = useState(-1);
 
   // --- Beans Variation Logic ---
   const sortedSnapshots = [...rawBeanSnapshots].sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
   const currentSnapData = sortedSnapshots[selectedCurrIndex]?.data || rawBeanContracts || [];
-  const prevSnapData = sortedSnapshots[selectedPrevIndex]?.data || [];
+  const prevSnapData = selectedPrevIndex === -1 ? [] : (sortedSnapshots[selectedPrevIndex]?.data || []);
 
   const aggregateBeans = (data) => {
     if (!Array.isArray(data)) return data || {}; // Already aggregated (compressed snapshot)
@@ -811,7 +811,7 @@ const ForeignReportPage = ({
                              onChange={(e) => setSelectedPrevIndex(Number(e.target.value))}
                              className="bg-transparent text-rose-600 outline-none cursor-pointer hover:bg-slate-200 rounded px-1 text-right print:appearance-none print:bg-transparent"
                           >
-                             {sortedSnapshots.length === 0 && <option value={1}>비교 대상 없음</option>}
+                             <option value={-1}>비교 대상 없음</option>
                              {sortedSnapshots.map((s, i) => (
                                  <option key={'p'+i} value={i}>[{formatSnapDateShort(s.createdAt)}]</option>
                              ))}
