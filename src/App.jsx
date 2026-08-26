@@ -435,9 +435,17 @@ const App = () => {
     await deleteDoc(doc(collection(db, "rawBeanContracts"), String(id)));
   };
 
-  const batchUpdateRawBeanContracts = async (contracts, customDate = null) => {
-    const { writeBatch, doc, collection, setDoc } = await import('firebase/firestore');
+  const batchUpdateRawBeanContracts = async (contracts, customDate = null, replaceAll = false) => {
+    const { writeBatch, doc, collection, setDoc, getDocs } = await import('firebase/firestore');
     const batch = writeBatch(db);
+    
+    if (replaceAll) {
+        const querySnapshot = await getDocs(collection(db, "rawBeanContracts"));
+        querySnapshot.forEach((existingDoc) => {
+            batch.delete(existingDoc.ref);
+        });
+    }
+
     contracts.forEach(data => {
       const docId = data.id ? String(data.id) : Date.now().toString() + Math.random().toString(36).substring(2, 9);
       const docRef = doc(collection(db, "rawBeanContracts"), docId);

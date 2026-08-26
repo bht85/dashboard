@@ -330,10 +330,10 @@ const ForeignSchedulePage = ({
       }).filter(c => c.contractNo); // Only valid rows
 
       if (parsedContracts.length > 0) {
-        if(window.confirm(`총 ${parsedContracts.length}건의 계약을 일괄 업로드하시겠습니까?`)) {
+        if(window.confirm(`총 ${parsedContracts.length}건의 계약을 일괄 업로드하시겠습니까?\n\n[주의] '확인'을 누르시면 기존 생두 계약 데이터가 모두 삭제되고, 방금 올리신 엑셀 데이터로 완전히 덮어씌워집니다.`)) {
           if (onBatchUpdateRawBeanContracts) {
-             await onBatchUpdateRawBeanContracts(parsedContracts, uploadDate);
-             alert('일괄 업로드가 완료되었습니다.');
+             await onBatchUpdateRawBeanContracts(parsedContracts, uploadDate, true);
+             alert('일괄 덮어쓰기 업로드가 완료되었습니다.');
           } else {
              // Fallback to sequential updates
              for(let c of parsedContracts) {
