@@ -216,6 +216,11 @@ const App = () => {
         setRawBeanContracts(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
     }, logAndHandle("rawBeanContracts"));
 
+    // 10-0. Raw Bean Snapshots Sync
+    const unsubSnapshots = onSnapshot(query(collection(db, "rawBeanSnapshots"), orderBy('createdAt', 'desc'), limit(10)), (snapshot) => {
+        setRawBeanSnapshots(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    }, logAndHandle("rawBeanSnapshots"));
+
     // 10-1. FX Deposit List Sync (신규: 외화입금리스트)
     const unsubFXDeposit = onSnapshot(collection(db, "fxDepositList"), (snapshot) => {
         const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -283,7 +288,7 @@ const App = () => {
         setDailyStatuses(statuses);
     }, logAndHandle("dailyStatuses"));
 
-    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); unsubCashFlow(); unsubFXExchange(); unsubLoans(); unsubCoffee(); unsubContracts(); unsubFXDeposit(); unsubCorpUsage(); unsubCorpBudget(); unsubInventoryReceipts(); unsubMonthlyInv(); unsubCostSettings(); };
+    return () => { unsubCompose(); unsubSmart(); unsubFX(); unsubWith(); unsubStatus(); unsubIssues(); unsubCashFlow(); unsubFXExchange(); unsubLoans(); unsubCoffee(); unsubContracts(); if (typeof unsubSnapshots !== 'undefined') unsubSnapshots(); unsubFXDeposit(); unsubCorpUsage(); unsubCorpBudget(); unsubInventoryReceipts(); unsubMonthlyInv(); unsubCostSettings(); };
   }, [user]);
 
   // --- Firestore Update Wrappers ---
@@ -430,10 +435,8 @@ const App = () => {
     await deleteDoc(doc(collection(db, "rawBeanContracts"), String(id)));
   };
 
-  const batchUpdateRawBeanContracts = async (contracts) => {
-    // We can do it in chunks of 500 (Firestore batch limit) if there are many, 
-    // but usually it's less than 500 at a time.
-    const { writeBatch, doc, collection } = await import('firebase/firestore');
+  const batchUpdateRawBeanContracts = async (contracts, customDate = null) => {
+    const { writeBatch, doc, collection, setDoc } = await import('firebase/firestore');
     const batch = writeBatch(db);
     contracts.forEach(data => {
       const docId = data.id ? String(data.id) : Date.now().toString() + Math.random().toString(36).substring(2, 9);
@@ -444,6 +447,15 @@ const App = () => {
       });
     });
     await batch.commit();
+
+    try {
+      const createdAt = customDate ? new Date(customDate).toISOString() : new Date().toISOString();
+      const snapshotId = Date.now().toString();
+      await setDoc(doc(collection(db, "rawBeanSnapshots"), snapshotId), {
+         createdAt,
+         data: contracts
+      });
+    } catch(e) { console.error("Snapshot error", e); }
   };
 
   // --- 외화입금리스트 CRUD ---

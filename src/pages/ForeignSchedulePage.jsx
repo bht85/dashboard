@@ -280,6 +280,7 @@ const ForeignSchedulePage = ({
 
 
   const fileInputRef = useRef(null);
+  const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
 
   const handleExcelUpload = (e) => {
     const file = e.target.files[0];
@@ -328,7 +329,7 @@ const ForeignSchedulePage = ({
       if (parsedContracts.length > 0) {
         if(window.confirm(`총 ${parsedContracts.length}건의 계약을 일괄 업로드하시겠습니까?`)) {
           if (onBatchUpdateRawBeanContracts) {
-             await onBatchUpdateRawBeanContracts(parsedContracts);
+             await onBatchUpdateRawBeanContracts(parsedContracts, uploadDate);
              alert('일괄 업로드가 완료되었습니다.');
           } else {
              // Fallback to sequential updates
@@ -894,9 +895,13 @@ const ForeignSchedulePage = ({
                    <div className="text-base tracking-tighter">생두 구매 계약 관리 및 등록</div>
                    <div>
                      <input type="file" accept=".xlsx, .xls" className="hidden" ref={fileInputRef} onChange={handleExcelUpload} />
-                     <button onClick={() => fileInputRef.current && fileInputRef.current.click()} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-black hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2">
-                       <Download className="w-4 h-4" /> 엑셀 일괄 업로드
-                     </button>
+                     <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+                       <span className="text-[10px] font-black text-slate-500 pl-2">기준일:</span>
+                       <input type="date" value={uploadDate} onChange={(e) => setUploadDate(e.target.value)} className="bg-white text-xs font-bold border-none outline-none rounded-lg px-2 py-1 text-slate-700" />
+                       <button onClick={() => fileInputRef.current && fileInputRef.current.click()} className="bg-emerald-600 text-white px-4 py-1.5 rounded-lg text-xs font-black hover:bg-emerald-700 transition-all shadow-md flex items-center gap-2">
+                         <Download className="w-3.5 h-3.5" /> 엑셀 업로드
+                       </button>
+                     </div>
                    </div>
                  </div>
                  <div className="text-[9px] text-slate-400 font-bold tracking-widest uppercase">Raw Bean Procurement Contracts</div>
