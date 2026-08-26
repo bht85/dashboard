@@ -519,7 +519,7 @@ const ForeignReportPage = ({
                         ))}
 
                         {/* 2. Detailed Exchange Results */}
-                        <section className="mb-10 page-break-before">
+                        <section className="mb-10">
                             <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center gap-2">
                                 <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">
                                     {currenciesList.length + 1}
@@ -806,8 +806,8 @@ const ForeignReportPage = ({
             </>
         ) : activeTab === 'variation' ? (
             <>
-                {/* 2. 주간 변동 분석 */}
-                <section className="mb-10 print:break-before-page">
+                {/* 1. 주간 변동 분석 */}
+                <section className="mb-10">
                     <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                            <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">1</span>
@@ -901,7 +901,7 @@ const ForeignReportPage = ({
                 </section>
 
                 {/* 2. 누적 업로드 기록 요약 */}
-                <section className="mb-10 print:break-before-page">
+                <section className="mb-10">
                     <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center gap-3 print:hidden">
                         <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span>
                         기준일자별 전체 누적 합계 흐름 ({year}년도)
