@@ -480,8 +480,16 @@ const App = () => {
           const mStr = `${curr.paymentYear}-${String(curr.paymentMonth).padStart(2, '0')}`;
           if (!acc[mStr]) acc[mStr] = { weight: 0, usd: 0, krw: 0, indexSum: 0, count: 0 };
           
-          if (curr.invoiceWeight === '' || String(curr.invoiceWeight).trim() === '') return acc;
-          const w = parseFloat(curr.invoiceWeight || curr.weight || 0);
+          // Use invoiceWeight if available and not empty, otherwise fallback to weight.
+          // If the user wants to completely exclude a contract (e.g. refund/transfer), they should set weight to 0 or delete the row.
+          const wStr = String(curr.invoiceWeight || '').trim();
+          let w = 0;
+          if (wStr !== '') {
+              w = parseFloat(wStr);
+          } else {
+              w = parseFloat(curr.weight || 0);
+          }
+          if (isNaN(w) || w === 0) return acc;
           
           let usdAmount = parseFloat(curr.actualUSD);
           let krwAmount = parseFloat(curr.actualKRW);
