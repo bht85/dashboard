@@ -32,16 +32,27 @@ const ForeignReportPage = ({
       const key = pYear + '-' + pMonth;
       if (!acc[key]) acc[key] = { weight: 0, usd: 0, krw: 0, indexSum: 0, count: 0 };
       
-      const w = parseFloat(curr.weight) || 0;
-      let unitPrice = 0;
-      if (curr.isFixedPrice) {
-        unitPrice = parseFloat(curr.fixedPrice) || 0;
-      } else {
-        unitPrice = ((parseFloat(curr.index) || 0) + (parseFloat(curr.differential) || 0)) * 22.046 / 1000;
+      // 우선순위: 인보이스중량 > 계약수량
+      const w = parseFloat(curr.invoiceWeight || curr.weight) || 0;
+      
+      // 우선순위: 실제 송금액 > 예상 송금액 > 계산값
+      let usdAmount = parseFloat(curr.actualUSD);
+      let krwAmount = parseFloat(curr.actualKRW);
+      
+      // 만약 엑셀에 금액이 아예 없다면 기존 계산식으로 Fallback
+      if (isNaN(usdAmount) || usdAmount === 0) {
+          let unitPrice = 0;
+          if (curr.isFixedPrice) {
+            unitPrice = parseFloat(curr.fixedPrice) || 0;
+          } else {
+            unitPrice = ((parseFloat(curr.index) || 0) + (parseFloat(curr.differential) || 0)) * 22.046 / 1000;
+          }
+          usdAmount = w * unitPrice;
       }
       
-      const usdAmount = w * unitPrice;
-      const krwAmount = usdAmount * parseFloat(curr.planExchangeRate || exchangeRate);
+      if (isNaN(krwAmount) || krwAmount === 0) {
+          krwAmount = usdAmount * parseFloat(curr.planExchangeRate || exchangeRate);
+      }
 
       acc[key].weight += w;
       acc[key].usd += usdAmount;
@@ -170,14 +181,22 @@ const ForeignReportPage = ({
     });
 
   const contractTotals = yearlyContracts.reduce((acc, c) => {
-    const unitPrice = c.isFixedPrice 
-      ? Number(c.fixedPrice || 0)
-      : (Number(c.index || 0) + Number(c.differential || 0)) * 22.046 / 1000;
-    const amountUSD = unitPrice * Number(c.weight || 0);
-    const rate = Number(c.planExchangeRate || exchangeRate);
-    const amountKRW = amountUSD * rate;
+    const w = Number(c.invoiceWeight || c.weight || 0);
+    let amountUSD = Number(c.actualUSD);
+    let amountKRW = Number(c.actualKRW);
+
+    if (isNaN(amountUSD) || amountUSD === 0) {
+        const unitPrice = c.isFixedPrice 
+          ? Number(c.fixedPrice || 0)
+          : (Number(c.index || 0) + Number(c.differential || 0)) * 22.046 / 1000;
+        amountUSD = unitPrice * w;
+    }
+    if (isNaN(amountKRW) || amountKRW === 0) {
+        const rate = Number(c.planExchangeRate || exchangeRate);
+        amountKRW = amountUSD * rate;
+    }
     
-    acc.weight += Number(c.weight || 0);
+    acc.weight += w;
     acc.containers += Number(c.containerCount || 0);
     acc.usd += amountUSD;
     acc.krw += amountKRW;
@@ -203,11 +222,15 @@ const ForeignReportPage = ({
     if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) return;
     const mStr = String(monthNum).padStart(2, '0');
     
-    const unitPrice = c.isFixedPrice 
-      ? Number(c.fixedPrice || 0)
-      : (Number(c.index || 0) + Number(c.differential || 0)) * 22.046 / 1000;
-    const weight = Number(c.weight || 0);
-    const amountUSD = unitPrice * weight;
+    const weight = Number(c.invoiceWeight || c.weight || 0);
+    let amountUSD = Number(c.actualUSD);
+    
+    if (isNaN(amountUSD) || amountUSD === 0) {
+        const unitPrice = c.isFixedPrice 
+          ? Number(c.fixedPrice || 0)
+          : (Number(c.index || 0) + Number(c.differential || 0)) * 22.046 / 1000;
+        amountUSD = unitPrice * weight;
+    }
     
     if (originMonthlyStats[origin] && originMonthlyStats[origin][mStr]) {
       originMonthlyStats[origin][mStr].weight += weight;
