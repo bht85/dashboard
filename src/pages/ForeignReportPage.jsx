@@ -887,7 +887,9 @@ const ForeignReportPage = ({
                                     );
                                 }) : (
                                     <tr>
-                                        <td colSpan={5} className="px-3 py-8 text-center text-slate-400 font-bold italic">비교할 주간 변동 데이터가 없습니다.</td>
+                                        <td colSpan={5} className="px-3 py-8 text-left text-slate-400 font-mono text-[8px] break-all">
+                                            RAW DATA DEBUG (len: {rawBeanContracts?.length}): {JSON.stringify(rawBeanContracts?.slice(0, 1))}
+                                        </td>
                                     </tr>
                                 )}
                             </tbody>
