@@ -441,13 +441,17 @@ const App = () => {
     try {
       // 1. If replaceAll is true, delete all existing documents in chunks of 500
       if (replaceAll) {
-          const querySnapshot = await getDocs(collection(db, "rawBeanContracts"));
-          const docsToDelete = querySnapshot.docs;
-          
-          for (let i = 0; i < docsToDelete.length; i += 500) {
-              const chunk = docsToDelete.slice(i, i + 500);
+          const { query, limit } = await import('firebase/firestore');
+          let hasMore = true;
+          while(hasMore) {
+              const q = query(collection(db, "rawBeanContracts"), limit(500));
+              const querySnapshot = await getDocs(q);
+              if (querySnapshot.docs.length === 0) {
+                  hasMore = false;
+                  break;
+              }
               const delBatch = writeBatch(db);
-              chunk.forEach(existingDoc => delBatch.delete(existingDoc.ref));
+              querySnapshot.docs.forEach(existingDoc => delBatch.delete(existingDoc.ref));
               await delBatch.commit();
           }
       }
@@ -508,6 +512,7 @@ const App = () => {
     } catch (error) {
       console.error("Batch update error:", error);
       alert("데이터 업데이트 중 오류가 발생했습니다: " + error.message);
+      throw error;
     }
   };
 
