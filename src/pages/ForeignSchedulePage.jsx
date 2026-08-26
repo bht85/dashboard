@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { Globe, Plus, Trash2, ArrowRightLeft, Calendar, Edit2, Check, X, ChevronLeft, ChevronRight, Package, List, AlertCircle, Search, DollarSign, Printer, Download } from 'lucide-react';
 import { formatUSD, formatKRW } from '../utils/formatters';
 
@@ -18,6 +19,7 @@ const ForeignSchedulePage = ({
   rawBeanContracts = [],
   onUpdateRawBeanContract,
   onDeleteRawBeanContract,
+  onBatchUpdateRawBeanContracts,
   fxDepositList = [],
   onUpdateFXDeposit,
   onDeleteFXDeposit,
@@ -274,6 +276,74 @@ const ForeignSchedulePage = ({
       });
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+
+  const fileInputRef = useRef(null);
+
+  const handleExcelUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const bstr = evt.target.result;
+      const wb = XLSX.read(bstr, { type: 'binary' });
+      const wsname = wb.SheetNames[0];
+      const ws = wb.Sheets[wsname];
+      const data = XLSX.utils.sheet_to_json(ws);
+
+      const parsedContracts = data.map(row => {
+        // Find keys by ignoring whitespace/newlines
+        const getVal = (keyStr) => {
+          const matchKey = Object.keys(row).find(k => k.replace(/\s+/g, '') === keyStr);
+          return matchKey ? row[matchKey] : '';
+        };
+
+        const isFixedPrice = getVal('단가($/KG)') ? true : false;
+        
+        return {
+          origin: getVal('원산지') || '',
+          supplier: getVal('공급사') || '',
+          contractNo: getVal('계약#') || '',
+          installment: getVal('진행번호') ? String(getVal('진행번호')) + '차' : '',
+          containerCount: getVal('CTN수량') || '',
+          paymentStatus: getVal('완료') === 'O' ? 'O' : 'X',
+          paymentYear: getVal('대금지급년도') ? String(getVal('대금지급년도')) : String(new Date().getFullYear()),
+          paymentMonth: getVal('대금지급월') ? String(getVal('대금지급월')).padStart(2, '0') : '01',
+          contractMonth: getVal('월') || '',
+          differential: getVal('Differ') || '',
+          index: getVal('C') || '',
+          weight: getVal('계약수량') || getVal('인보이스중량') || '',
+          planExchangeRate: getVal('예상환율(원/USD)') || String(exchangeRate),
+          isFixedPrice: isFixedPrice,
+          fixedPrice: getVal('단가($/KG)') || '',
+          // Use contractNo + installment as unique ID if possible, otherwise random
+          id: (getVal('계약#') && getVal('진행번호')) 
+              ? getVal('계약#') + '_' + getVal('진행번호') 
+              : Date.now().toString() + Math.random().toString(36).substring(2,7)
+        };
+      }).filter(c => c.contractNo); // Only valid rows
+
+      if (parsedContracts.length > 0) {
+        if(window.confirm(`총 ${parsedContracts.length}건의 계약을 일괄 업로드하시겠습니까?`)) {
+          if (onBatchUpdateRawBeanContracts) {
+             await onBatchUpdateRawBeanContracts(parsedContracts);
+             alert('일괄 업로드가 완료되었습니다.');
+          } else {
+             // Fallback to sequential updates
+             for(let c of parsedContracts) {
+                await onUpdateRawBeanContract(c);
+             }
+             alert('일괄 업로드가 완료되었습니다.');
+          }
+        }
+      } else {
+        alert('업로드할 유효한 데이터(계약번호)가 없습니다.');
+      }
+      e.target.value = ''; // Reset input
+    };
+    reader.readAsBinaryString(file);
   };
 
   const handleAddContract = async (e) => {
@@ -820,7 +890,15 @@ const ForeignSchedulePage = ({
                 <Package className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1">
-                 <div className="text-base tracking-tighter">생두 구매 계약 관리 및 등록</div>
+                 <div className="w-full flex items-center justify-between mb-2">
+                   <div className="text-base tracking-tighter">생두 구매 계약 관리 및 등록</div>
+                   <div>
+                     <input type="file" accept=".xlsx, .xls" className="hidden" ref={fileInputRef} onChange={handleExcelUpload} />
+                     <button onClick={() => fileInputRef.current && fileInputRef.current.click()} className="bg-emerald-600 text-white px-4 py-2 rounded-xl text-xs font-black hover:bg-emerald-700 transition-all shadow-lg flex items-center gap-2">
+                       <Download className="w-4 h-4" /> 엑셀 일괄 업로드
+                     </button>
+                   </div>
+                 </div>
                  <div className="text-[9px] text-slate-400 font-bold tracking-widest uppercase">Raw Bean Procurement Contracts</div>
               </div>
               {contractData.isEditing && <span className="text-[10px] bg-indigo-50 text-indigo-600 font-black px-3 py-1 rounded-full border border-indigo-100">편집 중</span>}

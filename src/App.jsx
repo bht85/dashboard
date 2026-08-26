@@ -429,6 +429,22 @@ const App = () => {
     await deleteDoc(doc(collection(db, "rawBeanContracts"), String(id)));
   };
 
+  const batchUpdateRawBeanContracts = async (contracts) => {
+    // We can do it in chunks of 500 (Firestore batch limit) if there are many, 
+    // but usually it's less than 500 at a time.
+    const { writeBatch, doc, collection } = await import('firebase/firestore');
+    const batch = writeBatch(db);
+    contracts.forEach(data => {
+      const docId = data.id ? String(data.id) : Date.now().toString() + Math.random().toString(36).substring(2, 9);
+      const docRef = doc(collection(db, "rawBeanContracts"), docId);
+      batch.set(docRef, {
+        ...data,
+        updatedAt: new Date().toLocaleDateString('ko-KR')
+      });
+    });
+    await batch.commit();
+  };
+
   // --- 외화입금리스트 CRUD ---
   const updateFXDeposit = async (data) => {
     const docId = data.id ? String(data.id) : Date.now().toString();
@@ -845,6 +861,7 @@ const App = () => {
           rawBeanContracts={rawBeanContracts}
           onUpdateRawBeanContract={updateRawBeanContract}
           onDeleteRawBeanContract={deleteRawBeanContract}
+          onBatchUpdateRawBeanContracts={batchUpdateRawBeanContracts}
           fxDepositList={fxDepositList}
           onUpdateFXDeposit={updateFXDeposit}
           onDeleteFXDeposit={deleteFXDeposit}
