@@ -907,7 +907,7 @@ const ForeignReportPage = ({
                             }}
                             className="ml-auto text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"
                         >
-                            + 현재 데이터로 스냅샷 저장
+                            + 데이터로 스냅샷 저장 (v3)
                         </button>
                     </h2>
                     <h2 className="text-sm font-black text-slate-900 mb-4 hidden print:flex items-center gap-2">
