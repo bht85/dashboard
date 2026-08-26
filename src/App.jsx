@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import Layout from './components/layout/Layout';
 import { db, auth } from './firebase';
-import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy, writeBatch } from 'firebase/firestore'; 
+import { collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy, writeBatch, limit } from 'firebase/firestore'; 
 import { onAuthStateChanged } from 'firebase/auth';
 import { useEffect } from 'react';
 import DashboardPage from './pages/DashboardPage';
