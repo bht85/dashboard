@@ -563,7 +563,7 @@ const ForeignReportPage = ({
                     </div>
                 )}
             </>
-        ) : (
+        ) : activeTab === 'beans' ? (
             <>
                 {/* 3. 생두 구매 계약 보고서 렌더링 */}
                 <section className="mb-10">
@@ -784,12 +784,17 @@ const ForeignReportPage = ({
                 </section>
 
 
+
+
+            </>
+        ) : activeTab === 'variation' ? (
+            <>
                 {/* 2. 주간 변동 분석 */}
                 <section className="mb-10 print:break-before-page">
                     <h2 className="text-sm font-black text-slate-900 mb-4 flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                           <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">2</span>
-                           주간 변동 분석 (전주 대비)
+                           <span className="bg-slate-900 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">1</span>
+                           대금 지급월 기준 주간 변동 분석 (전주 대비)
                         </div>
                         <div className="text-[11px] font-black bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 tracking-tight">
                           <span className="text-rose-600">[{prevDateStr}]</span> vs <span className="text-indigo-600">[{currDateStr}]</span>
@@ -857,9 +862,8 @@ const ForeignReportPage = ({
                         </table>
                     </div>
                 </section>
-
             </>
-        )}
+        ) : null}
 
         {/* 3. Notes / Bank Info */}
         <section className="mt-20">
@@ -876,6 +880,11 @@ const ForeignReportPage = ({
                         <li>본 보고서는 선택된 연도의 환전 결과(매수 건) 데이터를 기준으로 작성되었습니다.</li>
                         <li>월별 평균 매수 환율 = 해당 월의 원화 투입액 총합 / 외화 매수액 총합.</li>
                         <li>매도 건은 제외된 순수 매수(BUY) 기록 분석 자료입니다.</li>
+                    </ul>
+                ) : activeTab === 'variation' ? (
+                    <ul className="text-[10px] text-slate-400 space-y-1 ml-4 list-disc">
+                        <li>본 보고서는 가장 최근 업로드된 데이터와 직전 데이터의 주간 변동 내역을 대금 지급월 기준으로 분석한 자료입니다.</li>
+                        <li>붉은색(▲)은 증가, 푸른색(▼)은 감소를 의미하며, 취소 및 양도 건은 제외하여 집계되었습니다.</li>
                     </ul>
                 ) : (
                     <ul className="text-[10px] text-slate-400 space-y-1 ml-4 list-disc">
