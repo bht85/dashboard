@@ -437,33 +437,47 @@ const App = () => {
 
   const batchUpdateRawBeanContracts = async (contracts, customDate = null, replaceAll = false) => {
     const { writeBatch, doc, collection, setDoc, getDocs } = await import('firebase/firestore');
-    const batch = writeBatch(db);
     
-    if (replaceAll) {
-        const querySnapshot = await getDocs(collection(db, "rawBeanContracts"));
-        querySnapshot.forEach((existingDoc) => {
-            batch.delete(existingDoc.ref);
-        });
-    }
-
-    contracts.forEach(data => {
-      const docId = data.id ? String(data.id) : Date.now().toString() + Math.random().toString(36).substring(2, 9);
-      const docRef = doc(collection(db, "rawBeanContracts"), docId);
-      batch.set(docRef, {
-        ...data,
-        updatedAt: new Date().toLocaleDateString('ko-KR')
-      });
-    });
-    await batch.commit();
-
     try {
+      // 1. If replaceAll is true, delete all existing documents in chunks of 500
+      if (replaceAll) {
+          const querySnapshot = await getDocs(collection(db, "rawBeanContracts"));
+          const docsToDelete = querySnapshot.docs;
+          
+          for (let i = 0; i < docsToDelete.length; i += 500) {
+              const chunk = docsToDelete.slice(i, i + 500);
+              const delBatch = writeBatch(db);
+              chunk.forEach(existingDoc => delBatch.delete(existingDoc.ref));
+              await delBatch.commit();
+          }
+      }
+
+      // 2. Set new documents in chunks of 500
+      for (let i = 0; i < contracts.length; i += 500) {
+          const chunk = contracts.slice(i, i + 500);
+          const setBatch = writeBatch(db);
+          chunk.forEach(data => {
+              const docId = data.id ? String(data.id) : Date.now().toString() + Math.random().toString(36).substring(2, 9);
+              const docRef = doc(collection(db, "rawBeanContracts"), docId);
+              setBatch.set(docRef, {
+                  ...data,
+                  updatedAt: new Date().toLocaleDateString('ko-KR')
+              });
+          });
+          await setBatch.commit();
+      }
+
+      // 3. Save snapshot
       const createdAt = customDate ? new Date(customDate).toISOString() : new Date().toISOString();
       const snapshotId = Date.now().toString();
       await setDoc(doc(collection(db, "rawBeanSnapshots"), snapshotId), {
          createdAt,
          data: contracts
       });
-    } catch(e) { console.error("Snapshot error", e); }
+    } catch (error) {
+      console.error("Batch update error:", error);
+      alert("데이터 업데이트 중 오류가 발생했습니다: " + error.message);
+    }
   };
 
   // --- 외화입금리스트 CRUD ---

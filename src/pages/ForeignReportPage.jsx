@@ -32,8 +32,16 @@ const ForeignReportPage = ({
       const key = pYear + '-' + pMonth;
       if (!acc[key]) acc[key] = { weight: 0, usd: 0, krw: 0, indexSum: 0, count: 0 };
       
-      // 우선순위: 인보이스중량 > 계약수량
-      const w = parseFloat(curr.invoiceWeight || curr.weight) || 0;
+      // 우선순위: 인보이스중량이 명시적으로 비어있으면(환불/양도로 삭제) 0처리. 없으면 계약수량.
+      let w = 0;
+      if (curr.invoiceWeight !== undefined && curr.invoiceWeight !== null) {
+          w = (curr.invoiceWeight === '' || String(curr.invoiceWeight).trim() === '') ? 0 : (parseFloat(curr.invoiceWeight) || 0);
+      } else {
+          w = parseFloat(curr.weight) || 0;
+      }
+      
+      // 만약 중량이 0이면 취소된 건이므로 집계에서 제외
+      if (w === 0) return acc;
       
       // 우선순위: 실제 송금액 > 예상 송금액 > 계산값
       let usdAmount = parseFloat(curr.actualUSD);
@@ -181,7 +189,15 @@ const ForeignReportPage = ({
     });
 
   const contractTotals = yearlyContracts.reduce((acc, c) => {
-    const w = Number(c.invoiceWeight || c.weight || 0);
+    let w = 0;
+    if (c.invoiceWeight !== undefined && c.invoiceWeight !== null) {
+        w = (c.invoiceWeight === '' || String(c.invoiceWeight).trim() === '') ? 0 : (Number(c.invoiceWeight) || 0);
+    } else {
+        w = Number(c.weight || 0);
+    }
+    
+    // 취소된 계약(중량 0)은 집계에서 제외
+    if (w === 0) return acc;
     let amountUSD = Number(c.actualUSD);
     let amountKRW = Number(c.actualKRW);
 
@@ -218,11 +234,20 @@ const ForeignReportPage = ({
   yearlyContracts.forEach(c => {
     const origin = c.origin;
     if (!origin) return;
+    
+    let weight = 0;
+    if (c.invoiceWeight !== undefined && c.invoiceWeight !== null) {
+        weight = (c.invoiceWeight === '' || String(c.invoiceWeight).trim() === '') ? 0 : (Number(c.invoiceWeight) || 0);
+    } else {
+        weight = Number(c.weight || 0);
+    }
+    
+    // 취소된 계약(중량 0)은 집계에서 제외
+    if (weight === 0) return;
+
     const monthNum = Number(String(c.paymentMonth || '').replace(/[^0-9]/g, ''));
     if (isNaN(monthNum) || monthNum < 1 || monthNum > 12) return;
     const mStr = String(monthNum).padStart(2, '0');
-    
-    const weight = Number(c.invoiceWeight || c.weight || 0);
     let amountUSD = Number(c.actualUSD);
     
     if (isNaN(amountUSD) || amountUSD === 0) {
