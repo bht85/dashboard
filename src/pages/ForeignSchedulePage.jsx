@@ -181,11 +181,13 @@ const ForeignSchedulePage = ({
 
   const [showAllContracts, setShowAllContracts] = useState(false);
   const [selectedContractSupplierFilter, setSelectedContractSupplierFilter] = useState('ALL');
+  const [selectedContractPeriodFilter, setSelectedContractPeriodFilter] = useState('ALL');
   const [contractSort, setContractSort] = useState({ key: 'id', order: 'desc' });
 
   useEffect(() => {
     if (!showContractPicker) {
       setSelectedContractSupplierFilter('ALL');
+      setSelectedContractPeriodFilter('ALL');
     }
   }, [showContractPicker]);
 
