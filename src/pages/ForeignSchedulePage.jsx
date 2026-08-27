@@ -1412,7 +1412,7 @@ const ForeignSchedulePage = ({
                                      </div>
                                      <div className="flex items-center gap-2 mb-4">
                                          <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-lg border border-indigo-100">{c.origin}</span>
-                                         <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">#{c.contractNo?.split('-').pop()}</span>
+                                         <span className="text-[10px] text-slate-300 font-bold uppercase tracking-wider">#{String(c.contractNo || '').split('-').pop()}</span>
                                          {c.isFixedPrice && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[8px] font-black rounded border border-emerald-100 ml-1">FIXED</span>}
                                      </div>
                                      <div className="text-xl font-black text-slate-800 mb-6 group-hover:text-indigo-600 transition-colors line-clamp-1">{c.supplier}</div>
