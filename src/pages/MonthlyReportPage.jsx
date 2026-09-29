@@ -46,6 +46,23 @@ const MonthlyReportPage = ({
   const lastStatus = monthData.length > 0 ? monthData[monthData.length - 1] : null;
   const firstStatus = monthData.length > 0 ? monthData[0] : null;
 
+  // --- 디버깅 로그 (콘솔에서 원인 진단용) ---
+  console.log(`[월간일보 진단] 대상 월: ${currentMonth}`);
+  console.log(`[월간일보 진단] monthData 날짜 수: ${monthData.length}`, monthData.map(d => d.date));
+  if (lastStatus) {
+    console.log(`[월간일보 진단] lastStatus 날짜: ${lastStatus.date}`);
+    console.log(`[월간일보 진단] lastStatus.details 건수: ${lastStatus.details?.length || 0}`);
+    if (lastStatus.details?.length > 0) {
+      const entities = [...new Set(lastStatus.details.map(d => d.entity))];
+      console.log(`[월간일보 진단] lastStatus entity 고유값:`, entities);
+      console.log(`[월간일보 진단] lastStatus details 샘플:`, lastStatus.details.slice(0, 3));
+      console.log(`[월간일보 진단] '컴포즈' 필터 결과:`, lastStatus.details.filter(d => d.entity?.includes('컴포즈')).length, '건');
+      console.log(`[월간일보 진단] '스마트팩토리' 필터 결과:`, lastStatus.details.filter(d => d.entity?.includes('스마트팩토리')).length, '건');
+    }
+  } else {
+    console.log(`[월간일보 진단] lastStatus가 null — 해당 월 dailyStatuses 데이터 없음`);
+  }
+
   // 법인별 월간 집계 헬퍼
   const getEntityStats = (entityKeyword) => {
     const lastDetails = lastStatus?.details?.filter(d => d.entity.includes(entityKeyword)) || [];
