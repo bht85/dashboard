@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
@@ -13,7 +13,16 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+
+// QUIC 프로토콜 오류(ERR_QUIC_PROTOCOL_ERROR) 방지:
+// experimentalAutoDetectLongPolling → 네트워크 환경에 따라 QUIC / Long Polling 자동 선택
+// ignoreUndefinedProperties → undefined 값 저장 시 오류 방지
+export const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
+  ignoreUndefinedProperties: true,
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+});
+
 export const auth = getAuth(app);
 export default app;
 

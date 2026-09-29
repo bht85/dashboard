@@ -132,9 +132,16 @@ const App = () => {
   useEffect(() => {
     if (!user) return;
 
-    // Helper for error handling and logging
+    // Helper for error handling and logging (with retry hint)
     const logAndHandle = (name) => (err) => {
-        console.error(`Firestore Sync Error [${name}]:`, err);
+        // Firestore 일시적 연결 오류(QUIC/WebChannel)는 SDK가 자동 재연결하므로
+        // 심각도가 낮은 경우 warn 레벨로만 출력
+        const isTransient = err?.code === 'unavailable' || err?.message?.includes('WebChannel');
+        if (isTransient) {
+            console.warn(`Firestore 일시 연결 오류 [${name}] — SDK 자동 재연결 중:`, err.code || err.message);
+        } else {
+            console.error(`Firestore Sync Error [${name}]:`, err);
+        }
     };
 
     console.log("Initializing Firestore Listeners...");
